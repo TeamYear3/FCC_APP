@@ -24,7 +24,7 @@ module.exports = {
         'color-status-pending': '#0052CC',
       },
       fontFamily: {
-        'sans': ['Roboto', 'Inter', 'Arial', 'sans-serif'],
+        'sans': ['Inter', 'Roboto', 'Arial', 'sans-serif'],
       },
       spacing: {
         'xs': '4px',

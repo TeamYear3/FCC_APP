@@ -6,35 +6,35 @@
 @layer components {
   /* Tokens de Tipografía exactos según Sistema de Diseño FCC APP - Página 3 */
   .typography-h1-display {
-    font-family: Roboto, Inter, Arial, sans-serif;
+    font-family: Inter, Roboto, Arial, sans-serif;
     font-size: 1.6rem;
     font-weight: 700;
     color: #FFFFFF;
   }
 
   .typography-h2-section {
-    font-family: Roboto, Inter, Arial, sans-serif;
+    font-family: Inter, Roboto, Arial, sans-serif;
     font-size: 1.15rem;
     font-weight: 700;
     color: #FFFFFF;
   }
 
   .typography-body-highlight {
-    font-family: Roboto, Inter, Arial, sans-serif;
+    font-family: Inter, Roboto, Arial, sans-serif;
     font-size: 0.9rem;
     font-weight: 700;
     color: #FFFFFF;
   }
 
   .typography-body-main {
-    font-family: Roboto, Inter, Arial, sans-serif;
+    font-family: Inter, Roboto, Arial, sans-serif;
     font-size: 0.8rem;
     font-weight: 400;
     color: #FFFFFF;
   }
 
   .typography-caption {
-    font-family: Roboto, Inter, Arial, sans-serif;
+    font-family: Inter, Roboto, Arial, sans-serif;
     font-size: 0.7rem;
     font-weight: 400;
     color: #AAAAAA;
