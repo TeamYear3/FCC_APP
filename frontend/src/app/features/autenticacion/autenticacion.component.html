@@ -1,0 +1,62 @@
+<div class="relative min-h-screen bg-color-bg-main flex items-center justify-center p-md overflow-hidden">
+
+  <!-- Imagen de fondo con opacidad suave para mantener el Dark Mode (la ruta es relativa a public/) -->
+  <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 pointer-events-none"
+    style="background-image: url('fondo_inicio_sesion.webp');"></div>
+
+  <!-- Gradiente para oscurecer los bordes y enfocar la tarjeta -->
+  <div
+    class="absolute inset-0 bg-gradient-to-t from-color-bg-main via-transparent to-color-bg-main/80 pointer-events-none">
+  </div>
+
+  <!-- Tarjeta de Login (se mantiene en z-index superior gracias a relative z-10) -->
+  <div
+    class="relative z-10 w-full max-w-md bg-color-surface-container rounded-card p-lg shadow-2xl border border-white/10 flex flex-col items-center">
+    <!-- Encabezado / Título principal con escala oficial -->
+    <div class="mb-lg text-center">
+      <h1 class="typography-h1-display mb-sm">Iniciar sesión</h1>
+      <p class="typography-body-main">
+        Accede a tu cuenta en FCC APP utilizando tu identidad segura de Google
+      </p>
+    </div>
+
+    <!-- Botón modular reutilizable -->
+    <div class="w-full mb-lg">
+      <app-google-login-button [disabled]="isInitializing()" (loginClick)="onGoogleLogin()"></app-google-login-button>
+    </div>
+
+    <!-- Mensaje de estado al estar inicializando -->
+    @if (isInitializing()) {
+    <div class="w-full text-center typography-caption mb-md flex items-center justify-center gap-sm">
+      <span class="inline-block w-2 h-2 rounded-full bg-color-status-process animate-pulse"></span>
+      <span>Conectando con Google Identity Services...</span>
+    </div>
+    }
+
+    <!-- Mensaje de error / feedback -->
+    @if (errorMessage()) {
+    <div
+      class="w-full p-md mb-md rounded-badge bg-red-500/10 border border-red-500/30 text-red-400 typography-caption text-center">
+      {{ errorMessage() }}
+    </div>
+    }
+
+    <!-- Visualización de credencial / ID Token capturado de forma exitosa -->
+    @if (idTokenCaptured()) {
+    <div
+      class="w-full p-md rounded-badge bg-color-status-review/10 border border-color-status-review/30 text-color-status-review break-all mt-sm animate-fadeIn">
+      <div class="flex items-center gap-sm mb-sm typography-body-highlight text-color-status-review">
+        <svg class="w-[24px] h-[24px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span>¡Credencial capturada con éxito!</span>
+      </div>
+      <p class="typography-caption text-color-text-primary mb-xs">ID Token en camino a la capa core:</p>
+      <div
+        class="p-sm rounded-badge bg-black/40 font-mono typography-caption text-color-text-secondary overflow-x-auto max-h-32 border border-white/5">
+        {{ idTokenCaptured() }}
+      </div>
+    </div>
+    }
+  </div>
+</div>
