@@ -1,62 +1,91 @@
-<div class="relative min-h-screen bg-color-bg-main flex items-center justify-center p-md overflow-hidden">
+<div class="relative min-h-screen bg-color-bg-main flex flex-col justify-between items-center p-lg overflow-hidden select-none">
 
-  <!-- Imagen de fondo con opacidad suave para mantener el Dark Mode (la ruta es relativa a public/) -->
-  <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 pointer-events-none"
+  <!-- Imagen de fondo del taller mecánico con opacidad suave -->
+  <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30 pointer-events-none"
     style="background-image: url('fondo_inicio_sesion.webp');"></div>
 
-  <!-- Gradiente para oscurecer los bordes y enfocar la tarjeta -->
-  <div
-    class="absolute inset-0 bg-gradient-to-t from-color-bg-main via-transparent to-color-bg-main/80 pointer-events-none">
-  </div>
+  <!-- Gradiente vertical para maximizar legibilidad e impacto visual según el Dark Mode -->
+  <div class="absolute inset-0 bg-gradient-to-b from-color-bg-main/80 via-color-bg-main/75 to-color-bg-main pointer-events-none"></div>
 
-  <!-- Tarjeta de Login (se mantiene en z-index superior gracias a relative z-10) -->
-  <div
-    class="relative z-10 w-full max-w-md bg-color-surface-container rounded-card p-lg shadow-2xl border border-white/10 flex flex-col items-center">
-    <!-- Encabezado / Título principal con escala oficial -->
-    <div class="mb-lg text-center">
-      <h1 class="typography-h1-display mb-sm">Iniciar sesión</h1>
-      <p class="typography-body-main">
-        Accede a tu cuenta en FCC APP utilizando tu identidad segura de Google
-      </p>
+  <!-- Contenedor central con Logo, Lema y Botones de Acción -->
+  <div class="relative z-10 w-full max-w-sm my-auto flex flex-col items-center text-center py-6">
+    
+    <!-- Logo de la aplicación usando el archivo real logo_fcc.png -->
+    <div class="flex justify-center mb-6">
+      <img src="logo_fcc.png" alt="FCC APP Logo" class="h-28 md:h-32 w-auto object-contain drop-shadow-[0_0_15px_rgba(255,204,0,0.3)]" />
     </div>
 
-    <!-- Botón modular reutilizable -->
-    <div class="w-full mb-lg">
-      <app-google-login-button [disabled]="isInitializing()" (loginClick)="onGoogleLogin()"></app-google-login-button>
+    <!-- Línea divisoria horizontal amarilla (Firma visual del diseño original) -->
+    <div class="w-48 h-1 bg-color-primary-accent rounded-full my-4 shadow-[0_0_10px_rgba(255,204,0,0.5)]"></div>
+
+    <!-- Lema principal en dos líneas de alto impacto -->
+    <div class="mb-10 mt-2">
+      <h1 class="font-bold text-color-text-primary text-2xl md:text-3xl tracking-wide uppercase leading-tight">
+        TODO TU TALLER,
+      </h1>
+      <h2 class="font-bold text-color-primary-accent text-2xl md:text-3xl tracking-wide uppercase leading-tight mt-1">
+        EN UN SOLO LUGAR
+      </h2>
     </div>
 
-    <!-- Mensaje de estado al estar inicializando -->
+    <!-- Contenedor de Botones de Acción (Pill Shape de ancho completo) -->
+    <div class="w-full max-w-xs flex flex-col gap-md">
+      <!-- Botón Principal: Iniciar sesión con Google OAuth -->
+      <app-google-login-button
+        [disabled]="isInitializing()"
+        [label]="'Iniciar sesión'"
+        (loginClick)="onGoogleLogin()"
+      ></app-google-login-button>
+
+      <!-- Botón Secundario Outline: Crear cuenta (enlaza al mismo flujo OAuth o registro) -->
+      <button
+        type="button"
+        [disabled]="isInitializing()"
+        (click)="onGoogleLogin()"
+        class="w-full min-h-[48px] rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent focus:ring-offset-2 focus:ring-offset-color-bg-main tracking-wide"
+      >
+        <span>Crear cuenta</span>
+      </button>
+    </div>
+
+    <!-- Indicador de estado conectando -->
     @if (isInitializing()) {
-    <div class="w-full text-center typography-caption mb-md flex items-center justify-center gap-sm">
-      <span class="inline-block w-2 h-2 rounded-full bg-color-status-process animate-pulse"></span>
-      <span>Conectando con Google Identity Services...</span>
-    </div>
+      <div class="w-full text-center typography-caption mt-6 flex items-center justify-center gap-sm">
+        <span class="inline-block w-2 h-2 rounded-full bg-color-status-process animate-pulse"></span>
+        <span>Conectando con Google Identity Services...</span>
+      </div>
     }
 
     <!-- Mensaje de error / feedback -->
     @if (errorMessage()) {
-    <div
-      class="w-full p-md mb-md rounded-badge bg-red-500/10 border border-red-500/30 text-red-400 typography-caption text-center">
-      {{ errorMessage() }}
-    </div>
+      <div class="w-full p-md mt-6 rounded-badge bg-red-500/10 border border-red-500/30 text-red-400 typography-caption text-center">
+        {{ errorMessage() }}
+      </div>
     }
 
     <!-- Visualización de credencial / ID Token capturado de forma exitosa -->
     @if (idTokenCaptured()) {
-    <div
-      class="w-full p-md rounded-badge bg-color-status-review/10 border border-color-status-review/30 text-color-status-review break-all mt-sm animate-fadeIn">
-      <div class="flex items-center gap-sm mb-sm typography-body-highlight text-color-status-review">
-        <svg class="w-[24px] h-[24px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-        </svg>
-        <span>¡Credencial capturada con éxito!</span>
+      <div class="w-full p-md rounded-badge bg-color-status-review/10 border border-color-status-review/30 text-color-status-review break-all mt-6 animate-fadeIn text-left">
+        <div class="flex items-center gap-sm mb-sm typography-body-highlight text-color-status-review">
+          <svg class="w-[24px] h-[24px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>¡Credencial capturada con éxito!</span>
+        </div>
+        <p class="typography-caption text-color-text-primary mb-xs font-semibold">ID Token en camino a la capa core:</p>
+        <div class="p-sm rounded-badge bg-black/40 font-mono typography-caption text-color-text-secondary overflow-x-auto max-h-32 border border-white/5">
+          {{ idTokenCaptured() }}
+        </div>
       </div>
-      <p class="typography-caption text-color-text-primary mb-xs">ID Token en camino a la capa core:</p>
-      <div
-        class="p-sm rounded-badge bg-black/40 font-mono typography-caption text-color-text-secondary overflow-x-auto max-h-32 border border-white/5">
-        {{ idTokenCaptured() }}
-      </div>
-    </div>
     }
   </div>
+
+  <!-- Pié de página: Indicador de Seguridad (Tus datos están protegidos) -->
+  <div class="relative z-10 mt-auto pt-4 pb-2 flex items-center gap-2 text-color-text-secondary text-sm font-medium">
+    <svg class="w-5 h-5 text-color-primary-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+    <span>Tus datos están protegidos</span>
+  </div>
+
 </div>
