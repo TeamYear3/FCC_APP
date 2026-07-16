@@ -164,3 +164,42 @@ class GoogleAuthViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("id_token", response.data)
 
+
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class LogoutViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('logout')
+        self.user = User.objects.create_user(
+            email="logout_test@ejemplo.com",
+            nombre="Logout",
+            apellido="Test",
+            password="testpassword123"
+        )
+        self.refresh = RefreshToken.for_user(self.user)
+
+    def test_logout_exitoso_invalida_refresh_token(self):
+        refresh_str = str(self.refresh)
+        response = self.client.post(self.url, {"refresh": refresh_str})
+        self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
+
+        # Intentar refrescar el token debe retornar HTTP 401 Unauthorized o 400 Bad Request
+        refresh_url = reverse('token-refresh')
+        refresh_response = self.client.post(refresh_url, {"refresh": refresh_str})
+        self.assertIn(refresh_response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_400_BAD_REQUEST])
+
+    def test_refresh_con_token_blacklisteado_falla(self):
+        # Primero blacklistear el token
+        refresh_str = str(self.refresh)
+        self.client.post(self.url, {"refresh": refresh_str})
+
+        # Segundo intento de refresco debe dar HTTP 401 o 400
+        refresh_url = reverse('token-refresh')
+        response = self.client.post(refresh_url, {"refresh": refresh_str})
+        self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_400_BAD_REQUEST])
+
+    def test_logout_con_token_invalido_responde_205(self):
+        # Un refresh token inválido o expirado debe responder igualmente con HTTP 205
+        response = self.client.post(self.url, {"refresh": "invalid_refresh_token_123"})
+        self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
+
