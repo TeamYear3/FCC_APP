@@ -17,3 +17,6 @@ class GoogleAuthSerializer(serializers.Serializer):
             return idinfo
         except Exception:
             raise serializers.ValidationError("Token de Google inválido o expirado.")
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField(required=True)
