@@ -1,0 +1,54 @@
+<div class="min-h-screen bg-color-bg-main flex items-center justify-center p-lg relative overflow-hidden select-none">
+  <!-- Tarjeta central en superficie #1E1E1E con borde sutil y radio card 12px -->
+  <div class="max-w-md w-full bg-color-surface-container border border-color-primary-accent/40 rounded-card p-lg shadow-2xl text-center relative z-10 transition-all duration-300">
+    
+    <!-- Ícono lineal MD3 (Stroke Variant 2dp) en contenedor de escala fija 24x24 o superior escalado con acento amarillo #FFCC00 -->
+    <div class="w-16 h-16 bg-color-primary-accent/10 border border-color-primary-accent/30 rounded-card flex items-center justify-center mx-auto mb-md text-color-primary-accent shadow-inner">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+
+    <!-- Título y Mensaje con tokens de tipografía -->
+    <h1 class="typography-h1-display tracking-tight mb-xs uppercase">
+      Acceso Restringido
+    </h1>
+    <p class="typography-body-main text-color-text-secondary leading-relaxed mb-lg">
+      Tu cuenta de usuario no dispone de los permisos necesarios o el rol requerido para visualizar la pantalla administrativa o de gestión solicitada.
+    </p>
+
+    <!-- Pastilla / Badge de Estado Semántico con rol activo -->
+    <div *ngIf="userRole()" class="bg-black/60 border border-white/10 rounded-badge py-sm px-md mb-lg flex items-center justify-between">
+      <span class="typography-caption text-color-text-secondary font-semibold uppercase">Rol en Sesión:</span>
+      <span class="px-2 py-1 rounded-badge typography-caption font-bold uppercase tracking-wider bg-color-primary-accent/20 text-color-primary-accent border border-color-primary-accent/40">
+        {{ userRole() }}
+      </span>
+    </div>
+
+    <div *ngIf="!userRole()" class="bg-black/60 border border-white/10 rounded-badge py-sm px-md mb-lg typography-caption text-color-text-secondary text-left">
+      ⚠️ Sesión no identificada en capa core. Requiere inicio de sesión con credencial válida.
+    </div>
+
+    <!-- Botones de Acción Oficiales (Pill Action Button y Outline Pill) -->
+    <div class="flex flex-col sm:flex-row gap-sm">
+      <!-- Botón de Acción Principal: Pill Action Button (#FFCC00 y texto negro #000000, min-h 48px, rounded 24px) -->
+      <button
+        type="button"
+        (click)="goBack()"
+        class="flex-1 min-h-[48px] px-md py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span>Ir a Mi Portal</span>
+      </button>
+
+      <!-- Botón Secundario Outline: radio 24px y borde amarillo -->
+      <button
+        type="button"
+        (click)="logout()"
+        class="min-h-[48px] px-md py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] cursor-pointer">
+        <span>Cerrar Sesión</span>
+      </button>
+    </div>
+  </div>
+</div>

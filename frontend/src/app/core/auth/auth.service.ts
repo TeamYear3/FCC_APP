@@ -38,10 +38,26 @@ export class AuthService {
   private scriptLoaded = false;
   private scriptLoadingPromise: Promise<void> | null = null;
 
-  private readonly idTokenSubject = new BehaviorSubject<string | null>(null);
+  private readonly idTokenSubject = new BehaviorSubject<string | null>(this.getStoredToken());
   readonly idToken$: Observable<string | null> = this.idTokenSubject.asObservable();
-  readonly idTokenSignal = signal<string | null>(null);
+  readonly idTokenSignal = signal<string | null>(this.getStoredToken());
   readonly isSdkInitialized = signal<boolean>(false);
+  readonly userRoleSignal = signal<'admin' | 'tecnico' | 'cliente' | null>(this.extractRoleFromToken(this.getStoredToken()));
+
+  constructor() {
+    // Al instanciar, verificamos si ya existe un token en memoria/localStorage para sincronizar el rol
+    const token = this.getStoredToken();
+    if (token) {
+      this.userRoleSignal.set(this.extractRoleFromToken(token));
+    }
+  }
+
+  private getStoredToken(): string | null {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('fcc_auth_token');
+    }
+    return null;
+  }
 
   /**
    * Inicializa el SDK de Google Identity Services consumiendo las variables de entorno.
@@ -74,12 +90,100 @@ export class AuthService {
   handleCredentialResponse(response: GoogleCredentialResponse): void {
     if (response && response.credential) {
       const credential = response.credential;
-      this.idTokenSubject.next(credential);
-      this.idTokenSignal.set(credential);
+      this.setToken(credential);
       this.prepareTokenForServer(credential);
     } else {
       console.error('Respuesta de credencial de Google inválida:', response);
     }
+  }
+
+  /**
+   * Almacena o limpia el token JWT activo, actualizando los observadores y señales.
+   */
+  setToken(token: string | null): void {
+    this.idTokenSubject.next(token);
+    this.idTokenSignal.set(token);
+    const role = this.extractRoleFromToken(token);
+    this.userRoleSignal.set(role);
+
+    if (typeof localStorage !== 'undefined') {
+      if (token) {
+        localStorage.setItem('fcc_auth_token', token);
+      } else {
+        localStorage.removeItem('fcc_auth_token');
+      }
+    }
+  }
+
+  /**
+   * Devuelve el token actual activo.
+   */
+  getToken(): string | null {
+    return this.idTokenSignal() || this.idTokenSubject.value || this.getStoredToken();
+  }
+
+  /**
+   * Verifica si existe una sesión/token activa.
+   */
+  isAuthenticated(): boolean {
+    return !!this.getToken();
+  }
+
+  /**
+   * Decodifica el payload del JWT token almacenado utilizando base64url.
+   */
+  getDecodedToken(): Record<string, any> | null {
+    const token = this.getToken();
+    if (!token) return null;
+    return this.decodeTokenString(token);
+  }
+
+  /**
+   * Decodifica un string de token JWT arbitrario.
+   */
+  private decodeTokenString(token: string | null): Record<string, any> | null {
+    if (!token) return null;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Error al decodificar JWT token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Extrae el rol del usuario desde el payload del JWT decodificado (admin, tecnico, cliente).
+   */
+  getUserRole(): 'admin' | 'tecnico' | 'cliente' | null {
+    return this.userRoleSignal() || this.extractRoleFromToken(this.getToken());
+  }
+
+  private extractRoleFromToken(token: string | null): 'admin' | 'tecnico' | 'cliente' | null {
+    if (!token) return null;
+    const decoded = this.decodeTokenString(token);
+    if (!decoded) return null;
+    const role = decoded['rol'] || decoded['role'] || decoded['user_role'];
+    if (role === 'admin' || role === 'tecnico' || role === 'cliente') {
+      return role;
+    }
+    return null;
+  }
+
+  /**
+   * Cierra la sesión activa del usuario y limpia tokens.
+   */
+  logout(): void {
+    this.setToken(null);
   }
 
   /**
