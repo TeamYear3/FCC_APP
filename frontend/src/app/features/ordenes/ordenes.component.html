@@ -1,0 +1,188 @@
+<div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
+  
+  <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
+  <div class="max-w-6xl mx-auto w-full relative z-10 flex-1">
+    
+    <!-- Encabezado / Header -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+      <div class="flex items-center gap-md">
+        <!-- Logo mini del taller -->
+        <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
+          <span class="font-extrabold text-color-primary-accent text-lg tracking-tighter">FCC</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 bg-color-primary-accent/15 text-color-primary-accent border border-color-primary-accent/30 rounded-badge typography-caption font-bold uppercase tracking-wider">
+              Órdenes de Trabajo (OT)
+            </span>
+            <span class="typography-caption text-color-text-secondary">Rol activo: <strong class="text-color-primary-accent uppercase tracking-wide">{{ userRole() || 'tecnico' }}</strong></span>
+          </div>
+          <h1 class="typography-h1-display tracking-tight uppercase leading-none">
+            Expediente Operativo de Taller
+          </h1>
+        </div>
+      </div>
+
+      <!-- Botón Secundario Outline / Salir -->
+      <button
+        type="button"
+        (click)="logout()"
+        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] flex items-center gap-2 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Cerrar Sesión</span>
+      </button>
+    </header>
+
+    <!-- Tarjeta Principal de Resumen de Orden Activa (Order Work Card - Página 4) -->
+    <div class="bg-color-surface-container border border-color-primary-accent/40 rounded-card p-md sm:p-lg mb-lg shadow-2xl">
+      <!-- Extremo Superior Izquierdo: Número de orden e información del vehículo / Extremo Superior Derecho: Badge Semántico -->
+      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-md">
+        <div>
+          <div class="flex items-center gap-3">
+            <span class="typography-h1-display text-color-primary-accent tracking-tight">#OT-1257</span>
+            <!-- Badge Semántico En Proceso (Página 4) -->
+            <span class="px-3 py-1 rounded-badge bg-color-status-process text-black typography-caption font-extrabold uppercase tracking-wide shadow">
+              En proceso
+            </span>
+          </div>
+          <h2 class="typography-h2-section text-white mt-1">Volkswagen Amarok V6 3.0 TDI Highline 4x4</h2>
+          <p class="typography-body-main text-color-text-secondary mt-0.5">Patente: <strong class="text-white">AD 456 XY</strong> · VIN: <span class="font-mono text-xs">8AWZZZ2HZMA091234</span></p>
+        </div>
+
+        <!-- Acciones Rápidas del Mecánico -->
+        <div class="flex items-center gap-2">
+          <button type="button" class="px-3 py-2 rounded-card bg-black/60 border border-white/10 hover:border-color-primary-accent text-color-text-secondary hover:text-white typography-caption flex items-center gap-1.5 transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+            <span>Imprimir OT</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Zona Inferior: Datos del Cliente, Fecha técnica y Presupuesto divididos por línea horizontal gris oscuro -->
+      <div class="pt-md border-t border-[#333333] grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <span class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold">Titular / Cliente</span>
+          <p class="typography-body-highlight text-white mt-0.5">Carlos Rodríguez</p>
+          <p class="typography-caption text-color-text-secondary">Tel: +54 9 11 5566-7788</p>
+        </div>
+        <div>
+          <span class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold">Ingreso Técnico</span>
+          <p class="typography-body-highlight text-white mt-0.5">16 Jul 2026 - 08:30 AM</p>
+          <p class="typography-caption text-color-text-secondary">Asesor: Martín Gómez</p>
+        </div>
+        <div class="sm:text-right">
+          <span class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold">Presupuesto Estimado</span>
+          <p class="typography-h2-section text-color-primary-accent mt-0.5 font-extrabold">$ 485,000.00</p>
+          <p class="typography-caption text-color-text-secondary">IVA y mano de obra incluidos</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Patrón A: Estructura de Navegación por Pestañas Internas (Tabbed Menu Layout - Página 5) -->
+    <div class="border-b border-white/10 mb-md flex overflow-x-auto gap-1 sm:gap-4">
+      <button
+        *ngFor="let tab of tabs"
+        type="button"
+        (click)="setTab(tab)"
+        class="pb-3 px-3 sm:px-4 text-sm font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap relative"
+        [ngClass]="{
+          'border-b-2 border-color-primary-accent text-color-primary-accent': activeTab() === tab,
+          'text-color-text-secondary hover:text-white': activeTab() !== tab
+        }">
+        {{ tab }}
+        <span *ngIf="tab === 'Servicios'" class="ml-1 px-1.5 py-0.5 rounded-badge bg-color-primary-accent/20 text-color-primary-accent text-[10px]">
+          4
+        </span>
+      </button>
+    </div>
+
+    <!-- Contenido Pestaña SERVICIOS: Patrón B (Listado de Control de Tareas - Checkbox Service List Pattern - Página 5) -->
+    <div *ngIf="activeTab() === 'Servicios'" class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg mb-lg shadow-xl">
+      <div class="flex items-center justify-between mb-md pb-sm border-b border-white/10">
+        <div>
+          <h3 class="typography-h2-section text-white">Listado de Control de Tareas (Service Checkbox Pattern)</h3>
+          <p class="typography-caption text-color-text-secondary">Marca cada tarea al completar el diagnóstico o reemplazo físico de piezas.</p>
+        </div>
+        <span class="typography-body-highlight text-color-primary-accent">
+          2/4 completadas
+        </span>
+      </div>
+
+      <!-- Tareas Asignadas expuestas verticalmente con Checkbox MD3 (Página 5) -->
+      <div class="flex flex-col gap-sm">
+        <div *ngFor="let tarea of tareasServicio()" 
+             (click)="toggleTask(tarea.id)"
+             class="p-md rounded-card border transition-all duration-200 cursor-pointer flex items-start justify-between gap-4"
+             [ngClass]="{
+               'bg-black/40 border-color-status-review/60': tarea.completada,
+               'bg-black/20 border-white/10 hover:border-color-primary-accent/40': !tarea.completada
+             }">
+          
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="typography-body-highlight" [ngClass]="{'text-color-status-review line-through': tarea.completada, 'text-white': !tarea.completada}">
+                {{ tarea.titulo }}
+              </span>
+              <span class="px-2 py-0.5 rounded-badge text-[10px] font-mono border"
+                    [ngClass]="{'bg-color-status-review/10 border-color-status-review/30 text-color-status-review': tarea.completada, 'bg-white/5 border-white/10 text-color-text-secondary': !tarea.completada}">
+                ⏱ {{ tarea.tiempoEstimado }}
+              </span>
+            </div>
+            <p class="typography-body-main text-color-text-secondary mt-1">
+              {{ tarea.descripcion }}
+            </p>
+          </div>
+
+          <!-- Checkbox cuadrado MD3 reactivo de activación explícita (Página 5) -->
+          <div class="w-6 h-6 rounded-badge flex items-center justify-center flex-shrink-0 transition-all duration-200"
+               [ngClass]="{
+                 'bg-color-status-review text-white shadow-[0_0_12px_rgba(0,135,90,0.5)]': tarea.completada,
+                 'border-2 border-color-text-secondary bg-transparent hover:border-color-primary-accent': !tarea.completada
+               }">
+            <svg *ngIf="tarea.completada" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 stroke-[3dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenido Pestañas Alternativas -->
+    <div *ngIf="activeTab() !== 'Servicios'" class="bg-color-surface-container border border-white/10 rounded-card p-lg mb-lg text-center py-16">
+      <div class="w-12 h-12 rounded-full bg-white/5 mx-auto mb-3 flex items-center justify-center text-color-primary-accent">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+      </div>
+      <h3 class="typography-h2-section text-white uppercase">Pestaña {{ activeTab() }} de Expediente</h3>
+      <p class="typography-body-main text-color-text-secondary max-w-md mx-auto mt-1">
+        Los datos de {{ activeTab().toLowerCase() }} están sincronizados en tiempo real con la base de datos de auditoría TK010.
+      </p>
+    </div>
+
+    <!-- Botón de Acción Principal (Pill Action Button - Página 4) -->
+    <div class="flex items-center justify-end">
+      <button
+        type="button"
+        class="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-lg cursor-pointer">
+        <span>Finalizar Orden y Pasar a Control</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
+  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-1.5 text-color-status-review font-semibold">
+        <span class="w-2 h-2 rounded-full bg-color-status-review animate-ping"></span>
+        Técnico Conectado
+      </span>
+      <span>|</span>
+      <span>Expediente #OT-1257 protegido y auditado</span>
+    </div>
+    <span>Material Design 3 · Dark Mode Optimizado</span>
+  </div>
+</div>

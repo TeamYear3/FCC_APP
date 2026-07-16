@@ -1,0 +1,124 @@
+<div class="relative min-h-screen bg-color-bg-main flex flex-col justify-between items-center p-lg overflow-hidden select-none">
+
+  <!-- Imagen de fondo del taller mecánico -->
+  <div class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-70 pointer-events-none"
+    style="background-image: url('fondo_inicio_sesion.webp');"></div>
+
+  <!-- Gradiente suave para mantener legibilidad sin oscurecer en exceso la imagen -->
+  <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/80 pointer-events-none"></div>
+
+  <!-- Contenedor central con Logo, Lema y Botones de Acción -->
+  <div class="relative z-10 w-full max-w-sm my-auto flex flex-col items-center text-center py-6">
+    
+    <!-- Logo de la aplicación usando el archivo real logo_fcc.png -->
+    <div class="flex justify-center mb-1">
+      <img src="logo_fcc.png" alt="FCC APP Logo" class="h-28 md:h-32 w-auto object-contain drop-shadow-[0_0_15px_rgba(255,204,0,0.3)]" />
+    </div>
+
+    <!-- Línea divisoria horizontal amarilla pegada al logo -->
+    <div class="w-48 h-1 bg-color-primary-accent rounded-full mt-1 mb-5 shadow-[0_0_10px_rgba(255,204,0,0.5)]"></div>
+
+    <!-- Lema principal en dos líneas de alto impacto -->
+    <div class="mb-10 mt-2">
+      <h1 class="font-bold text-color-text-primary text-2xl md:text-3xl tracking-wide uppercase leading-tight">
+        TODO TU TALLER,
+      </h1>
+      <h2 class="font-bold text-color-primary-accent text-2xl md:text-3xl tracking-wide uppercase leading-tight mt-1">
+        EN UN SOLO LUGAR
+      </h2>
+    </div>
+
+    <!-- Contenedor de Botones de Acción (Pill Shape de ancho completo) -->
+    <div class="w-full max-w-xs flex flex-col gap-md">
+      <!-- Botón Principal: Iniciar sesión con Google OAuth -->
+      <app-google-login-button
+        [disabled]="isInitializing()"
+        [label]="'Iniciar sesión'"
+        (loginClick)="onGoogleLogin()"
+      ></app-google-login-button>
+
+      <!-- Botón Secundario Outline: Crear cuenta (enlaza al mismo flujo OAuth o registro) -->
+      <button
+        type="button"
+        [disabled]="isInitializing()"
+        (click)="onGoogleLogin()"
+        class="w-full min-h-[48px] rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent focus:ring-offset-2 focus:ring-offset-color-bg-main tracking-wide"
+      >
+        <span>Crear cuenta</span>
+      </button>
+    </div>
+
+    <!-- 🧪 SIMULADOR DE ROLES PARA PRUEBAS RÁPIDAS DEL ROLEGUARD -->
+    <div class="w-full mt-6 p-4 rounded-badge bg-black/60 backdrop-blur-md border border-color-primary-accent/30 text-left shadow-lg animate-fadeIn">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-extrabold uppercase tracking-widest text-color-primary-accent px-2 py-0.5 rounded bg-color-primary-accent/15 border border-color-primary-accent/30">Dev Mode</span>
+          <span class="text-xs font-bold text-color-text-primary">Simulador de RoleGuard</span>
+        </div>
+      </div>
+      <p class="text-[11px] text-color-text-secondary mb-3 leading-relaxed">
+        Prueba al instante las restricciones de navegación y vistas (<strong class="text-white">TK010</strong>) generando un JWT simulado:
+      </p>
+      <div class="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          (click)="simulateRole('admin')"
+          class="px-2.5 py-2 rounded-lg text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/35 transition-all active:scale-95 flex items-center justify-center gap-1 cursor-pointer shadow">
+          <span>👑 Admin</span>
+        </button>
+        <button
+          type="button"
+          (click)="simulateRole('tecnico')"
+          class="px-2.5 py-2 rounded-lg text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/35 transition-all active:scale-95 flex items-center justify-center gap-1 cursor-pointer shadow">
+          <span>🔧 Técnico</span>
+        </button>
+        <button
+          type="button"
+          (click)="simulateRole('cliente')"
+          class="px-2.5 py-2 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/35 transition-all active:scale-95 flex items-center justify-center gap-1 cursor-pointer shadow">
+          <span>🚗 Cliente</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Indicador de estado conectando -->
+    @if (isInitializing()) {
+      <div class="w-full text-center typography-caption mt-6 flex items-center justify-center gap-sm">
+        <span class="inline-block w-2 h-2 rounded-full bg-color-status-process animate-pulse"></span>
+        <span>Conectando con Google Identity Services...</span>
+      </div>
+    }
+
+    <!-- Mensaje de error / feedback -->
+    @if (errorMessage()) {
+      <div class="w-full p-md mt-6 rounded-badge bg-red-500/10 border border-red-500/30 text-red-400 typography-caption text-center">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    <!-- Visualización de credencial / ID Token capturado de forma exitosa -->
+    @if (idTokenCaptured()) {
+      <div class="w-full p-md rounded-badge bg-color-status-review/10 border border-color-status-review/30 text-color-status-review break-all mt-6 animate-fadeIn text-left">
+        <div class="flex items-center gap-sm mb-sm typography-body-highlight text-color-status-review">
+          <svg class="w-[24px] h-[24px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>¡Credencial capturada con éxito!</span>
+        </div>
+        <p class="typography-caption text-color-text-primary mb-xs font-semibold">ID Token en camino a la capa core:</p>
+        <div class="p-sm rounded-badge bg-black/40 font-mono typography-caption text-color-text-secondary overflow-x-auto max-h-32 border border-white/5">
+          {{ idTokenCaptured() }}
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Pié de página: Indicador de Seguridad (Tus datos están protegidos) -->
+  <div class="relative z-10 mt-auto pt-4 pb-2 flex items-center gap-2 text-color-text-secondary text-sm font-medium">
+    <svg class="w-5 h-5 text-color-primary-accent flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+    <span>Tus datos están protegidos</span>
+  </div>
+
+</div>

@@ -1,0 +1,173 @@
+<div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
+  
+  <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
+  <div class="max-w-6xl mx-auto w-full relative z-10 flex-1">
+    
+    <!-- Encabezado / Header -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+      <div class="flex items-center gap-md">
+        <!-- Logo mini del taller -->
+        <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
+          <span class="font-extrabold text-color-primary-accent text-lg tracking-tighter">FCC</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 bg-color-primary-accent/15 text-color-primary-accent border border-color-primary-accent/30 rounded-badge typography-caption font-bold uppercase tracking-wider">
+              Cartera de Clientes
+            </span>
+            <span class="typography-caption text-color-text-secondary">Rol activo: <strong class="text-color-primary-accent uppercase tracking-wide">{{ userRole() || 'tecnico' }}</strong></span>
+          </div>
+          <h1 class="typography-h1-display tracking-tight uppercase leading-none">
+            Directorio de Clientes y Flotas
+          </h1>
+        </div>
+      </div>
+
+      <!-- Botón Secundario Outline / Salir -->
+      <button
+        type="button"
+        (click)="logout()"
+        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] flex items-center gap-2 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Cerrar Sesión</span>
+      </button>
+    </header>
+
+    <!-- Bloques del Tablero Principal (Dashboard Core Cards - MD3 Alignment) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-md mb-lg">
+      <!-- Bloque 1: Total Clientes -->
+      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Total Clientes Activos</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <div class="typography-h1-display text-white">85</div>
+        <p class="typography-caption mt-1 text-color-primary-accent">12 cuentas corporativas</p>
+      </div>
+
+      <!-- Bloque 2: Flota Vinculada -->
+      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Flota Automotriz Registrada</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div class="typography-h1-display text-white">134</div>
+        <p class="typography-caption mt-1">Vehículos con historial clínico</p>
+      </div>
+
+      <!-- Bloque 3: Órdenes en Curso -->
+      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Órdenes Abiertas por Cliente</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div class="typography-h1-display text-color-primary-accent">14</div>
+        <p class="typography-caption mt-1">En proceso de reparación / testeo</p>
+      </div>
+    </div>
+
+    <!-- Título de Sección y Botón de Acción Principal (Pill Action Button - Página 4) -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-md">
+      <div>
+        <h2 class="typography-h2-section uppercase flex items-center gap-2">
+          <span>Fichas Técnicas de Clientes y Flotas</span>
+        </h2>
+        <p class="typography-caption text-color-text-secondary mt-1">Directorio consolidado con acceso rápido al historial de órdenes.</p>
+      </div>
+
+      <!-- Botón de Acción Principal: Pill Action Button (#FFCC00 y texto negro #000000, min-h 48px, rounded 24px) -->
+      <button
+        type="button"
+        class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+        </svg>
+        <span>+ Nuevo Cliente / Flota</span>
+      </button>
+    </div>
+
+    <!-- Directorio en Tarjetas (Order Work Cards style - #1E1E1E) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+      <div *ngFor="let cli of listaClientes" 
+           class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1">
+        
+        <!-- Extremo superior: ID Cliente y Nombre + Badge de Estado Semántico -->
+        <div class="flex items-start justify-between gap-2 mb-sm">
+          <div>
+            <span class="typography-body-highlight text-color-primary-accent font-extrabold">{{ cli.id }}</span>
+            <h3 class="typography-body-highlight text-white mt-0.5 leading-tight">{{ cli.nombre }}</h3>
+            <p class="typography-caption text-color-text-secondary mt-0.5">{{ cli.email }}</p>
+          </div>
+
+          <!-- Badges o Pastillas de Estado Semántico según Página 4 -->
+          <span *ngIf="cli.estado === 'En proceso'" 
+                class="px-2.5 py-1 rounded-badge bg-color-status-process text-black typography-caption font-extrabold uppercase tracking-wide flex-shrink-0 shadow">
+            En proceso
+          </span>
+          <span *ngIf="cli.estado === 'En revisión'" 
+                class="px-2.5 py-1 rounded-badge bg-color-status-review text-white typography-caption font-extrabold uppercase tracking-wide flex-shrink-0 shadow">
+            En revisión
+          </span>
+          <span *ngIf="cli.estado === 'Pendiente'" 
+                class="px-2.5 py-1 rounded-badge bg-color-status-pending text-white typography-caption font-extrabold uppercase tracking-wide flex-shrink-0 shadow">
+            Pendiente
+          </span>
+        </div>
+
+        <!-- Flota registrada -->
+        <div class="my-sm bg-black/40 p-3 rounded-badge border border-white/5">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider block mb-1">Vehículos Registrados:</span>
+          <ul class="flex flex-col gap-1">
+            <li *ngFor="let v of cli.flota" class="typography-caption text-white font-medium flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-color-primary-accent"></span>
+              {{ v }}
+            </li>
+          </ul>
+        </div>
+
+        <!-- Zona Inferior: Teléfono y Orden Activa divididos por línea sutil -->
+        <div class="pt-sm mt-sm border-t border-[#333333] flex items-center justify-between gap-2">
+          <div>
+            <span class="typography-caption block text-color-text-secondary">Contacto directo</span>
+            <span class="typography-body-main text-white font-mono">{{ cli.telefono }}</span>
+          </div>
+          <div class="text-right">
+            <span class="typography-caption block text-color-text-secondary">Orden asociada</span>
+            <span class="typography-body-highlight text-color-primary-accent font-bold">{{ cli.ordenActiva }}</span>
+          </div>
+        </div>
+
+        <!-- Botón de Acción -->
+        <button
+          type="button"
+          class="w-full mt-md min-h-[44px] rounded-pill bg-white/5 border border-color-primary-accent/30 hover:bg-color-primary-accent hover:text-black hover:border-color-primary-accent text-white typography-body-highlight font-bold transition-all flex items-center justify-center gap-2 cursor-pointer">
+          <span>Ver Expediente y Vehículos</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
+  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
+        <span class="w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>
+        Directorio Automotriz FCC
+      </span>
+      <span>|</span>
+      <span>Acceso operativo para Admin y Técnico</span>
+    </div>
+    <span>Material Design 3 · Dark Mode Optimizado</span>
+  </div>
+</div>

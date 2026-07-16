@@ -1,0 +1,155 @@
+<div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
+  
+  <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
+  <div class="max-w-6xl mx-auto w-full relative z-10 flex-1">
+    
+    <!-- Encabezado / Header con tokens cromáticos y jerárquicos -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+      <div class="flex items-center gap-md">
+        <!-- Logo mini del taller -->
+        <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
+          <span class="font-extrabold text-color-primary-accent text-lg tracking-tighter">FCC</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 bg-color-primary-accent/15 text-color-primary-accent border border-color-primary-accent/30 rounded-badge typography-caption font-bold uppercase tracking-wider">
+              Portal de Transparencia
+            </span>
+            <span class="typography-caption text-color-text-secondary">Rol activo: <strong class="text-color-primary-accent uppercase tracking-wide">{{ userRole() || 'cliente' }}</strong></span>
+          </div>
+          <h1 class="typography-h1-display tracking-tight uppercase leading-none">
+            Seguimiento en Vivo de Órdenes
+          </h1>
+        </div>
+      </div>
+
+      <!-- Botón Secundario Outline / Salir -->
+      <button
+        type="button"
+        (click)="logout()"
+        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] flex items-center gap-2 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Cerrar Sesión</span>
+      </button>
+    </header>
+
+    <!-- Bloques del Tablero Principal (Dashboard Core Cards - MD3 Alignment) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-md mb-lg">
+      <!-- Bloque 1: Órdenes Activas -->
+      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Órdenes Activas en Taller</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </div>
+        <div class="typography-h1-display text-color-primary-accent">2</div>
+        <p class="typography-caption mt-1">1 en proceso · 1 en revisión técnica</p>
+      </div>
+
+      <!-- Bloque 2: Próximos Turnos / Pendientes -->
+      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Órdenes Pendientes / Turno</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div class="typography-h1-display text-white">1</div>
+        <p class="typography-caption mt-1">Agendado para el 18 de Julio</p>
+      </div>
+
+      <!-- Bloque 3: Vehículos Registrados -->
+      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div class="flex items-start justify-between mb-2">
+          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Vehículos Registrados</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div class="typography-h1-display text-white">3</div>
+        <p class="typography-caption mt-1">Unidad Amarok, Ranger y Corolla</p>
+      </div>
+    </div>
+
+    <!-- Título de Sección -->
+    <div class="flex items-center justify-between mb-md">
+      <h2 class="typography-h2-section uppercase flex items-center gap-2">
+        <span>Expedientes y Tarjetas de Resumen de Órdenes (Order Work Cards)</span>
+      </h2>
+      <span class="typography-caption text-color-text-secondary">Actualizado hace unos segundos</span>
+    </div>
+
+    <!-- Tarjetas de Resumen de Órdenes (Order Work Cards - Estructura exacta Página 4 del PDF) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+      <div *ngFor="let orden of misOrdenes" 
+           class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1">
+        
+        <!-- Extremo superior: Número de orden e información del vehículo + Badge de Estado Semántico -->
+        <div class="flex items-start justify-between gap-2 mb-sm">
+          <div>
+            <span class="typography-body-highlight text-color-primary-accent font-extrabold">{{ orden.numeroOrden }}</span>
+            <h3 class="typography-body-highlight text-white mt-0.5 leading-tight">{{ orden.vehiculo }}</h3>
+            <p class="typography-caption text-color-text-secondary mt-0.5">Patente: <strong class="text-white">{{ orden.patente }}</strong></p>
+          </div>
+
+          <!-- Badges o Pastillas de Estado Semántico según Página 4 -->
+          <span *ngIf="orden.estado === 'En proceso'" 
+                class="px-2.5 py-1 rounded-badge bg-color-status-process text-black typography-caption font-extrabold uppercase tracking-wide flex-shrink-0 shadow">
+            En proceso
+          </span>
+          <span *ngIf="orden.estado === 'En revisión'" 
+                class="px-2.5 py-1 rounded-badge bg-color-status-review text-white typography-caption font-extrabold uppercase tracking-wide flex-shrink-0 shadow">
+            En revisión
+          </span>
+          <span *ngIf="orden.estado === 'Pendiente'" 
+                class="px-2.5 py-1 rounded-badge bg-color-status-pending text-white typography-caption font-extrabold uppercase tracking-wide flex-shrink-0 shadow">
+            Pendiente
+          </span>
+        </div>
+
+        <!-- Descripción corta / Problema reportado -->
+        <p class="typography-body-main text-color-text-secondary my-sm line-clamp-2">
+          {{ orden.descripcion }}
+        </p>
+
+        <!-- Zona Inferior: Nombre del cliente, fecha técnica y precio divididos por línea sutil en gris oscuro -->
+        <div class="pt-sm mt-sm border-t border-[#333333] flex items-center justify-between gap-2">
+          <div>
+            <p class="typography-caption text-color-text-secondary">Ingreso: <span class="text-white font-medium">{{ orden.fechaIngreso }}</span></p>
+            <p class="typography-caption text-color-text-secondary mt-0.5">Titular: <span class="text-white font-medium">{{ orden.cliente }}</span></p>
+          </div>
+          <div class="text-right">
+            <span class="typography-caption block text-color-text-secondary">Presupuesto</span>
+            <span class="typography-body-highlight text-color-primary-accent font-bold">{{ orden.precioTotal }}</span>
+          </div>
+        </div>
+
+        <!-- Botón de Acción Táctil (Pill Action Button complementario en tarjeta) -->
+        <button
+          type="button"
+          class="w-full mt-md min-h-[44px] rounded-pill bg-white/5 border border-color-primary-accent/30 hover:bg-color-primary-accent hover:text-black hover:border-color-primary-accent text-white typography-body-highlight font-bold transition-all flex items-center justify-center gap-2 cursor-pointer">
+          <span>Ver Expediente Detallado</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
+  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
+        <span class="w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>
+        Conexión Segura FCC APP
+      </span>
+      <span>|</span>
+      <span>Sistema de Semáforo Semántico Ampliado activo</span>
+    </div>
+    <span>Material Design 3 · Dark Mode Optimizado</span>
+  </div>
+</div>
