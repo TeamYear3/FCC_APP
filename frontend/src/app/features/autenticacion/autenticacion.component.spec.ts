@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { AutenticacionComponent } from './autenticacion.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { of } from 'rxjs';
@@ -11,13 +12,15 @@ describe('AutenticacionComponent', () => {
     initializeGoogleAuth: unknown;
     loginWithGoogle: unknown;
     idToken$: unknown;
+    authErrorSignal: unknown;
   };
 
   beforeEach(async () => {
     mockAuthService = {
       initializeGoogleAuth: vi.fn().mockResolvedValue(undefined),
       loginWithGoogle: vi.fn(),
-      idToken$: of('mock-id-token')
+      idToken$: of('mock-id-token'),
+      authErrorSignal: signal<string | null>(null)
     };
 
     await TestBed.configureTestingModule({

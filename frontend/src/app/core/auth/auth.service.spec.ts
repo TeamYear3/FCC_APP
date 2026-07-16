@@ -1,8 +1,14 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { Router } from '@angular/router';
+import { vi } from 'vitest';
 import { AuthService, GoogleCredentialResponse } from './auth.service';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let httpTestingController: HttpTestingController;
+  let routerSpy: { navigate: ReturnType<typeof vi.fn>; createUrlTree: ReturnType<typeof vi.fn> };
 
   // Helper para generar un JWT falso con un payload dado
   function generateMockJwt(payload: Record<string, any>): string {
@@ -14,11 +20,20 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({});
+    routerSpy = { navigate: vi.fn(), createUrlTree: vi.fn() };
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: Router, useValue: routerSpy }
+      ]
+    });
     service = TestBed.inject(AuthService);
+    httpTestingController = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => {
+    httpTestingController.verify();
     localStorage.clear();
   });
 
@@ -32,6 +47,11 @@ describe('AuthService', () => {
     };
 
     service.handleCredentialResponse(mockResponse);
+
+    const req = httpTestingController.expectOne('http://localhost:8000/api/auth/google/');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ id_token: 'mock-jwt-id-token-xyz123' });
+    req.flush({ access: 'mock-jwt-id-token-xyz123', refresh: 'mock-refresh' });
 
     expect(service.idTokenSignal()).toBe('mock-jwt-id-token-xyz123');
     let capturedToken: string | null = null;
