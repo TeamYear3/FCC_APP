@@ -53,8 +53,11 @@ class GoogleAuthView(APIView):
                 rol="cliente"
             )
 
-        # Generar JWT locales
+        # Generar JWT locales con claims personalizados para el Frontend
         refresh = RefreshToken.for_user(user)
+        refresh["rol"] = user.rol
+        refresh["email"] = user.email
+
         return Response({
             "access": str(refresh.access_token),
             "refresh": str(refresh)
