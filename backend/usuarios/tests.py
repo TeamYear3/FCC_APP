@@ -203,3 +203,92 @@ class LogoutViewTest(APITestCase):
         response = self.client.post(self.url, {"refresh": "invalid_refresh_token_123"})
         self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
 
+
+from core.permissions import EsAdministrador, EsTecnico, EsCliente
+
+class PermisosRolTest(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            email="admin_perm@ejemplo.com",
+            nombre="Admin",
+            apellido="Perm",
+            password="password123",
+            rol="admin"
+        )
+        self.tecnico_user = User.objects.create_user(
+            email="tecnico_perm@ejemplo.com",
+            nombre="Tecnico",
+            apellido="Perm",
+            password="password123",
+            rol="tecnico"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_perm@ejemplo.com",
+            nombre="Cliente",
+            apellido="Perm",
+            password="password123",
+            rol="cliente"
+        )
+        self.otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_perm@ejemplo.com",
+            nombre="Otro",
+            apellido="Cliente",
+            password="password123",
+            rol="cliente"
+        )
+
+    def test_permiso_administrador_permite_solo_admin(self):
+        permission = EsAdministrador()
+        
+        # Request con usuario admin
+        request = type("MockRequest", (object,), {"user": self.admin_user})()
+        self.assertTrue(permission.has_permission(request, None))
+
+        # Request con usuario tecnico
+        request = type("MockRequest", (object,), {"user": self.tecnico_user})()
+        self.assertFalse(permission.has_permission(request, None))
+
+        # Request con usuario cliente
+        request = type("MockRequest", (object,), {"user": self.cliente_user})()
+        self.assertFalse(permission.has_permission(request, None))
+
+    def test_permiso_tecnico_permite_solo_tecnico(self):
+        permission = EsTecnico()
+        
+        request = type("MockRequest", (object,), {"user": self.tecnico_user})()
+        self.assertTrue(permission.has_permission(request, None))
+
+        request = type("MockRequest", (object,), {"user": self.admin_user})()
+        self.assertFalse(permission.has_permission(request, None))
+
+        request = type("MockRequest", (object,), {"user": self.cliente_user})()
+        self.assertFalse(permission.has_permission(request, None))
+
+    def test_permiso_cliente_permite_solo_cliente(self):
+        permission = EsCliente()
+        
+        request = type("MockRequest", (object,), {"user": self.cliente_user})()
+        self.assertTrue(permission.has_permission(request, None))
+
+        request = type("MockRequest", (object,), {"user": self.admin_user})()
+        self.assertFalse(permission.has_permission(request, None))
+
+        request = type("MockRequest", (object,), {"user": self.tecnico_user})()
+        self.assertFalse(permission.has_permission(request, None))
+
+    def test_permiso_cliente_propietario_objeto(self):
+        permission = EsCliente()
+        
+        # Verificar has_object_permission donde el objeto es el usuario mismo
+        request = type("MockRequest", (object,), {"user": self.cliente_user})()
+        self.assertTrue(permission.has_object_permission(request, None, self.cliente_user))
+        self.assertFalse(permission.has_object_permission(request, None, self.otro_cliente_user))
+
+        # Verificar has_object_permission donde el objeto tiene un atributo 'cliente'
+        mock_obj = type("MockObject", (object,), {"cliente": self.cliente_user})()
+        self.assertTrue(permission.has_object_permission(request, None, mock_obj))
+
+        mock_obj_otro = type("MockObject", (object,), {"cliente": self.otro_cliente_user})()
+        self.assertFalse(permission.has_object_permission(request, None, mock_obj_otro))
+
+
