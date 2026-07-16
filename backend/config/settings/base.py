@@ -20,6 +20,8 @@ INSTALLED_APPS = [
     # Local apps
     "usuarios",
     "clientes",
+    "vehiculos",
+    "ordenes",
 ]
 
 PASSWORD_HASHERS = [
