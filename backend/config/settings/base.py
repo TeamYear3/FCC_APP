@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     # Local apps
     "usuarios",
+    "clientes",
 ]
 
 PASSWORD_HASHERS = [
