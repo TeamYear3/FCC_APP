@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Nueva Orden de Trabajo - {{ numero_ot }}</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Roboto', Arial, sans-serif;
+      background-color: #0B0B0B;
+      color: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #1E1E1E;
+      border: 1px solid #2D2D2D;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .header {
+      background-color: #0B0B0B;
+      border-bottom: 2px solid #FFCC00;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: bold;
+      color: #FFCC00;
+      letter-spacing: 0.5px;
+    }
+    .content {
+      padding: 30px 40px;
+      line-height: 1.6;
+    }
+    .greeting {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #FFFFFF;
+      font-weight: bold;
+    }
+    p {
+      color: #AAAAAA;
+      font-size: 15px;
+    }
+    .details-box {
+      background-color: #0B0B0B;
+      border-left: 4px solid #FFCC00;
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .details-title {
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #FFFFFF;
+      font-size: 16px;
+    }
+    .details-item {
+      margin: 8px 0;
+      font-size: 14px;
+      color: #AAAAAA;
+    }
+    .details-item strong {
+      color: #FFFFFF;
+    }
+    .button-container {
+      text-align: center;
+      margin: 35px 0;
+    }
+    .button {
+      background-color: #FFCC00;
+      color: #0B0B0B !important;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 24px;
+      font-weight: bold;
+      display: inline-block;
+      font-size: 15px;
+    }
+    .footer {
+      background-color: #0B0B0B;
+      color: #AAAAAA;
+      text-align: center;
+      padding: 25px;
+      font-size: 12px;
+      border-top: 1px solid #2D2D2D;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>FCC App</h1>
+    </div>
+    <div class="content">
+      <div class="greeting">Hola {{ nombre_cliente }},</div>
+      <p>Se ha registrado con éxito una nueva Orden de Trabajo para tu vehículo en nuestro taller.</p>
+      
+      <div class="details-box">
+        <div class="details-title">Detalles de la Orden</div>
+        <div class="details-item"><strong>Número de OT:</strong> {{ numero_ot }}</div>
+        <div class="details-item"><strong>Vehículo:</strong> {{ marca }} {{ modelo }} ({{ patente }})</div>
+        <div class="details-item"><strong>Descripción:</strong> {{ descripcion_problema }}</div>
+      </div>
+      
+      <p>Puedes seguir el avance de los trabajos en tiempo real ingresando a tu portal del cliente:</p>
+      
+      <div class="button-container">
+        <a href="{{ enlace_portal }}" class="button" target="_blank">Ver Orden de Trabajo</a>
+      </div>
+      
+      <p>Si tienes alguna consulta, no dudes en ponerte en contacto con nosotros.</p>
+    </div>
+    <div class="footer">
+      Este es un correo automático, por favor no respondas a este mensaje.<br>
+      © 2026 FCC App. Todos los derechos reservados.
+    </div>
+  </div>
+</body>
+</html>
