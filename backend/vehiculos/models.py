@@ -9,6 +9,9 @@ class Vehiculo(models.Model):
     marca = models.CharField(max_length=100)
     modelo = models.CharField(max_length=100)
     anio = models.PositiveIntegerField(null=True, blank=True)
+    kilometraje = models.PositiveIntegerField(default=0)
+    color = models.CharField(max_length=50, blank=True)
+    foto_url = models.URLField(max_length=500, null=True, blank=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 

@@ -22,14 +22,31 @@ class VehiculoModelTest(TestCase):
             patente="AB123CD",
             marca="Toyota",
             modelo="Corolla",
-            anio=2020
+            anio=2020,
+            kilometraje=45000,
+            color="Blanco",
+            foto_url="https://ejemplo.com/fotos/corolla.jpg"
         )
         self.assertEqual(vehiculo.cliente, self.cliente)
         self.assertEqual(vehiculo.patente, "AB123CD")
         self.assertEqual(vehiculo.marca, "Toyota")
         self.assertEqual(vehiculo.modelo, "Corolla")
         self.assertEqual(vehiculo.anio, 2020)
+        self.assertEqual(vehiculo.kilometraje, 45000)
+        self.assertEqual(vehiculo.color, "Blanco")
+        self.assertEqual(vehiculo.foto_url, "https://ejemplo.com/fotos/corolla.jpg")
         self.assertEqual(str(vehiculo), "Toyota Corolla (AB123CD)")
+
+    def test_vehiculo_campos_opcionales_y_defaults(self):
+        vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ZZ999ZZ",
+            marca="Honda",
+            modelo="Civic"
+        )
+        self.assertEqual(vehiculo.kilometraje, 0)
+        self.assertEqual(vehiculo.color, "")
+        self.assertIsNone(vehiculo.foto_url)
 
     def test_patente_unica(self):
         # Crear primer vehiculo
