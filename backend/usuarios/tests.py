@@ -76,3 +76,91 @@ class UsuarioModelTest(TestCase):
                 apellido="User",
                 password="password456",
             )
+
+
+from unittest.mock import patch
+from django.urls import reverse
+from rest_framework.test import APITestCase
+from rest_framework import status
+
+class GoogleAuthViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('google-auth')
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_login_google_exitoso_usuario_existente_oauth(self, mock_verify):
+        # Mock de la validación del token de Google
+        mock_verify.return_value = {
+            "email": "oauth_user@ejemplo.com",
+            "given_name": "OAuth",
+            "family_name": "User"
+        }
+        
+        # Crear usuario OAuth (sin contraseña local)
+        user = User.objects.create_user(
+            email="oauth_user@ejemplo.com",
+            nombre="OAuth",
+            apellido="User",
+            password=None
+        )
+        self.assertFalse(user.has_usable_password())
+
+        response = self.client.post(self.url, {"id_token": "valid_token_123"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_login_google_exitoso_registro_usuario_nuevo(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "nuevo_oauth@ejemplo.com",
+            "given_name": "Nuevo",
+            "family_name": "OAuth"
+        }
+
+        response = self.client.post(self.url, {"id_token": "new_token_123"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+        # Verificar creación del usuario en base de datos
+        user = User.objects.get(email="nuevo_oauth@ejemplo.com")
+        self.assertEqual(user.nombre, "Nuevo")
+        self.assertEqual(user.apellido, "OAuth")
+        self.assertEqual(user.rol, "cliente")
+        self.assertFalse(user.has_usable_password())
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_login_google_fallido_cuenta_local_existente(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "local_user@ejemplo.com",
+            "given_name": "Local",
+            "family_name": "User"
+        }
+
+        # Crear usuario previo con contraseña local
+        User.objects.create_user(
+            email="local_user@ejemplo.com",
+            nombre="Local",
+            apellido="User",
+            password="classicpassword123"
+        )
+
+        response = self.client.post(self.url, {"id_token": "local_token_123"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["code"], "link_required")
+        self.assertIn("ya se encuentra registrada con inicio de sesión local", response.data["error"])
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_login_google_token_invalido(self, mock_verify):
+        mock_verify.side_effect = ValueError("Token inválido")
+
+        response = self.client.post(self.url, {"id_token": "invalid_or_expired"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Token de Google inválido o expirado", str(response.data))
+
+    def test_login_google_payload_incompleto(self):
+        response = self.client.post(self.url, {})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("id_token", response.data)
+
