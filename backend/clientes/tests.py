@@ -112,6 +112,17 @@ class ClienteAPITestCase(APITestCase):
         
         self.url = reverse('crear-cliente')
 
+        # Crear un cliente de prueba inicial para actualización
+        self.cliente_prueba = Cliente.objects.create(
+            nombre="Maria",
+            apellido="Delgado",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF",
+            telefono="55555555",
+            domicilio="Ruta 9 Km 50"
+        )
+
     def test_crear_cliente_dni_valido(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {
@@ -226,4 +237,81 @@ class ClienteAPITestCase(APITestCase):
             "condicion_iva": "CF"
         }
         response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_actualizar_cliente_campos_validos(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        data = {
+            "nombre": "Maria Modificado",
+            "apellido": "Delgado Modificado",
+            "domicilio": "Ruta 9 Km 55",
+            "telefono": "99999999",
+            "condicion_iva": "RI"
+        }
+        response = self.client.patch(url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["nombre"], "Maria Modificado")
+        self.assertEqual(response.data["apellido"], "Delgado Modificado")
+        self.assertEqual(response.data["domicilio"], "Ruta 9 Km 55")
+        self.assertEqual(response.data["telefono"], "99999999")
+        self.assertEqual(response.data["condicion_iva"], "RI")
+
+    def test_actualizar_cliente_bloqueo_dni_cuit(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        data = {
+            "tipo_documento": "CUIT",
+            "dni_cuit": "20-99999999-9"
+        }
+        response = self.client.patch(url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Verificar que NO se modificaron
+        self.assertEqual(response.data["tipo_documento"], "DNI")
+        self.assertEqual(response.data["dni_cuit"], "11223344")
+
+        # Verificar en base de datos
+        self.cliente_prueba.refresh_from_db()
+        self.assertEqual(self.cliente_prueba.tipo_documento, "DNI")
+        self.assertEqual(self.cliente_prueba.dni_cuit, "11223344")
+
+    def test_actualizar_cliente_registra_actualizado_en(self):
+        import time
+        self.client.force_authenticate(user=self.admin_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        
+        # Guardar marca de tiempo antes de actualizar
+        actualizado_antes = self.cliente_prueba.actualizado_en
+        
+        # Breve delay para asegurar cambio de timestamp
+        time.sleep(0.1)
+        
+        data = {
+            "nombre": "Maria Otra"
+        }
+        response = self.client.patch(url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.cliente_prueba.refresh_from_db()
+        self.assertGreater(self.cliente_prueba.actualizado_en, actualizado_antes)
+
+    def test_actualizar_cliente_sin_permiso_admin(self):
+        self.client.force_authenticate(user=self.tecnico_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        data = {
+            "nombre": "Maria Modificado"
+        }
+        response = self.client.patch(url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(user=self.cliente_user)
+        response = self.client.patch(url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_actualizar_cliente_anonimo(self):
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        data = {
+            "nombre": "Maria Modificado"
+        }
+        response = self.client.patch(url_detalle, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
