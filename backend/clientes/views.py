@@ -8,3 +8,8 @@ class CrearClienteView(generics.CreateAPIView):
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
     permission_classes = [IsAuthenticated, EsAdministrador]
+
+class DetalleClienteView(generics.RetrieveUpdateAPIView):
+    queryset = Cliente.objects.all()
+    serializer_class = ClienteSerializer
+    permission_classes = [IsAuthenticated, EsAdministrador]
