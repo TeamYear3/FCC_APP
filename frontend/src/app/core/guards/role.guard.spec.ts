@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlSegment } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
 import { RoleGuard } from './role.guard';
 import { AuthService } from '../auth/auth.service';
@@ -15,6 +17,8 @@ describe('RoleGuard', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         RoleGuard,
         { provide: AuthService, useValue: authSpy },
         { provide: Router, useValue: routerSpy }

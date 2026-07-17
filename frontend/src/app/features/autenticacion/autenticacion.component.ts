@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -18,6 +18,15 @@ export class AutenticacionComponent implements OnInit {
   readonly idTokenCaptured = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
   readonly isInitializing = signal<boolean>(true);
+
+  constructor() {
+    effect(() => {
+      const err = this.authService.authErrorSignal();
+      if (err) {
+        this.errorMessage.set(err);
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.authService.initializeGoogleAuth().then(() => {

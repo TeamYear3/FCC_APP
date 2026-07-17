@@ -20,6 +20,8 @@ INSTALLED_APPS = [
     # Local apps
     "usuarios",
     "clientes",
+    "vehiculos",
+    "ordenes",
 ]
 
 PASSWORD_HASHERS = [
@@ -111,4 +113,14 @@ SIMPLE_JWT = {
 # Google OAuth Config
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "default-google-client-id-change-me")
 
+# Email / SMTP Configuration
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "sandbox.smtp.mailtrap.io")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "2525"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "FCC App <noreply@fccapp.com>")
 
+# Client Portal Configuration (Frontend URL)
+CLIENT_PORTAL_URL = os.getenv("CLIENT_PORTAL_URL", "https://fccapp.com")

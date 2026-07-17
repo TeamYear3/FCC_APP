@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
 import { AuthGuard } from './auth.guard';
 import { AuthService } from '../auth/auth.service';
@@ -15,6 +17,8 @@ describe('AuthGuard', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         AuthGuard,
         { provide: AuthService, useValue: authSpy },
         { provide: Router, useValue: routerSpy }

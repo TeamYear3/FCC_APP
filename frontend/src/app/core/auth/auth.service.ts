@@ -1,4 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -43,6 +45,10 @@ export class AuthService {
   readonly idTokenSignal = signal<string | null>(this.getStoredToken());
   readonly isSdkInitialized = signal<boolean>(false);
   readonly userRoleSignal = signal<'admin' | 'tecnico' | 'cliente' | null>(this.extractRoleFromToken(this.getStoredToken()));
+  readonly authErrorSignal = signal<string | null>(null);
+
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
 
   constructor() {
     // Al instanciar, verificamos si ya existe un token en memoria/localStorage para sincronizar el rol
@@ -90,7 +96,6 @@ export class AuthService {
   handleCredentialResponse(response: GoogleCredentialResponse): void {
     if (response && response.credential) {
       const credential = response.credential;
-      this.setToken(credential);
       this.prepareTokenForServer(credential);
     } else {
       console.error('Respuesta de credencial de Google inválida:', response);
@@ -183,14 +188,75 @@ export class AuthService {
    * Cierra la sesión activa del usuario y limpia tokens.
    */
   logout(): void {
+    const refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('fcc_refresh_token') : null;
+    if (refreshToken) {
+      this.http.post(`${environment.apiUrl}/auth/logout/`, { refresh: refreshToken }).subscribe({
+        next: () => console.log('Sesión invalidada en el servidor backend.'),
+        error: (err) => console.warn('Error al invalidar token en el servidor:', err)
+      });
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('fcc_refresh_token');
+    }
     this.setToken(null);
   }
 
   /**
-   * Prepara el token capturado para su posterior envío al servidor (Backend Django).
+   * Envia el ID token capturado al servidor Backend Django (/api/auth/google/) para validar y emitir SimpleJWT.
    */
   private prepareTokenForServer(token: string): void {
-    console.log('Token capturado y listo para transmisión al servidor backend:', token.substring(0, 30) + '...');
+    this.authErrorSignal.set(null);
+    this.http.post<{ access: string; refresh: string }>(`${environment.apiUrl}/auth/google/`, { id_token: token })
+      .subscribe({
+        next: (res) => {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('fcc_refresh_token', res.refresh);
+          }
+          this.setToken(res.access);
+          const role = this.getUserRole() || 'cliente';
+          if (role === 'admin') {
+            this.router.navigate(['/admin']);
+          } else if (role === 'tecnico') {
+            this.router.navigate(['/ordenes']);
+          } else {
+            this.router.navigate(['/transparencia']);
+          }
+        },
+        error: (err) => {
+          console.error('Error al verificar credencial en el servidor Backend:', err);
+          const msg = err.error?.error || err.error?.detail || 'Error al conectar con el servidor backend.';
+          this.authErrorSignal.set(msg);
+        }
+      });
+  }
+
+  /**
+   * Renueva el access token expirado consumiendo el refresh token con el Backend Django (/api/auth/token/refresh/).
+   */
+  refreshToken(): Observable<string | null> {
+    const refresh = typeof localStorage !== 'undefined' ? localStorage.getItem('fcc_refresh_token') : null;
+    if (!refresh) {
+      return new Observable(subscriber => {
+        subscriber.next(null);
+        subscriber.complete();
+      });
+    }
+    return new Observable(subscriber => {
+      this.http.post<{ access: string }>(`${environment.apiUrl}/auth/token/refresh/`, { refresh }).subscribe({
+        next: (res) => {
+          this.setToken(res.access);
+          subscriber.next(res.access);
+          subscriber.complete();
+        },
+        error: (err) => {
+          console.error('Error al renovar token de acceso:', err);
+          this.logout();
+          this.router.navigate(['/autenticacion']);
+          subscriber.next(null);
+          subscriber.complete();
+        }
+      });
+    });
   }
 
   /**
