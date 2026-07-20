@@ -3,7 +3,7 @@ import threading
 from django.conf import settings
 from rest_framework.exceptions import ValidationError
 from vehiculos.models import Vehiculo
-from infrastructure.email.services import send_email_service
+from core.utils.email_service import send_email_service
 from .models import OrdenTrabajo, EstadoOrden
 
 logger = logging.getLogger(__name__)
