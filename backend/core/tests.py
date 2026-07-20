@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.core import mail
 from unittest.mock import patch
-from .services import send_email_service
+from core.utils.email_service import send_email_service
 
 
 class EmailServiceTest(TestCase):
