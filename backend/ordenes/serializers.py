@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import OrdenTrabajo
+from vehiculos.models import Vehiculo
+from .models import OrdenTrabajo, EstadoOrden
 
 class OrdenTrabajoSerializer(serializers.ModelSerializer):
     vehiculo_id = serializers.UUIDField(required=True)
@@ -33,6 +34,21 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'creado_en',
             'actualizado_en'
         ]
+
+    def validate_vehiculo_id(self, value):
+        if not Vehiculo.objects.filter(id=value).exists():
+            raise serializers.ValidationError("El vehículo especificado no existe.")
+        return value
+
+    def create(self, validated_data):
+        vehiculo_id = validated_data.pop('vehiculo_id')
+        vehiculo = Vehiculo.objects.get(id=vehiculo_id)
+        orden = OrdenTrabajo.objects.create(
+            vehiculo=vehiculo,
+            estado=EstadoOrden.INGRESADO,
+            **validated_data
+        )
+        return orden
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
