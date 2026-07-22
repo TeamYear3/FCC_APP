@@ -21,6 +21,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'tecnico',
             'fecha_entrega',
             'comentario_rechazo',
+            'monto_total',
             'creado_en',
             'actualizado_en'
         ]
@@ -32,6 +33,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'tecnico',
             'fecha_entrega',
             'comentario_rechazo',
+            'monto_total',
             'creado_en',
             'actualizado_en'
         ]

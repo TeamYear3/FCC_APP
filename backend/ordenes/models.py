@@ -35,6 +35,7 @@ class OrdenTrabajo(models.Model):
     fecha_ingreso = models.DateField(default=timezone.now)
     fecha_entrega = models.DateField(null=True, blank=True)
     comentario_rechazo = models.TextField(null=True, blank=True)
+    monto_total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
