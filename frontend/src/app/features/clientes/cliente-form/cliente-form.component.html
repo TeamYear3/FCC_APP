@@ -4,10 +4,10 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-lg">
       <div>
         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-          Alta de Nuevo Cliente / Flota
+          {{ isEditMode() ? 'Edición de Cliente' : 'Alta de Nuevo Cliente / Flota' }}
         </h1>
         <p class="text-sm text-color-text-secondary mt-1">
-          Complete el formulario para vincular un titular y su información fiscal al legajo de vehículos.
+          {{ isEditMode() ? 'Actualice la información general y de contacto del cliente. El DNI/CUIT no es modificable.' : 'Complete el formulario para vincular un titular y su información fiscal al legajo de vehículos.' }}
         </p>
       </div>
       <a
@@ -50,7 +50,8 @@
               <select
                 id="tipo_documento"
                 formControlName="tipo_documento"
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
+                [tabindex]="isEditMode() ? -1 : 0"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all disabled:bg-color-surface-container disabled:text-color-text-secondary/60 disabled:border-white/5 disabled:cursor-not-allowed"
               >
                 <option value="DNI">DNI</option>
                 <option value="CUIT">CUIT</option>
@@ -66,8 +67,9 @@
                 id="dni_cuit"
                 type="text"
                 formControlName="dni_cuit"
+                [tabindex]="isEditMode() ? -1 : 0"
                 [placeholder]="tipoDocumentoSeleccionado === 'DNI' ? 'Ej: 30123456 (Sin puntos)' : 'Ej: 20-30123456-9'"
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all disabled:bg-color-surface-container disabled:text-color-text-secondary/60 disabled:border-white/5 disabled:cursor-not-allowed"
               />
               <!-- Validación descriptiva instantánea (UX Temprana) -->
               <div *ngIf="clienteForm.get('dni_cuit')?.touched && clienteForm.get('dni_cuit')?.invalid" class="text-red-400 text-xs mt-1.5 flex items-center gap-1.5">
@@ -201,11 +203,11 @@
           <!-- Pill Action Button principal del Sistema de Diseño -->
           <button
             type="submit"
-            [disabled]="isSubmitting()"
+            [disabled]="isSubmitting() || (isEditMode() ? clienteForm.invalid : false)"
             class="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-pill bg-color-primary-accent hover:bg-yellow-400 text-black font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span *ngIf="isSubmitting()" class="inline-block w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-            <span>{{ isSubmitting() ? 'Registrando Cliente...' : 'Guardar y Registrar Cliente' }}</span>
+            <span>{{ isSubmitting() ? (isEditMode() ? 'Guardando Cambios...' : 'Registrando Cliente...') : (isEditMode() ? 'Guardar Cambios' : 'Guardar y Registrar Cliente') }}</span>
           </button>
         </div>
       </form>

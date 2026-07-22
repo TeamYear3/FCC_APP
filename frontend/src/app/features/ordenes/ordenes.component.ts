@@ -1,6 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 export interface ServiceTask {
@@ -16,15 +16,23 @@ export type OrderTab = 'Detalle' | 'Servicios' | 'Repuestos' | 'Pagos' | 'Notas'
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.css'
 })
-export class OrdenesComponent {
+export class OrdenesComponent implements OnInit {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
+  readonly successOT = signal<string | null>(null);
+
+  ngOnInit(): void {
+    if (typeof window !== 'undefined' && window.history.state?.successOT) {
+      this.successOT.set(window.history.state.successOT);
+      window.history.replaceState({}, '', '/ordenes');
+    }
+  }
 
   readonly activeTab = signal<OrderTab>('Servicios');
   readonly tabs: OrderTab[] = ['Detalle', 'Servicios', 'Repuestos', 'Pagos', 'Notas'];
