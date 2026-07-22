@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.test import TestCase
 from django.db import IntegrityError
 from django.contrib.auth import get_user_model
@@ -7,9 +8,10 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
-from .models import OrdenTrabajo, EstadoOrden
+from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
 
 User = get_user_model()
+
 
 class OrdenTrabajoModelTest(TestCase):
     def setUp(self):
@@ -213,6 +215,67 @@ class OrdenTrabajoAPITest(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("vehiculo_id", response.data)
+
+
+class ItemPresupuestoModelTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="87654321",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CD456EF",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general"
+        )
+
+    def test_creacion_item_presupuesto_y_calculo_subtotal(self):
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Filtro de aceite",
+            cantidad=Decimal("2.00"),
+            precio_unitario=Decimal("1500.50")
+        )
+        self.assertEqual(item.subtotal, Decimal("3001.00"))
+        self.assertEqual(str(item), "Repuesto: Filtro de aceite ($3001.00)")
+
+    def test_recalculo_subtotal_al_modificar(self):
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Cambio de filtro",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("2000.00")
+        )
+        self.assertEqual(item.subtotal, Decimal("2000.00"))
+
+        item.cantidad = Decimal("2.50")
+        item.save()
+        self.assertEqual(item.subtotal, Decimal("5000.00"))
+
+    def test_borrado_en_cascada_orden_trabajo(self):
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Aceite sintético",
+            cantidad=Decimal("4.00"),
+            precio_unitario=Decimal("3500.00")
+        )
+        self.assertEqual(ItemPresupuesto.objects.count(), 1)
+
+        self.orden.delete()
+        self.assertEqual(ItemPresupuesto.objects.count(), 0)
+
 
 
 

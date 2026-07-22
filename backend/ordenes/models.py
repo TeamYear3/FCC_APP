@@ -1,8 +1,10 @@
 import uuid
+from decimal import Decimal
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from vehiculos.models import Vehiculo
+
 
 class EstadoOrden(models.TextChoices):
     INGRESADO = 'ingresado', 'Ingresado'
@@ -79,9 +81,11 @@ class ItemPresupuesto(models.Model):
     actualizado_en = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        self.subtotal = self.cantidad * self.precio_unitario
+        subtotal = Decimal(str(self.cantidad)) * Decimal(str(self.precio_unitario))
+        self.subtotal = subtotal.quantize(Decimal('0.01'))
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.get_tipo_display()}: {self.descripcion} (${self.subtotal})"
+        return f"{self.get_tipo_display()}: {self.descripcion} (${self.subtotal:.2f})"
+
 
