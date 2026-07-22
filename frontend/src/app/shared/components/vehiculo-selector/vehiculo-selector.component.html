@@ -1,0 +1,79 @@
+<div class="relative w-full">
+  <!-- Campo de entrada del buscador -->
+  <div class="relative flex items-center">
+    <!-- Icono de lupa de búsqueda -->
+    <span class="absolute left-4 text-color-text-secondary">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    </span>
+
+    <input
+      type="text"
+      [ngModel]="searchTerm()"
+      (ngModelChange)="searchTerm.set($event)"
+      (focus)="onInputFocus()"
+      (blur)="onInputBlur()"
+      [disabled]="isDisabled()"
+      placeholder="Buscar vehículo por Patente, Marca o Modelo..."
+      class="w-full min-h-[48px] pl-11 pr-10 py-3 rounded-card bg-black/40 border border-white/10 text-white typography-body-highlight placeholder-color-text-secondary/60 focus:outline-none focus:border-color-primary-accent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      [class.border-color-primary-accent]="selectedVehiculo() && !isOpen()"
+    />
+
+    <!-- Botón de limpieza en el extremo derecho -->
+    <button
+      *ngIf="selectedVehiculo() && !isDisabled()"
+      type="button"
+      (click)="clearSelection()"
+      class="absolute right-3 p-1 rounded-full text-color-text-secondary hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+      title="Limpiar selección"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- Desplegable de Resultados (Dropdown) -->
+  <div
+    *ngIf="isOpen() && !isDisabled()"
+    class="absolute z-50 w-full mt-2 bg-color-surface-container border border-white/10 rounded-card shadow-2xl overflow-hidden max-h-60 overflow-y-auto animate-fadeIn"
+  >
+    <!-- Estado de carga -->
+    <div *ngIf="isLoading()" class="p-md text-center text-color-text-secondary typography-caption">
+      <span class="inline-block animate-spin mr-2">⏳</span> Cargando vehículos...
+    </div>
+
+    <!-- Mensaje de error -->
+    <div *ngIf="errorMsg()" class="p-md text-center text-red-400 typography-caption flex justify-between items-center">
+      <span>{{ errorMsg() }}</span>
+      <button type="button" (click)="cargarVehiculos()" class="text-color-primary-accent font-bold hover:underline cursor-pointer">Reintentar</button>
+    </div>
+
+    <!-- Lista de resultados -->
+    <ul *ngIf="!isLoading() && !errorMsg() && filteredVehiculos().length > 0" class="divide-y divide-white/5 m-0 p-0 list-none">
+      <li
+        *ngFor="let vehiculo of filteredVehiculos()"
+        (mousedown)="selectVehiculo(vehiculo)"
+        class="px-md py-3 hover:bg-color-primary-accent hover:text-black cursor-pointer transition-colors flex justify-between items-center gap-4"
+      >
+        <div>
+          <span class="font-extrabold text-white group-hover:text-black tracking-wide bg-white/10 px-2 py-0.5 rounded-badge text-[11px] uppercase mr-2 border border-white/20 select-none">
+            {{ vehiculo.patente }}
+          </span>
+          <span class="typography-body-highlight text-white hover:text-black">
+            {{ vehiculo.marca }} {{ vehiculo.modelo }}
+          </span>
+        </div>
+        <div class="text-[10px] text-color-text-secondary uppercase tracking-wider">
+          Año {{ vehiculo.anio }}
+        </div>
+      </li>
+    </ul>
+
+    <!-- Sin coincidencia -->
+    <div *ngIf="!isLoading() && !errorMsg() && filteredVehiculos().length === 0" class="p-md text-center text-color-text-secondary typography-caption">
+      No se encontraron vehículos que coincidan con la búsqueda.
+    </div>
+  </div>
+</div>
