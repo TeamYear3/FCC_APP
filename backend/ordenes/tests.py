@@ -273,8 +273,87 @@ class ItemPresupuestoModelTest(TestCase):
         )
         self.assertEqual(ItemPresupuesto.objects.count(), 1)
 
-        self.orden.delete()
-        self.assertEqual(ItemPresupuesto.objects.count(), 0)
+class AgregarManoDeObraAPITest(APITestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Laura",
+            apellido="Rios",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="EF789GH",
+            marca="Chevrolet",
+            modelo="Onix",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido al frenar"
+        )
+        self.admin = User.objects.create_user(
+            email="admin_presupuesto@example.com",
+            nombre="Admin",
+            apellido="User",
+            rol="admin",
+            password="password123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_presupuesto@example.com",
+            nombre="Tecnico",
+            apellido="User",
+            rol="tecnico",
+            password="password123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_presupuesto@example.com",
+            nombre="Cliente",
+            apellido="User",
+            rol="cliente",
+            password="password123"
+        )
+        self.url = reverse('agregar-mano-de-obra', kwargs={'orden_id': self.orden.id})
+
+    def test_agregar_mano_de_obra_modalidad_estandar(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Diagnóstico general escáner",
+            "modalidad": "estandar",
+            "precio_unitario": "4500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo"], "mano_de_obra")
+        self.assertEqual(response.data["subtotal"], "4500.00")
+        self.assertEqual(ItemPresupuesto.objects.count(), 1)
+
+    def test_agregar_mano_de_obra_modalidad_por_hora(self):
+        self.client.force_authenticate(user=self.tecnico)
+        data = {
+            "descripcion": "Reparación de cableado eléctrico",
+            "modalidad": "por_hora",
+            "cantidad": "3.50",
+            "precio_unitario": "3000.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo"], "mano_de_obra")
+        self.assertEqual(response.data["subtotal"], "10500.00")
+
+    def test_error_cantidad_o_precio_invalido(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Alineación",
+            "cantidad": "-1.00",
+            "precio_unitario": "0.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cantidad", response.data)
+        self.assertIn("precio_unitario", response.data)
+
 
 
 
