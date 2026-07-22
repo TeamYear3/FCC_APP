@@ -98,3 +98,38 @@ class ItemManoDeObraSerializer(serializers.ModelSerializer):
         validated_data['tipo'] = TipoItem.MANO_DE_OBRA
         return super().create(validated_data)
 
+
+class ItemRepuestoSerializer(serializers.ModelSerializer):
+    cantidad = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=Decimal('1.00'))
+    precio_unitario = serializers.DecimalField(max_digits=12, decimal_places=2, required=True)
+
+    class Meta:
+        model = ItemPresupuesto
+        fields = [
+            'id',
+            'orden_trabajo',
+            'tipo',
+            'descripcion',
+            'cantidad',
+            'precio_unitario',
+            'subtotal',
+            'creado_en',
+            'actualizado_en'
+        ]
+        read_only_fields = ['id', 'orden_trabajo', 'tipo', 'subtotal', 'creado_en', 'actualizado_en']
+
+    def validate_cantidad(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("La cantidad debe ser mayor a cero.")
+        return value
+
+    def validate_precio_unitario(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El precio unitario debe ser mayor a cero.")
+        return value
+
+    def create(self, validated_data):
+        validated_data['tipo'] = TipoItem.REPUESTO
+        return super().create(validated_data)
+
+
