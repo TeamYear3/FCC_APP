@@ -470,6 +470,98 @@ class AgregarRepuestoViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+class RecalculoMontoTotalTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Lucas",
+            apellido="Martinez",
+            tipo_documento="DNI",
+            dni_cuit="30123456",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA111BB",
+            marca="Chevrolet",
+            modelo="Onix",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Mantenimiento programado 50.000km"
+        )
+
+    def test_monto_total_inicial_cero(self):
+        self.assertEqual(self.orden.monto_total, Decimal('0.00'))
+
+    def test_recalculo_al_agregar_items(self):
+        item1 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Cambio de aceite y filtro",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('12000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('12000.00'))
+
+        item2 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Aceite Sintetico 4L",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('28500.50')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('40500.50'))
+
+    def test_recalculo_al_modificar_item(self):
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Bujias de Iridio",
+            cantidad=Decimal('4.00'),
+            precio_unitario=Decimal('5000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('20000.00'))
+
+        item.cantidad = Decimal('2.00')
+        item.save()
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('10000.00'))
+
+    def test_recalculo_al_eliminar_item(self):
+        item1 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Filtro de aire",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('7000.00')
+        )
+        item2 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Inspección general",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('5000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('12000.00'))
+
+        item1.delete()
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('5000.00'))
+
+        item2.delete()
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('0.00'))
+
+
+
 
 
 
