@@ -1,13 +1,32 @@
 import logging
 import threading
 from django.conf import settings
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
 from core.utils.email_service import send_email_service
-from .models import OrdenTrabajo
+from .models import OrdenTrabajo, ItemPresupuesto
+from .services import (
+    recalcular_monto_total_orden,
+    evaluar_transicion_presupuesto,
+    notificar_presupuesto_websocket
+)
 
 logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=ItemPresupuesto)
+def procesar_cambios_post_save_item(sender, instance, created, **kwargs):
+    if instance.orden_trabajo:
+        recalcular_monto_total_orden(instance.orden_trabajo)
+        evaluar_transicion_presupuesto(instance.orden_trabajo)
+        notificar_presupuesto_websocket(instance.orden_trabajo)
+
+
+@receiver(post_delete, sender=ItemPresupuesto)
+def procesar_cambios_post_delete_item(sender, instance, **kwargs):
+    if instance.orden_trabajo:
+        recalcular_monto_total_orden(instance.orden_trabajo)
 
 
 def enviar_email_orden_background(orden_id):
@@ -73,7 +92,6 @@ def enviar_email_orden_background(orden_id):
             exc_info=True
         )
     finally:
-        import threading
         if threading.current_thread() is not threading.main_thread():
             from django.db import connection
             connection.close()
@@ -99,3 +117,4 @@ def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
                 f"Error al iniciar el hilo de envío de correo para la orden {instance.id}: {str(e)}",
                 exc_info=True
             )
+

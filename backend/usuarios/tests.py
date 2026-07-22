@@ -292,3 +292,20 @@ class PermisosRolTest(TestCase):
         self.assertFalse(permission.has_object_permission(request, None, mock_obj_otro))
 
 
+class DevLoginViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('dev-login')
+
+    def test_dev_login_admin_exitoso(self):
+        response = self.client.post(self.url, {"rol": "admin"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+        user = User.objects.get(email="dev_admin@fcc-taller.com")
+        self.assertEqual(user.rol, "admin")
+
+    def test_dev_login_rol_invalido(self):
+        response = self.client.post(self.url, {"rol": "superhero"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Rol inválido", response.data["error"])
