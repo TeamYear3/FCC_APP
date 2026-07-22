@@ -561,6 +561,79 @@ class RecalculoMontoTotalTest(TestCase):
         self.assertEqual(self.orden.monto_total, Decimal('0.00'))
 
 
+class TransicionEstadoPresupuestoTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Mario",
+            apellido="Rossi",
+            tipo_documento="DNI",
+            dni_cuit="25987654",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="BB222CC",
+            marca="Fiat",
+            modelo="Cronos",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión de suspensión"
+        )
+
+    def test_transicion_automatica_ingresado_a_en_presupuesto_con_primer_item(self):
+        self.assertEqual(self.orden.estado, EstadoOrden.INGRESADO)
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Diagnóstico de amortiguadores",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('15000.00')
+        )
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+    def test_mantiene_estado_en_presupuesto_con_items_subsiguientes(self):
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Diagnóstico de amortiguadores",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('15000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Kit de amortiguadores delanteros",
+            cantidad=Decimal('2.00'),
+            precio_unitario=Decimal('45000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+    def test_no_invierte_estado_si_ya_esta_aprobado(self):
+        self.orden.estado = EstadoOrden.APROBADO
+        self.orden.save()
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Alineación y balanceo",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('8000.00')
+        )
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.APROBADO)
+
+
+
 
 
 
