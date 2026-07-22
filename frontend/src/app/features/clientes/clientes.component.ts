@@ -28,7 +28,7 @@ export class ClientesComponent {
 
   readonly listaClientes: ClienteSummary[] = [
     {
-      id: 'CLI-019',
+      id: 'e139fda4-2fb6-4a69-bd67-2d891f58dc2a',
       nombre: 'Carlos Rodríguez',
       telefono: '+54 9 11 5566-7788',
       email: 'crodriguez@empresa.com',
