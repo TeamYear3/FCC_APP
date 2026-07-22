@@ -84,3 +84,35 @@ class LogoutView(APIView):
             {"detail": "Sesión cerrada correctamente."},
             status=status.HTTP_205_RESET_CONTENT
         )
+
+
+class DevLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        rol = request.data.get("rol", "cliente")
+        if rol not in ["admin", "tecnico", "cliente"]:
+            return Response({"error": "Rol inválido"}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = f"dev_{rol}@fcc-taller.com"
+        user, _ = Usuario.objects.get_or_create(
+            email=email,
+            defaults={
+                "nombre": "Usuario",
+                "apellido": rol.capitalize(),
+                "rol": rol
+            }
+        )
+        if user.rol != rol:
+            user.rol = rol
+            user.save()
+
+        refresh = RefreshToken.for_user(user)
+        refresh["rol"] = user.rol
+        refresh["email"] = user.email
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }, status=status.HTTP_200_OK)
+

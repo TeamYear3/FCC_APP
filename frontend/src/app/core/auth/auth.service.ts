@@ -202,6 +202,13 @@ export class AuthService {
   }
 
   /**
+   * Obtiene un token JWT real desde el backend Django (/api/auth/dev-login/) para el rol seleccionado.
+   */
+  loginDev(role: 'admin' | 'tecnico' | 'cliente'): Observable<{ access: string; refresh: string }> {
+    return this.http.post<{ access: string; refresh: string }>(`${environment.apiUrl}/auth/dev-login/`, { rol: role });
+  }
+
+  /**
    * Envia el ID token capturado al servidor Backend Django (/api/auth/google/) para validar y emitir SimpleJWT.
    */
   private prepareTokenForServer(token: string): void {
