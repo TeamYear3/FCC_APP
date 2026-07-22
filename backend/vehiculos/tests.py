@@ -12,8 +12,8 @@ class VehiculoModelTest(TestCase):
             tipo_documento="DNI",
             dni_cuit="12345678",
             condicion_iva="CF",
-            telefono="11223344",
-            domicilio="Calle Falsa 123"
+            telefono="1122334455",
+            domicilio="Av. Siempre Viva 123"
         )
 
     def test_creacion_vehiculo_exito(self):
@@ -21,41 +21,39 @@ class VehiculoModelTest(TestCase):
             cliente=self.cliente,
             patente="AB123CD",
             marca="Toyota",
-            modelo="Corolla",
-            anio=2020,
+            modelo="Hilux",
+            anio=2021,
             kilometraje=45000,
-            color="Blanco",
-            foto_url="https://ejemplo.com/fotos/corolla.jpg"
+            color="Blanco"
         )
-        self.assertEqual(vehiculo.cliente, self.cliente)
         self.assertEqual(vehiculo.patente, "AB123CD")
         self.assertEqual(vehiculo.marca, "Toyota")
-        self.assertEqual(vehiculo.modelo, "Corolla")
-        self.assertEqual(vehiculo.anio, 2020)
+        self.assertEqual(vehiculo.modelo, "Hilux")
+        self.assertEqual(vehiculo.anio, 2021)
         self.assertEqual(vehiculo.kilometraje, 45000)
         self.assertEqual(vehiculo.color, "Blanco")
-        self.assertEqual(vehiculo.foto_url, "https://ejemplo.com/fotos/corolla.jpg")
-        self.assertEqual(str(vehiculo), "Toyota Corolla (AB123CD)")
+        self.assertEqual(vehiculo.cliente, self.cliente)
+        self.assertEqual(str(vehiculo), "Toyota Hilux (AB123CD)")
 
     def test_vehiculo_campos_opcionales_y_defaults(self):
         vehiculo = Vehiculo.objects.create(
             cliente=self.cliente,
-            patente="ZZ999ZZ",
-            marca="Honda",
-            modelo="Civic"
+            patente="AC999XX",
+            marca="Volkswagen",
+            modelo="Gol"
         )
-        self.assertEqual(vehiculo.kilometraje, 0)
+        self.assertIsNone(vehiculo.anio)
+        self.assertEqual(vehiculo.kilometraje, 0) # Default
         self.assertEqual(vehiculo.color, "")
         self.assertIsNone(vehiculo.foto_url)
 
     def test_patente_unica(self):
-        # Crear primer vehiculo
         Vehiculo.objects.create(
             cliente=self.cliente,
             patente="AB123CD",
             marca="Toyota",
-            modelo="Corolla",
-            anio=2020
+            modelo="Hilux",
+            anio=2021
         )
         
         # Intentar crear segundo vehiculo con la misma patente
@@ -89,30 +87,34 @@ User = get_user_model()
 
 class VehiculoAPITestCase(APITestCase):
     def setUp(self):
-        # Crear usuarios de prueba con diferentes roles
         self.admin_user = User.objects.create_user(
-            email="admin@example.com",
-            nombre="Carlos",
-            apellido="Admin",
+            email="admin_vehiculo@example.com",
+            nombre="Admin",
+            apellido="Vehiculo",
             rol="admin",
             password="adminpassword123"
         )
         self.tecnico_user = User.objects.create_user(
-            email="tecnico@example.com",
-            nombre="Juan",
-            apellido="Tecnico",
+            email="tecnico_vehiculo@example.com",
+            nombre="Tecnico",
+            apellido="Vehiculo",
             rol="tecnico",
             password="tecnicopassword123"
         )
         self.cliente_user = User.objects.create_user(
-            email="cliente@example.com",
+            email="cliente_vehiculo@example.com",
             nombre="Lucas",
             apellido="Cliente",
             rol="cliente",
             password="clientepassword123"
         )
-        
-        # Crear clientes en la base de datos
+        self.cliente = Cliente.objects.create(
+            nombre="Test",
+            apellido="Cliente",
+            tipo_documento="DNI",
+            dni_cuit="30111222",
+            condicion_iva="CF"
+        )
         self.cliente_actual = Cliente.objects.create(
             nombre="Cliente",
             apellido="Uno",
@@ -122,7 +124,6 @@ class VehiculoAPITestCase(APITestCase):
             telefono="11223344",
             domicilio="Direccion 1"
         )
-        
         self.cliente_nuevo = Cliente.objects.create(
             nombre="Cliente",
             apellido="Dos",
@@ -132,8 +133,6 @@ class VehiculoAPITestCase(APITestCase):
             telefono="55667788",
             domicilio="Direccion 2"
         )
-        
-        # Crear vehículo de prueba
         self.vehiculo = Vehiculo.objects.create(
             cliente=self.cliente_actual,
             patente="AB123CD",
@@ -144,9 +143,95 @@ class VehiculoAPITestCase(APITestCase):
             color="Rojo",
             foto_url="https://ejemplo.com/fotos/rojo.jpg"
         )
-        
+        self.url = reverse('crear-vehiculo')
         self.url_detalle = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
 
+    # Pruebas para CrearVehiculoView (POST)
+    def test_crear_vehiculo_patente_valida_mercosur(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AG123XY",
+            "marca": "Ford",
+            "modelo": "Ranger",
+            "anio": 2023,
+            "kilometraje": 15000,
+            "color": "Gris"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "AG123XY")
+        self.assertEqual(response.data["cliente_id"], self.cliente.id)
+
+    def test_crear_vehiculo_patente_valida_tradicional(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "abc123", # debe normalizar a mayúsculas
+            "marca": "Chevrolet",
+            "modelo": "Corsa",
+            "anio": 2012,
+            "kilometraje": 120000
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "ABC123")
+
+    def test_crear_vehiculo_patente_invalida(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "123ABCD", # inválida
+            "marca": "Fiat",
+            "modelo": "Cronos"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("patente", response.data)
+
+    def test_crear_vehiculo_patente_duplicada(self):
+        Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ZZ999ZZ",
+            marca="Renault",
+            modelo="Clio"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "zz999zz",
+            "marca": "Peugeot",
+            "modelo": "208"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("patente", response.data)
+
+    def test_crear_vehiculo_cliente_inexistente(self):
+        import uuid
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(uuid.uuid4()),
+            "patente": "AF555ZZ",
+            "marca": "Volkswagen",
+            "modelo": "Golf"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cliente_id", response.data)
+
+    def test_crear_vehiculo_sin_permiso_admin(self):
+        self.client.force_authenticate(user=self.tecnico_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AG777WW",
+            "marca": "Nissan",
+            "modelo": "Frontier"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # Pruebas para DetalleVehiculoView (PUT/PATCH)
     def test_actualizar_vehiculo_campos_validos(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {
@@ -225,4 +310,3 @@ class VehiculoAPITestCase(APITestCase):
         self.client.logout()
         response = self.client.patch(self.url_detalle, {"color": "Negro"}, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-

@@ -44,6 +44,15 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'clientes/nuevo',
+    canActivate: [roleGuardFn],
+    data: { roles: ['admin', 'tecnico'] },
+    loadComponent: () =>
+      import('./features/clientes/cliente-form/cliente-form.component').then(
+        (m) => m.ClienteFormComponent
+      )
+  },
+  {
     path: 'clientes',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },

@@ -4,8 +4,12 @@ from core.permissions import EsAdministrador
 from .models import Vehiculo
 from .serializers import VehiculoSerializer
 
-class DetalleVehiculoView(generics.RetrieveUpdateAPIView):
+class CrearVehiculoView(generics.CreateAPIView):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
     permission_classes = [IsAuthenticated, EsAdministrador]
 
+class DetalleVehiculoView(generics.RetrieveUpdateAPIView):
+    queryset = Vehiculo.objects.all()
+    serializer_class = VehiculoSerializer
+    permission_classes = [IsAuthenticated, EsAdministrador]
