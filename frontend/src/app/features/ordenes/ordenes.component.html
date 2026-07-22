@@ -23,17 +23,58 @@
         </div>
       </div>
 
-      <!-- Botón Secundario Outline / Salir -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Botón Nueva Orden (Pill Action Button) -->
+        <a
+          routerLink="/ordenes/nueva"
+          class="min-h-[48px] px-md py-2.5 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] flex items-center gap-2 cursor-pointer decoration-none shadow-md"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span>Nueva Orden</span>
+        </a>
+
+        <!-- Botón Secundario Outline / Salir -->
+        <button
+          type="button"
+          (click)="logout()"
+          class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-white/10 bg-transparent text-color-text-secondary font-bold typography-body-highlight transition-all duration-200 hover:bg-white/5 active:scale-[0.98] flex items-center gap-2 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Banner de éxito de OT creada -->
+    <div
+      *ngIf="successOT()"
+      class="mb-lg p-md rounded-card bg-color-status-review/10 border border-color-status-review/30 text-white typography-body-highlight flex items-center justify-between gap-4 animate-fadeIn"
+    >
+      <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-full bg-color-status-review/25 flex items-center justify-center text-color-status-review">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </span>
+        <div>
+          <span class="font-extrabold text-color-primary-accent">¡Orden de Trabajo Creada con Éxito!</span>
+          <p class="typography-caption text-color-text-secondary mt-0.5">Se ha registrado la orden <strong class="text-white">{{ successOT() }}</strong> en el sistema.</p>
+        </div>
+      </div>
       <button
         type="button"
-        (click)="logout()"
-        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] flex items-center gap-2 cursor-pointer">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        (click)="successOT.set(null)"
+        class="text-color-text-secondary hover:text-white transition-colors cursor-pointer p-1 bg-transparent border-0"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
-        <span>Cerrar Sesión</span>
       </button>
-    </header>
+    </div>
 
     <!-- Tarjeta Principal de Resumen de Orden Activa (Order Work Card - Página 4) -->
     <div class="bg-color-surface-container border border-color-primary-accent/40 rounded-card p-md sm:p-lg mb-lg shadow-2xl">
