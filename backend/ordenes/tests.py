@@ -1,8 +1,10 @@
+from unittest.mock import patch
 from decimal import Decimal
 from django.test import TestCase
 from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core import mail
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
@@ -10,6 +12,8 @@ from clientes.models import Cliente
 from vehiculos.models import Vehiculo
 from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
 from .services import notificar_presupuesto_websocket
+from .signals import enviar_email_orden_background
+
 
 User = get_user_model()
 
@@ -239,6 +243,7 @@ class ItemPresupuestoModelTest(TestCase):
             descripcion_problema="Revisión general"
         )
 
+
     def test_creacion_item_presupuesto_y_calculo_subtotal(self):
         item = ItemPresupuesto.objects.create(
             orden_trabajo=self.orden,
@@ -301,6 +306,7 @@ class AgregarManoDeObraAPITest(APITestCase):
             rol="admin",
             password="password123"
         )
+
         self.tecnico = User.objects.create_user(
             email="tecnico_presupuesto@example.com",
             nombre="Tecnico",
@@ -681,6 +687,84 @@ class NotificacionWebSocketPresupuestoTest(TestCase):
 
 
 
+
+
+class OrdenTrabajoEmailTest(TestCase):
+    def setUp(self):
+        self.usuario_cliente = User.objects.create_user(
+            email="cliente_test@example.com",
+            nombre="Carlos",
+            apellido="Gomez",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.usuario_cliente,
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="87654321",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CD456EF",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general"
+        )
+
+    def test_enviar_email_orden_background_exito(self):
+        mail.outbox = []
+        enviar_email_orden_background(self.orden.id)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.to, ["cliente_test@example.com"])
+        self.assertIn("Nueva Orden de Trabajo", email.subject)
+
+    def test_enviar_email_orden_sin_usuario_o_email(self):
+        cliente_sin_usuario = Cliente.objects.create(
+            nombre="Pedro",
+            apellido="SinEmail",
+            tipo_documento="DNI",
+            dni_cuit="99887766",
+            condicion_iva="CF"
+        )
+        vehiculo_sin_usuario = Vehiculo.objects.create(
+            cliente=cliente_sin_usuario,
+            patente="XY111ZZ",
+            marca="Renault",
+            modelo="Clio"
+        )
+        orden_sin_usuario = OrdenTrabajo.objects.create(
+            vehiculo=vehiculo_sin_usuario,
+            descripcion_problema="Cambio de bujías"
+        )
+        
+        mail.outbox = []
+        enviar_email_orden_background(orden_sin_usuario.id)
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch("ordenes.signals.enviar_email_orden_background")
+    def test_creacion_orden_dispara_senal_email(self, mock_enviar_email):
+        orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Alineación y balanceo"
+        )
+        mock_enviar_email.assert_called_once_with(orden.id)
+
+    @patch("threading.Thread")
+    def test_senal_tolerancia_a_errores_de_hilo(self, mock_thread):
+        mock_thread.return_value.start.side_effect = Exception("Fallo al iniciar el hilo de pruebas")
+        orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general"
+        )
+        self.assertIsNotNone(orden.id)
 
 
 

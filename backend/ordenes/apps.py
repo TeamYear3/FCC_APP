@@ -8,3 +8,4 @@ class OrdenesConfig(AppConfig):
     def ready(self):
         import ordenes.signals  # noqa
 
+
