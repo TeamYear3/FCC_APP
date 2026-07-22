@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from core.permissions import EsAdministrador, EsTecnico
 from .models import OrdenTrabajo
-from .serializers import OrdenTrabajoSerializer, ItemManoDeObraSerializer
+from .serializers import OrdenTrabajoSerializer, ItemManoDeObraSerializer, ItemRepuestoSerializer
 
 class CrearOrdenTrabajoView(APIView):
     permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
@@ -32,4 +32,19 @@ class AgregarManoDeObraView(APIView):
         item = serializer.save(orden_trabajo=orden)
         response_serializer = ItemManoDeObraSerializer(item)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AgregarRepuestoView(APIView):
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+
+    def post(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
+        serializer = ItemRepuestoSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        item = serializer.save(orden_trabajo=orden)
+        response_serializer = ItemRepuestoSerializer(item)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
 
