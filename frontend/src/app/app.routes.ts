@@ -35,6 +35,15 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'ordenes/nueva',
+    canActivate: [roleGuardFn],
+    data: { roles: ['admin', 'tecnico'] },
+    loadComponent: () =>
+      import('./features/ordenes/orden-form/orden-form.component').then(
+        (m) => m.OrdenFormComponent
+      )
+  },
+  {
     path: 'ordenes',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },

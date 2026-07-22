@@ -1,0 +1,150 @@
+<div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
+  
+  <!-- Contenedor Principal con z-index superior -->
+  <div class="max-w-3xl mx-auto w-full relative z-10 flex-1">
+    
+    <!-- Encabezado / Header -->
+    <header class="flex items-center justify-between pb-md border-b border-white/10 mb-lg">
+      <div class="flex items-center gap-md">
+        <!-- Logo mini del taller -->
+        <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
+          <span class="font-extrabold text-color-primary-accent text-lg tracking-tighter">FCC</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 bg-color-primary-accent/15 text-color-primary-accent border border-color-primary-accent/30 rounded-badge typography-caption font-bold uppercase tracking-wider">
+              Órdenes de Trabajo (OT)
+            </span>
+          </div>
+          <h1 class="typography-h1-display tracking-tight uppercase leading-none">
+            Ingreso de Nueva Orden
+          </h1>
+        </div>
+      </div>
+
+      <!-- Botón Volver -->
+      <a
+        routerLink="/ordenes"
+        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-white/10 bg-transparent text-color-text-secondary font-bold typography-body-highlight transition-all duration-200 hover:bg-white/5 active:scale-[0.98] flex items-center gap-2 cursor-pointer decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span>Volver</span>
+      </a>
+    </header>
+
+    <!-- Tarjeta del Formulario Principal -->
+    <div class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg mb-lg shadow-2xl">
+      <form [formGroup]="ordenForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-6">
+        
+        <!-- Error Banner -->
+        <div *ngIf="errorMessage()" class="p-md rounded-card bg-red-600/10 border border-red-500/30 text-red-400 typography-body-highlight animate-fadeIn">
+          <div class="flex items-start gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        </div>
+
+        <!-- Selector de Vehículo -->
+        <div class="flex flex-col gap-2">
+          <label class="typography-body-highlight text-white uppercase tracking-wide">
+            Seleccionar Vehículo <span class="text-color-primary-accent">*</span>
+          </label>
+          <app-vehiculo-selector formControlName="vehiculo_id"></app-vehiculo-selector>
+          <span
+            *ngIf="ordenForm.get('vehiculo_id')?.invalid && ordenForm.get('vehiculo_id')?.touched"
+            class="text-red-400 text-xs mt-1"
+          >
+            Debe seleccionar un vehículo para abrir la orden.
+          </span>
+        </div>
+
+        <!-- Descripción del problema -->
+        <div class="flex flex-col gap-2">
+          <label for="descripcion_problema" class="typography-body-highlight text-white uppercase tracking-wide">
+            Descripción del Problema / Falla Reportada <span class="text-color-primary-accent">*</span>
+          </label>
+          <textarea
+            id="descripcion_problema"
+            formControlName="descripcion_problema"
+            rows="5"
+            placeholder="Describa de manera detallada el síntoma del vehículo, falla o servicio requerido por el cliente..."
+            class="w-full p-md rounded-card bg-black/40 border border-white/10 text-white typography-body-main placeholder-color-text-secondary/60 focus:outline-none focus:border-color-primary-accent transition-colors duration-200 resize-y"
+            [class.border-red-500]="ordenForm.get('descripcion_problema')?.invalid && ordenForm.get('descripcion_problema')?.touched"
+          ></textarea>
+          <div class="flex justify-between items-center text-xs mt-1">
+            <span
+              *ngIf="ordenForm.get('descripcion_problema')?.invalid && ordenForm.get('descripcion_problema')?.touched"
+              class="text-red-400"
+            >
+              La descripción es obligatoria (mínimo 5 caracteres).
+            </span>
+            <span class="text-color-text-secondary ml-auto">
+              {{ ordenForm.get('descripcion_problema')?.value?.length || 0 }}/2000 caract.
+            </span>
+          </div>
+        </div>
+
+        <!-- Fecha de Ingreso -->
+        <div class="flex flex-col gap-2">
+          <label for="fecha_ingreso" class="typography-body-highlight text-white uppercase tracking-wide">
+            Fecha de Ingreso <span class="text-color-primary-accent">*</span>
+          </label>
+          <input
+            type="date"
+            id="fecha_ingreso"
+            formControlName="fecha_ingreso"
+            class="w-full min-h-[48px] px-md py-3 rounded-card bg-black/40 border border-white/10 text-white typography-body-highlight focus:outline-none focus:border-color-primary-accent transition-colors duration-200"
+            [class.border-red-500]="ordenForm.get('fecha_ingreso')?.invalid && ordenForm.get('fecha_ingreso')?.touched"
+          />
+          <span
+            *ngIf="ordenForm.get('fecha_ingreso')?.invalid && ordenForm.get('fecha_ingreso')?.touched"
+            class="text-red-400 text-xs mt-1"
+          >
+            La fecha de ingreso es obligatoria.
+          </span>
+        </div>
+
+        <!-- Línea separadora -->
+        <hr class="border-[#333333] my-2" />
+
+        <!-- Botones de Acción -->
+        <div class="flex flex-col sm:flex-row items-center justify-end gap-md">
+          <!-- Botón Cancelar -->
+          <a
+            routerLink="/ordenes"
+            class="w-full sm:w-auto min-h-[48px] px-md py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight hover:bg-color-primary-accent/10 active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer decoration-none"
+          >
+            Cancelar
+          </a>
+
+          <!-- Botón de Acción Principal (Pill Action Button) -->
+          <button
+            type="submit"
+            [disabled]="ordenForm.invalid || isSubmitting()"
+            class="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
+          >
+            <span *ngIf="!isSubmitting()">Crear Orden</span>
+            <span *ngIf="isSubmitting()" class="flex items-center gap-2">
+              <span class="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin"></span>
+              Procesando...
+            </span>
+            <svg *ngIf="!isSubmitting()" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="max-w-3xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+    <span>FCC App · Módulo Órdenes</span>
+    <span>Material Design 3 · Dark Mode</span>
+  </div>
+</div>
