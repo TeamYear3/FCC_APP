@@ -4,14 +4,19 @@ from clientes.models import Cliente
 from .models import Vehiculo
 
 class VehiculoSerializer(serializers.ModelSerializer):
-    cliente_id = serializers.UUIDField(required=True)
+    cliente_id = serializers.PrimaryKeyRelatedField(
+        queryset=Cliente.objects.all(),
+        source='cliente',
+        error_messages={
+            'does_not_exist': 'El cliente especificado no existe.'
+        }
+    )
 
     class Meta:
         model = Vehiculo
         fields = [
             'id',
             'cliente_id',
-            'cliente',
             'patente',
             'marca',
             'modelo',
@@ -22,12 +27,12 @@ class VehiculoSerializer(serializers.ModelSerializer):
             'creado_en',
             'actualizado_en'
         ]
-        read_only_fields = ['id', 'cliente', 'creado_en', 'actualizado_en']
+        read_only_fields = ['id', 'creado_en', 'actualizado_en']
 
-    def validate_cliente_id(self, value):
-        if not Cliente.objects.filter(id=value).exists():
-            raise serializers.ValidationError("El cliente especificado no existe.")
-        return value
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance is not None:
+            self.fields['patente'].read_only = True
 
     def validate_patente(self, value):
         patente_limpia = value.upper().strip()
@@ -39,17 +44,3 @@ class VehiculoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Ya existe un vehículo registrado con esta patente.")
         
         return patente_limpia
-
-    def create(self, validated_data):
-        cliente_id = validated_data.pop('cliente_id')
-        cliente = Cliente.objects.get(id=cliente_id)
-        vehiculo = Vehiculo.objects.create(
-            cliente=cliente,
-            **validated_data
-        )
-        return vehiculo
-
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        rep['cliente_id'] = str(instance.cliente.id) if instance.cliente else None
-        return rep
