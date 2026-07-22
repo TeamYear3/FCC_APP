@@ -310,3 +310,26 @@ class VehiculoAPITestCase(APITestCase):
         self.client.logout()
         response = self.client.patch(self.url_detalle, {"color": "Negro"}, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_listar_vehiculos_admin(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) >= 1)
+
+    def test_listar_vehiculos_tecnico(self):
+        self.client.force_authenticate(user=self.tecnico_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) >= 1)
+
+    def test_listar_vehiculos_cliente_prohibido(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_listar_vehiculos_anonimo_no_autorizado(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
