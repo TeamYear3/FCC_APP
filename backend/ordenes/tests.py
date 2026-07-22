@@ -372,6 +372,105 @@ class AgregarManoDeObraAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+class AgregarRepuestoViewTest(APITestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Esteban",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="20345678",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CD456EF",
+            marca="Ford",
+            modelo="Focus",
+            anio=2019
+        )
+        self.admin = User.objects.create_user(
+            email="admin_repuesto@example.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="password123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_repuesto@example.com",
+            nombre="Tecnico",
+            apellido="Repuesto",
+            rol="tecnico",
+            password="password123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_user2@example.com",
+            nombre="Cliente",
+            apellido="User",
+            rol="cliente",
+            password="password123"
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de pastillas de freno y discos"
+        )
+        self.url = reverse('agregar-repuesto', kwargs={'orden_id': self.orden.id})
+
+    def test_agregar_repuesto_exito(self):
+        self.client.force_authenticate(user=self.tecnico)
+        data = {
+            "descripcion": "Pastillas de freno delanteras Bosch",
+            "cantidad": "2.00",
+            "precio_unitario": "15000.50"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo"], "repuesto")
+        self.assertEqual(response.data["descripcion"], "Pastillas de freno delanteras Bosch")
+        self.assertEqual(response.data["subtotal"], "30001.00")
+        self.assertEqual(ItemPresupuesto.objects.count(), 1)
+
+    def test_agregar_repuesto_cantidad_por_defecto(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Filtro de aceite Fram",
+            "precio_unitario": "8500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["cantidad"], "1.00")
+        self.assertEqual(response.data["subtotal"], "8500.00")
+
+    def test_error_cantidad_o_precio_invalido_repuesto(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Filtro de aire",
+            "cantidad": "0.00",
+            "precio_unitario": "-500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cantidad", response.data)
+        self.assertIn("precio_unitario", response.data)
+
+    def test_bloqueo_acceso_rol_cliente_repuesto(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        data = {
+            "descripcion": "Aceite Sintetico 4L",
+            "precio_unitario": "25000.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bloqueo_acceso_sin_autenticacion_repuesto(self):
+        data = {
+            "descripcion": "Aceite Sintetico 4L",
+            "precio_unitario": "25000.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+
 
 
 
