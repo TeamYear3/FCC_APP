@@ -354,6 +354,24 @@ class AgregarManoDeObraAPITest(APITestCase):
         self.assertIn("cantidad", response.data)
         self.assertIn("precio_unitario", response.data)
 
+    def test_bloqueo_acceso_rol_cliente(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        data = {
+            "descripcion": "Cambio de bujías",
+            "precio_unitario": "2500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bloqueo_acceso_sin_autenticacion(self):
+        data = {
+            "descripcion": "Cambio de bujías",
+            "precio_unitario": "2500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 
 
 
