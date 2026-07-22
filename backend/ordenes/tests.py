@@ -9,6 +9,7 @@ from rest_framework import status
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
 from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
+from .services import notificar_presupuesto_websocket
 
 User = get_user_model()
 
@@ -631,6 +632,51 @@ class TransicionEstadoPresupuestoTest(TestCase):
 
         self.orden.refresh_from_db()
         self.assertEqual(self.orden.estado, EstadoOrden.APROBADO)
+
+
+class NotificacionWebSocketPresupuestoTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Diego",
+            apellido="Maradona",
+            tipo_documento="DNI",
+            dni_cuit="10101010",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="D1000S",
+            marca="Peugeot",
+            modelo="208",
+            anio=2023
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de kit de distribución"
+        )
+
+    def test_generacion_payload_notificacion_websocket(self):
+        payload = notificar_presupuesto_websocket(self.orden)
+        self.assertEqual(payload["event"], "presupuesto_actualizado")
+        self.assertEqual(payload["orden_id"], str(self.orden.id))
+        self.assertEqual(payload["numero_ot"], self.orden.numero_ot)
+        self.assertEqual(payload["patente"], "D1000S")
+        self.assertEqual(payload["monto_total"], "0.00")
+        self.assertEqual(payload["estado"], "ingresado")
+
+    def test_emision_notificacion_al_guardar_item_presupuesto(self):
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Correa de distribución Continental",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('35000.00')
+        )
+        self.orden.refresh_from_db()
+        payload = notificar_presupuesto_websocket(self.orden)
+        self.assertEqual(payload["monto_total"], "35000.00")
+        self.assertEqual(payload["estado"], "en_presupuesto")
+
 
 
 
