@@ -52,3 +52,36 @@ class OrdenTrabajo(models.Model):
 
     def __str__(self):
         return f"{self.numero_ot} - {self.vehiculo.patente} ({self.get_estado_display()})"
+
+
+class TipoItem(models.TextChoices):
+    MANO_DE_OBRA = 'mano_de_obra', 'Mano de Obra'
+    REPUESTO = 'repuesto', 'Repuesto'
+
+
+class ItemPresupuesto(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    orden_trabajo = models.ForeignKey(
+        OrdenTrabajo,
+        on_delete=models.CASCADE,
+        related_name="items_presupuesto"
+    )
+    tipo = models.CharField(
+        max_length=20,
+        choices=TipoItem.choices,
+        default=TipoItem.REPUESTO
+    )
+    descripcion = models.CharField(max_length=255)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.subtotal = self.cantidad * self.precio_unitario
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.get_tipo_display()}: {self.descripcion} (${self.subtotal})"
+
