@@ -83,15 +83,25 @@
         <p class="typography-caption text-color-text-secondary mt-1">Directorio consolidado con acceso rápido al historial de órdenes.</p>
       </div>
 
-      <!-- Botón de Acción Principal: Pill Action Button (#FFCC00 y texto negro #000000, min-h 48px, rounded 24px) -->
-      <a
-        routerLink="/clientes/nuevo"
-        class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-        </svg>
-        <span>+ Nuevo Cliente / Flota</span>
-      </a>
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          routerLink="/clientes/nuevo"
+          class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <span>+ Nuevo Cliente</span>
+        </a>
+        <a
+          routerLink="/vehiculos/nuevo"
+          class="min-h-[48px] px-lg py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
+          <!-- Ícono coche -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span>+ Nuevo Vehículo</span>
+        </a>
+      </div>
     </div>
 
     <!-- Directorio en Tarjetas (Order Work Cards style - #1E1E1E) -->

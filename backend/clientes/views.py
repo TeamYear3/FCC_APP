@@ -4,7 +4,7 @@ from core.permissions import EsAdministrador
 from .models import Cliente
 from .serializers import ClienteSerializer
 
-class CrearClienteView(generics.CreateAPIView):
+class CrearClienteView(generics.ListCreateAPIView):
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
     permission_classes = [IsAuthenticated, EsAdministrador]

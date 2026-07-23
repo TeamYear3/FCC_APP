@@ -35,6 +35,20 @@ export class ClienteService {
   }
 
   /**
+   * Obtiene el listado de todos los clientes registrados desde GET /api/clientes/
+   */
+  obtenerClientes(): Observable<ClienteResponse[]> {
+    return this.http.get<ClienteResponse[]>(this.apiUrl);
+  }
+
+  /**
+   * Obtiene los datos detallados de un cliente específico por su UUID
+   */
+  obtenerClientePorId(id: string): Observable<ClienteResponse> {
+    return this.http.get<ClienteResponse>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
    * Obtiene un cliente por su ID (GET /api/clientes/<id>/)
    */
   getClienteById(id: string): Observable<ClienteResponse> {

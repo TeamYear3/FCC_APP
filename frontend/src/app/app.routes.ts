@@ -80,6 +80,15 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'vehiculos/nuevo',
+    canActivate: [roleGuardFn],
+    data: { roles: ['admin', 'tecnico'] },
+    loadComponent: () =>
+      import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
+        (m) => m.VehiculoFormComponent
+      )
+  },
+  {
     path: 'auth',
     redirectTo: 'autenticacion',
     pathMatch: 'full'
