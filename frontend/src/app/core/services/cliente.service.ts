@@ -47,4 +47,18 @@ export class ClienteService {
   obtenerClientePorId(id: string): Observable<ClienteResponse> {
     return this.http.get<ClienteResponse>(`${this.apiUrl}${id}/`);
   }
+
+  /**
+   * Obtiene un cliente por su ID (GET /api/clientes/<id>/)
+   */
+  getClienteById(id: string): Observable<ClienteResponse> {
+    return this.http.get<ClienteResponse>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
+   * Actualiza los datos de un cliente (PATCH /api/clientes/<id>/)
+   */
+  actualizarCliente(id: string, payload: Partial<ClientePayload>): Observable<ClienteResponse> {
+    return this.http.patch<ClienteResponse>(`${this.apiUrl}${id}/`, payload);
+  }
 }

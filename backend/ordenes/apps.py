@@ -6,5 +6,6 @@ class OrdenesConfig(AppConfig):
     name = 'ordenes'
 
     def ready(self):
-        import ordenes.signals
+        import ordenes.signals  # noqa
+
 

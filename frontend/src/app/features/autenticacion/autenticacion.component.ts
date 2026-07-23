@@ -51,27 +51,28 @@ export class AutenticacionComponent implements OnInit {
   }
 
   simulateRole(role: 'admin' | 'tecnico' | 'cliente'): void {
-    const mockPayload = {
-      sub: `mock-user-${role}-123`,
-      email: `${role}@fcc-taller.com`,
-      nombre: 'Usuario',
-      apellido: role.toUpperCase(),
-      rol: role,
-      exp: Math.floor(Date.now() / 1000) + 3600
-    };
-    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-    const body = btoa(JSON.stringify(mockPayload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    const mockToken = `${header}.${body}.mock-signature`;
+    this.errorMessage.set(null);
+    this.authService.loginDev(role).subscribe({
+      next: (res) => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('fcc_refresh_token', res.refresh);
+        }
+        this.authService.setToken(res.access);
+        this.idTokenCaptured.set(res.access);
 
-    this.authService.setToken(mockToken);
-    this.idTokenCaptured.set(mockToken);
-
-    if (role === 'admin') {
-      this.router.navigate(['/admin']);
-    } else if (role === 'tecnico') {
-      this.router.navigate(['/ordenes']);
-    } else {
-      this.router.navigate(['/transparencia']);
-    }
+        if (role === 'admin') {
+          this.router.navigate(['/admin']);
+        } else if (role === 'tecnico') {
+          this.router.navigate(['/ordenes']);
+        } else {
+          this.router.navigate(['/transparencia']);
+        }
+      },
+      error: (err) => {
+        console.error('Error al generar token real en el servidor:', err);
+        const msg = err.error?.error || 'Error al conectar con el backend Django para emitir el token JWT real.';
+        this.errorMessage.set(msg);
+      }
+    });
   }
 }

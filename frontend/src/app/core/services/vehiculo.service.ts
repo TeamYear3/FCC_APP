@@ -11,7 +11,7 @@ export interface VehiculoCreatePayload {
   anio?: number | null;
   kilometraje?: number | null;
   color?: string;
-  foto_url?: string;
+  foto_url?: string | null;
 }
 
 export interface VehiculoResponse extends VehiculoCreatePayload {
@@ -39,5 +39,12 @@ export class VehiculoService {
    */
   obtenerVehiculoPorId(id: string): Observable<VehiculoResponse> {
     return this.http.get<VehiculoResponse>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
+   * Obtiene la lista de vehículos del backend (GET /api/vehiculos/)
+   */
+  getVehiculos(): Observable<VehiculoResponse[]> {
+    return this.http.get<VehiculoResponse[]>(this.apiUrl);
   }
 }

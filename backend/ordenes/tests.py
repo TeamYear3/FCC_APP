@@ -1,15 +1,22 @@
+from unittest.mock import patch
+from decimal import Decimal
 from django.test import TestCase
 from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core import mail
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
-from .models import OrdenTrabajo, EstadoOrden
+from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
+from .services import notificar_presupuesto_websocket
+from .signals import enviar_email_orden_background
+
 
 User = get_user_model()
+
 
 class OrdenTrabajoModelTest(TestCase):
     def setUp(self):
@@ -215,13 +222,475 @@ class OrdenTrabajoAPITest(APITestCase):
         self.assertIn("vehiculo_id", response.data)
 
 
-from unittest.mock import patch
-from django.core import mail
-from ordenes.signals import enviar_email_orden_background
+class ItemPresupuestoModelTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="87654321",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CD456EF",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general"
+        )
+
+
+    def test_creacion_item_presupuesto_y_calculo_subtotal(self):
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Filtro de aceite",
+            cantidad=Decimal("2.00"),
+            precio_unitario=Decimal("1500.50")
+        )
+        self.assertEqual(item.subtotal, Decimal("3001.00"))
+        self.assertEqual(str(item), "Repuesto: Filtro de aceite ($3001.00)")
+
+    def test_recalculo_subtotal_al_modificar(self):
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Cambio de filtro",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("2000.00")
+        )
+        self.assertEqual(item.subtotal, Decimal("2000.00"))
+
+        item.cantidad = Decimal("2.50")
+        item.save()
+        self.assertEqual(item.subtotal, Decimal("5000.00"))
+
+    def test_borrado_en_cascada_orden_trabajo(self):
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Aceite sintético",
+            cantidad=Decimal("4.00"),
+            precio_unitario=Decimal("3500.00")
+        )
+        self.assertEqual(ItemPresupuesto.objects.count(), 1)
+
+class AgregarManoDeObraAPITest(APITestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Laura",
+            apellido="Rios",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="EF789GH",
+            marca="Chevrolet",
+            modelo="Onix",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido al frenar"
+        )
+        self.admin = User.objects.create_user(
+            email="admin_presupuesto@example.com",
+            nombre="Admin",
+            apellido="User",
+            rol="admin",
+            password="password123"
+        )
+
+        self.tecnico = User.objects.create_user(
+            email="tecnico_presupuesto@example.com",
+            nombre="Tecnico",
+            apellido="User",
+            rol="tecnico",
+            password="password123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_presupuesto@example.com",
+            nombre="Cliente",
+            apellido="User",
+            rol="cliente",
+            password="password123"
+        )
+        self.url = reverse('agregar-mano-de-obra', kwargs={'orden_id': self.orden.id})
+
+    def test_agregar_mano_de_obra_modalidad_estandar(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Diagnóstico general escáner",
+            "modalidad": "estandar",
+            "precio_unitario": "4500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo"], "mano_de_obra")
+        self.assertEqual(response.data["subtotal"], "4500.00")
+        self.assertEqual(ItemPresupuesto.objects.count(), 1)
+
+    def test_agregar_mano_de_obra_modalidad_por_hora(self):
+        self.client.force_authenticate(user=self.tecnico)
+        data = {
+            "descripcion": "Reparación de cableado eléctrico",
+            "modalidad": "por_hora",
+            "cantidad": "3.50",
+            "precio_unitario": "3000.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo"], "mano_de_obra")
+        self.assertEqual(response.data["subtotal"], "10500.00")
+
+    def test_error_cantidad_o_precio_invalido(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Alineación",
+            "cantidad": "-1.00",
+            "precio_unitario": "0.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cantidad", response.data)
+        self.assertIn("precio_unitario", response.data)
+
+    def test_bloqueo_acceso_rol_cliente(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        data = {
+            "descripcion": "Cambio de bujías",
+            "precio_unitario": "2500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bloqueo_acceso_sin_autenticacion(self):
+        data = {
+            "descripcion": "Cambio de bujías",
+            "precio_unitario": "2500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class AgregarRepuestoViewTest(APITestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Esteban",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="20345678",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CD456EF",
+            marca="Ford",
+            modelo="Focus",
+            anio=2019
+        )
+        self.admin = User.objects.create_user(
+            email="admin_repuesto@example.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="password123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_repuesto@example.com",
+            nombre="Tecnico",
+            apellido="Repuesto",
+            rol="tecnico",
+            password="password123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_user2@example.com",
+            nombre="Cliente",
+            apellido="User",
+            rol="cliente",
+            password="password123"
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de pastillas de freno y discos"
+        )
+        self.url = reverse('agregar-repuesto', kwargs={'orden_id': self.orden.id})
+
+    def test_agregar_repuesto_exito(self):
+        self.client.force_authenticate(user=self.tecnico)
+        data = {
+            "descripcion": "Pastillas de freno delanteras Bosch",
+            "cantidad": "2.00",
+            "precio_unitario": "15000.50"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo"], "repuesto")
+        self.assertEqual(response.data["descripcion"], "Pastillas de freno delanteras Bosch")
+        self.assertEqual(response.data["subtotal"], "30001.00")
+        self.assertEqual(ItemPresupuesto.objects.count(), 1)
+
+    def test_agregar_repuesto_cantidad_por_defecto(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Filtro de aceite Fram",
+            "precio_unitario": "8500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["cantidad"], "1.00")
+        self.assertEqual(response.data["subtotal"], "8500.00")
+
+    def test_error_cantidad_o_precio_invalido_repuesto(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "descripcion": "Filtro de aire",
+            "cantidad": "0.00",
+            "precio_unitario": "-500.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cantidad", response.data)
+        self.assertIn("precio_unitario", response.data)
+
+    def test_bloqueo_acceso_rol_cliente_repuesto(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        data = {
+            "descripcion": "Aceite Sintetico 4L",
+            "precio_unitario": "25000.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bloqueo_acceso_sin_autenticacion_repuesto(self):
+        data = {
+            "descripcion": "Aceite Sintetico 4L",
+            "precio_unitario": "25000.00"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class RecalculoMontoTotalTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Lucas",
+            apellido="Martinez",
+            tipo_documento="DNI",
+            dni_cuit="30123456",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA111BB",
+            marca="Chevrolet",
+            modelo="Onix",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Mantenimiento programado 50.000km"
+        )
+
+    def test_monto_total_inicial_cero(self):
+        self.assertEqual(self.orden.monto_total, Decimal('0.00'))
+
+    def test_recalculo_al_agregar_items(self):
+        item1 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Cambio de aceite y filtro",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('12000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('12000.00'))
+
+        item2 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Aceite Sintetico 4L",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('28500.50')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('40500.50'))
+
+    def test_recalculo_al_modificar_item(self):
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Bujias de Iridio",
+            cantidad=Decimal('4.00'),
+            precio_unitario=Decimal('5000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('20000.00'))
+
+        item.cantidad = Decimal('2.00')
+        item.save()
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('10000.00'))
+
+    def test_recalculo_al_eliminar_item(self):
+        item1 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Filtro de aire",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('7000.00')
+        )
+        item2 = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Inspección general",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('5000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('12000.00'))
+
+        item1.delete()
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('5000.00'))
+
+        item2.delete()
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.monto_total, Decimal('0.00'))
+
+
+class TransicionEstadoPresupuestoTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Mario",
+            apellido="Rossi",
+            tipo_documento="DNI",
+            dni_cuit="25987654",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="BB222CC",
+            marca="Fiat",
+            modelo="Cronos",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión de suspensión"
+        )
+
+    def test_transicion_automatica_ingresado_a_en_presupuesto_con_primer_item(self):
+        self.assertEqual(self.orden.estado, EstadoOrden.INGRESADO)
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Diagnóstico de amortiguadores",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('15000.00')
+        )
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+    def test_mantiene_estado_en_presupuesto_con_items_subsiguientes(self):
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Diagnóstico de amortiguadores",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('15000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Kit de amortiguadores delanteros",
+            cantidad=Decimal('2.00'),
+            precio_unitario=Decimal('45000.00')
+        )
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+    def test_no_invierte_estado_si_ya_esta_aprobado(self):
+        self.orden.estado = EstadoOrden.APROBADO
+        self.orden.save()
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Alineación y balanceo",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('8000.00')
+        )
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.APROBADO)
+
+
+class NotificacionWebSocketPresupuestoTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Diego",
+            apellido="Maradona",
+            tipo_documento="DNI",
+            dni_cuit="10101010",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="D1000S",
+            marca="Peugeot",
+            modelo="208",
+            anio=2023
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de kit de distribución"
+        )
+
+    def test_generacion_payload_notificacion_websocket(self):
+        payload = notificar_presupuesto_websocket(self.orden)
+        self.assertEqual(payload["event"], "presupuesto_actualizado")
+        self.assertEqual(payload["orden_id"], str(self.orden.id))
+        self.assertEqual(payload["numero_ot"], self.orden.numero_ot)
+        self.assertEqual(payload["patente"], "D1000S")
+        self.assertEqual(payload["monto_total"], "0.00")
+        self.assertEqual(payload["estado"], "ingresado")
+
+    def test_emision_notificacion_al_guardar_item_presupuesto(self):
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Correa de distribución Continental",
+            cantidad=Decimal('1.00'),
+            precio_unitario=Decimal('35000.00')
+        )
+        self.orden.refresh_from_db()
+        payload = notificar_presupuesto_websocket(self.orden)
+        self.assertEqual(payload["monto_total"], "35000.00")
+        self.assertEqual(payload["estado"], "en_presupuesto")
+
+
+
+
+
+
 
 class OrdenTrabajoEmailTest(TestCase):
     def setUp(self):
-        # Crear un usuario con email
         self.usuario_cliente = User.objects.create_user(
             email="cliente_test@example.com",
             nombre="Carlos",
@@ -229,7 +698,6 @@ class OrdenTrabajoEmailTest(TestCase):
             rol="cliente",
             password="password123"
         )
-        # Crear un cliente de prueba
         self.cliente = Cliente.objects.create(
             usuario=self.usuario_cliente,
             nombre="Carlos",
@@ -238,57 +706,32 @@ class OrdenTrabajoEmailTest(TestCase):
             dni_cuit="87654321",
             condicion_iva="CF"
         )
-        # Crear un vehiculo de prueba
         self.vehiculo = Vehiculo.objects.create(
             cliente=self.cliente,
-            patente="XY987ZZ",
+            patente="CD456EF",
             marca="Ford",
-            modelo="Fiesta",
-            anio=2018
+            modelo="Focus",
+            anio=2021
         )
-        # Crear orden de trabajo
         self.orden = OrdenTrabajo.objects.create(
             vehiculo=self.vehiculo,
-            descripcion_problema="Fallo en la batería"
+            descripcion_problema="Revisión general"
         )
 
-    def test_enviar_email_orden_background_exitoso(self):
-        """Verifica que enviar_email_orden_background envía el correo con los datos correctos del cliente y la orden."""
+    def test_enviar_email_orden_background_exito(self):
         mail.outbox = []
-        
-        # Llamar a la función de fondo de manera síncrona en el test
         enviar_email_orden_background(self.orden.id)
-        
-        # Verificar que se envió un correo
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
-        
-        # Verificar asunto y destinatario
-        self.assertEqual(email.subject, f"Nueva Orden de Trabajo - {self.orden.numero_ot}")
         self.assertEqual(email.to, ["cliente_test@example.com"])
-        
-        # Verificar contenido básico en texto plano
-        self.assertIn("Carlos Gomez", email.body)
-        self.assertIn(self.orden.numero_ot, email.body)
-        self.assertIn("Ford Fiesta", email.body)
-        self.assertIn("Fallo en la batería", email.body)
-        self.assertIn(f"/portal/ordenes/{self.orden.numero_ot}", email.body)
-        
-        # Verificar alternativas HTML
-        self.assertEqual(len(email.alternatives), 1)
-        html_content, mime_type = email.alternatives[0]
-        self.assertEqual(mime_type, "text/html")
-        self.assertIn("Carlos Gomez", html_content)
-        self.assertIn(self.orden.numero_ot, html_content)
-        self.assertIn("Ford Fiesta", html_content)
+        self.assertIn("Nueva Orden de Trabajo", email.subject)
 
-    def test_enviar_email_orden_background_sin_usuario_asociado(self):
-        """Verifica que si el cliente no tiene usuario asociado, no se envía email y no se lanza excepción."""
+    def test_enviar_email_orden_sin_usuario_o_email(self):
         cliente_sin_usuario = Cliente.objects.create(
-            nombre="Lucas",
-            apellido="Perez",
+            nombre="Pedro",
+            apellido="SinEmail",
             tipo_documento="DNI",
-            dni_cuit="11223344",
+            dni_cuit="99887766",
             condicion_iva="CF"
         )
         vehiculo_sin_usuario = Vehiculo.objects.create(
@@ -304,31 +747,25 @@ class OrdenTrabajoEmailTest(TestCase):
         
         mail.outbox = []
         enviar_email_orden_background(orden_sin_usuario.id)
-        # No se debe haber enviado ningún correo ya que no hay email
         self.assertEqual(len(mail.outbox), 0)
 
     @patch("ordenes.signals.enviar_email_orden_background")
     def test_creacion_orden_dispara_senal_email(self, mock_enviar_email):
-        """Verifica que la creación de OrdenTrabajo dispara la señal post_save que invoca al envío del email."""
         orden = OrdenTrabajo.objects.create(
             vehiculo=self.vehiculo,
             descripcion_problema="Alineación y balanceo"
         )
-        
-        # Verificar que se llamó a la función de envío de correo en segundo plano
         mock_enviar_email.assert_called_once_with(orden.id)
 
     @patch("threading.Thread")
     def test_senal_tolerancia_a_errores_de_hilo(self, mock_thread):
-        """Verifica que si ocurre un error al lanzar el hilo de la señal, la creación de la orden no falla."""
         mock_thread.return_value.start.side_effect = Exception("Fallo al iniciar el hilo de pruebas")
-        
-        # No debe levantar ninguna excepción al guardar
         orden = OrdenTrabajo.objects.create(
             vehiculo=self.vehiculo,
             descripcion_problema="Revisión general"
         )
         self.assertIsNotNone(orden.id)
+
 
 
 

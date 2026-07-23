@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ClienteService, ClientePayload } from '../../../core/services/cliente.service';
 
 @Component({
@@ -15,9 +15,12 @@ export class ClienteFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly clienteService = inject(ClienteService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly isSubmitting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly isEditMode = signal<boolean>(false);
+  readonly clienteId = signal<string | null>(null);
 
   clienteForm!: FormGroup;
 
@@ -32,7 +35,7 @@ export class ClienteFormComponent implements OnInit {
       domicilio: ['', [Validators.maxLength(255)]]
     });
 
-    // Suscripción al cambio en tipo_documento para alternar validación síncrona de DNI o CUIT
+    // Suscripción al cambio en tipo_documento para alternar validación síncrona de DNI o CUIT (sólo útil en alta)
     this.clienteForm.get('tipo_documento')?.valueChanges.subscribe((tipo: 'DNI' | 'CUIT') => {
       const dniCuitControl = this.clienteForm.get('dni_cuit');
       if (!dniCuitControl) return;
@@ -43,6 +46,29 @@ export class ClienteFormComponent implements OnInit {
         dniCuitControl.setValidators([Validators.required, Validators.pattern(/^\d{2}-\d{8}-\d{1}$/)]);
       }
       dniCuitControl.updateValueAndValidity();
+    });
+
+    // Verificar si estamos en modo edición capturando el ID en la ruta
+    const id = this.route.snapshot.params['id'];
+    if (id) {
+      this.isEditMode.set(true);
+      this.clienteId.set(id);
+      this.cargarDatosCliente(id);
+    }
+  }
+
+  cargarDatosCliente(id: string): void {
+    this.clienteService.getClienteById(id).subscribe({
+      next: (res) => {
+        this.clienteForm.patchValue(res);
+        // Deshabilitar tipo_documento y dni_cuit por regla de negocio
+        this.clienteForm.get('tipo_documento')?.disable();
+        this.clienteForm.get('dni_cuit')?.disable();
+      },
+      error: (err) => {
+        console.error('Error al cargar datos del cliente:', err);
+        this.errorMessage.set('No se pudieron cargar los datos del cliente.');
+      }
     });
   }
 
@@ -55,18 +81,24 @@ export class ClienteFormComponent implements OnInit {
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
-    const payload: ClientePayload = {
+    // En Angular, form.value excluye automáticamente los controles deshabilitados
+    const payload: Partial<ClientePayload> = {
       ...this.clienteForm.value
     };
 
-    this.clienteService.crearCliente(payload).subscribe({
+    const request$ = this.isEditMode()
+      ? this.clienteService.actualizarCliente(this.clienteId()!, payload)
+      : this.clienteService.crearCliente(payload as ClientePayload);
+
+    request$.subscribe({
       next: () => {
         this.isSubmitting.set(false);
         this.router.navigate(['/clientes']);
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        console.error('Error al registrar cliente en la API:', err);
+        const accion = this.isEditMode() ? 'actualizar' : 'registrar';
+        console.error(`Error al ${accion} cliente en la API:`, err);
         
         // Manejo descriptivo de errores provistos por el backend
         if (err.error?.dni_cuit) {
@@ -79,13 +111,13 @@ export class ClienteFormComponent implements OnInit {
           const mensaje = Array.isArray(err.error[primerCampo]) ? err.error[primerCampo][0] : err.error[primerCampo];
           this.errorMessage.set(`${primerCampo.toUpperCase()}: ${mensaje}`);
         } else {
-          this.errorMessage.set('No se pudo registrar al cliente. Verifique los datos o la conexión al servidor.');
+          this.errorMessage.set(`No se pudo ${accion} al cliente. Verifique los datos o la conexión al servidor.`);
         }
       }
     });
   }
 
   get tipoDocumentoSeleccionado(): string {
-    return this.clienteForm.get('tipo_documento')?.value || 'DNI';
+    return this.clienteForm?.getRawValue()?.tipo_documento || 'DNI';
   }
 }
