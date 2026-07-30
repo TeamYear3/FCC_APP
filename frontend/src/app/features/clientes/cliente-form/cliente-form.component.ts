@@ -101,17 +101,25 @@ export class ClienteFormComponent implements OnInit {
         console.error(`Error al ${accion} cliente en la API:`, err);
         
         // Manejo descriptivo de errores provistos por el backend
-        if (err.error?.dni_cuit) {
-          const detalle = Array.isArray(err.error.dni_cuit) ? err.error.dni_cuit[0] : err.error.dni_cuit;
-          this.errorMessage.set(`Error en DNI/CUIT: ${detalle}`);
-        } else if (err.error?.detail || err.error?.error) {
-          this.errorMessage.set(err.error.detail || err.error.error);
-        } else if (typeof err.error === 'object' && err.error !== null) {
-          const primerCampo = Object.keys(err.error)[0];
-          const mensaje = Array.isArray(err.error[primerCampo]) ? err.error[primerCampo][0] : err.error[primerCampo];
-          this.errorMessage.set(`${primerCampo.toUpperCase()}: ${mensaje}`);
-        } else {
-          this.errorMessage.set(`No se pudo ${accion} al cliente. Verifique los datos o la conexión al servidor.`);
+        let hasFieldError = false;
+        if (err.error && typeof err.error === 'object') {
+          Object.keys(err.error).forEach((key) => {
+            const control = this.clienteForm.get(key);
+            if (control) {
+              const mensaje = Array.isArray(err.error[key]) ? err.error[key][0] : err.error[key];
+              control.setErrors({ serverError: mensaje });
+              control.markAsTouched();
+              hasFieldError = true;
+            }
+          });
+        }
+
+        if (!hasFieldError) {
+          if (err.error?.detail || err.error?.error) {
+            this.errorMessage.set(err.error.detail || err.error.error);
+          } else {
+            this.errorMessage.set(`No se pudo ${accion} al cliente. Verifique los datos o la conexión al servidor.`);
+          }
         }
       }
     });

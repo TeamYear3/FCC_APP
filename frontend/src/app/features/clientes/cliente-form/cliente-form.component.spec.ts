@@ -105,7 +105,8 @@ describe('ClienteFormComponent', () => {
 
     component.onSubmit();
 
-    expect(component.errorMessage()).toContain('Ya existe un cliente con este número de documento.');
+    expect(component.clienteForm.get('dni_cuit')?.errors?.['serverError']).toBe('Ya existe un cliente con este número de documento.');
+    expect(component.errorMessage()).toBeNull();
     expect(component.isSubmitting()).toBe(false);
   });
 });

@@ -85,6 +85,9 @@
                 <span *ngIf="clienteForm.get('dni_cuit')?.errors?.['pattern'] && tipoDocumentoSeleccionado === 'CUIT'">
                   Formato de CUIT inválido. Debe respetar exactamente el formato oficial con guiones: XX-XXXXXXXX-X.
                 </span>
+                <span *ngIf="clienteForm.get('dni_cuit')?.errors?.['serverError']">
+                  {{ clienteForm.get('dni_cuit')?.errors?.['serverError'] }}
+                </span>
               </div>
             </div>
           </div>
@@ -108,8 +111,18 @@
                 placeholder="Ej: Juan o Logística Sur S.A."
                 class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
-              <div *ngIf="clienteForm.get('nombre')?.touched && clienteForm.get('nombre')?.invalid" class="text-red-400 text-xs mt-1.5">
-                El nombre o razón social es requerido (mínimo 2 caracteres).
+              <div *ngIf="clienteForm.get('nombre')?.touched && clienteForm.get('nombre')?.invalid" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <div class="flex flex-col">
+                  <span *ngIf="clienteForm.get('nombre')?.errors?.['required'] || clienteForm.get('nombre')?.errors?.['minlength']">
+                    El nombre o razón social es requerido (mínimo 2 caracteres).
+                  </span>
+                  <span *ngIf="clienteForm.get('nombre')?.errors?.['serverError']">
+                    {{ clienteForm.get('nombre')?.errors?.['serverError'] }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -125,8 +138,18 @@
                 placeholder="Ej: Pérez o S.R.L."
                 class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
-              <div *ngIf="clienteForm.get('apellido')?.touched && clienteForm.get('apellido')?.invalid" class="text-red-400 text-xs mt-1.5">
-                El apellido o designación es requerido (mínimo 2 caracteres).
+              <div *ngIf="clienteForm.get('apellido')?.touched && clienteForm.get('apellido')?.invalid" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <div class="flex flex-col">
+                  <span *ngIf="clienteForm.get('apellido')?.errors?.['required'] || clienteForm.get('apellido')?.errors?.['minlength']">
+                    El apellido o designación es requerido (mínimo 2 caracteres).
+                  </span>
+                  <span *ngIf="clienteForm.get('apellido')?.errors?.['serverError']">
+                    {{ clienteForm.get('apellido')?.errors?.['serverError'] }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -167,8 +190,18 @@
                 placeholder="Ej: +54 9 11 1234-5678"
                 class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
-              <div *ngIf="clienteForm.get('telefono')?.touched && clienteForm.get('telefono')?.invalid" class="text-red-400 text-xs mt-1.5">
-                El número de teléfono excede la longitud máxima permitida (30 caracteres).
+              <div *ngIf="clienteForm.get('telefono')?.touched && clienteForm.get('telefono')?.invalid" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <div class="flex flex-col">
+                  <span *ngIf="clienteForm.get('telefono')?.errors?.['maxlength']">
+                    El número de teléfono excede la longitud máxima permitida (30 caracteres).
+                  </span>
+                  <span *ngIf="clienteForm.get('telefono')?.errors?.['serverError']">
+                    {{ clienteForm.get('telefono')?.errors?.['serverError'] }}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -184,8 +217,18 @@
                 placeholder="Ej: Av. San Martín 1500, Córdoba"
                 class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
-              <div *ngIf="clienteForm.get('domicilio')?.touched && clienteForm.get('domicilio')?.invalid" class="text-red-400 text-xs mt-1.5">
-                El domicilio excede la longitud máxima permitida (255 caracteres).
+              <div *ngIf="clienteForm.get('domicilio')?.touched && clienteForm.get('domicilio')?.invalid" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                <div class="flex flex-col">
+                  <span *ngIf="clienteForm.get('domicilio')?.errors?.['maxlength']">
+                    El domicilio excede la longitud máxima permitida (255 caracteres).
+                  </span>
+                  <span *ngIf="clienteForm.get('domicilio')?.errors?.['serverError']">
+                    {{ clienteForm.get('domicilio')?.errors?.['serverError'] }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

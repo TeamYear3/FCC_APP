@@ -140,7 +140,8 @@ describe('VehiculoFormComponent', () => {
 
     component.onSubmit();
 
-    expect(component.errorMessage()).toContain('Ya existe un vehículo registrado con esta patente.');
+    expect(component.vehiculoForm.get('patente')?.errors?.['serverError']).toBe('Ya existe un vehículo registrado con esta patente.');
+    expect(component.errorMessage()).toBeNull();
     expect(component.isSubmitting()).toBe(false);
   });
 });
