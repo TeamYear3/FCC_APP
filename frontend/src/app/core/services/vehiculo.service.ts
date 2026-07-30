@@ -42,6 +42,13 @@ export class VehiculoService {
   }
 
   /**
+   * Actualiza los datos de un vehículo existente.
+   */
+  actualizarVehiculo(id: string, payload: Partial<VehiculoCreatePayload>): Observable<VehiculoResponse> {
+    return this.http.patch<VehiculoResponse>(`${this.apiUrl}${id}/`, payload);
+  }
+
+  /**
    * Obtiene la lista de vehículos del backend (GET /api/vehiculos/)
    */
   getVehiculos(): Observable<VehiculoResponse[]> {

@@ -26,6 +26,8 @@ export class VehiculoFormComponent implements OnInit {
   readonly terminoBusqueda = signal<string>('');
   readonly mostrarDropdown = signal<boolean>(false);
   readonly clienteSeleccionado = signal<ClienteResponse | null>(null);
+  readonly isEditMode = signal<boolean>(false);
+  readonly vehiculoId = signal<string | null>(null);
 
   vehiculoForm!: FormGroup;
 
@@ -58,6 +60,13 @@ export class VehiculoFormComponent implements OnInit {
     });
 
     this.cargarClientes();
+
+    const id = this.route.snapshot.params['id'];
+    if (id) {
+      this.isEditMode.set(true);
+      this.vehiculoId.set(id);
+      this.cargarDatosVehiculo(id);
+    }
   }
 
   private cargarClientes(): void {
@@ -72,9 +81,42 @@ export class VehiculoFormComponent implements OnInit {
             this.seleccionarCliente(encontrado);
           }
         }
+        
+        // Si estamos en modo edición, ahora que los clientes están cargados,
+        // podemos seleccionar al cliente asociado al vehículo si ya obtuvimos el vehículo.
+        // Pero es más seguro buscarlo dentro del subscribe de cargarDatosVehiculo.
       },
       error: (err) => {
         console.error('Error al cargar la lista de clientes:', err);
+      }
+    });
+  }
+
+  cargarDatosVehiculo(id: string): void {
+    this.vehiculoService.obtenerVehiculoPorId(id).subscribe({
+      next: (vehiculo) => {
+        this.vehiculoForm.patchValue(vehiculo);
+        this.vehiculoForm.get('patente')?.disable(); // Bloqueamos patente por regla de negocio
+
+        // Preseleccionar el cliente asociado
+        if (vehiculo.cliente_id) {
+          // Buscamos si ya tenemos la lista cargada
+          const clientes = this.listaClientes();
+          const encontrado = clientes.find(c => c.id === vehiculo.cliente_id);
+          if (encontrado) {
+            this.seleccionarCliente(encontrado);
+          } else {
+            // Si la lista aún no carga, nos suscribimos puntualmente al cliente
+            this.clienteService.obtenerClientes().subscribe(clientesAPI => {
+              const cli = clientesAPI.find(c => c.id === vehiculo.cliente_id);
+              if (cli) this.seleccionarCliente(cli);
+            });
+          }
+        }
+      },
+      error: (err) => {
+        console.error('Error al cargar vehículo:', err);
+        this.errorMessage.set('No se pudieron cargar los datos del vehículo.');
       }
     });
   }
@@ -115,7 +157,7 @@ export class VehiculoFormComponent implements OnInit {
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
-    const formValue = this.vehiculoForm.value;
+    const formValue = this.vehiculoForm.getRawValue();
     const payload: VehiculoCreatePayload = {
       cliente_id: formValue.cliente_id,
       patente: formValue.patente.toUpperCase().trim(),
@@ -126,7 +168,11 @@ export class VehiculoFormComponent implements OnInit {
       color: formValue.color ? formValue.color.trim() : ''
     };
 
-    this.vehiculoService.crearVehiculo(payload).subscribe({
+    const request$ = this.isEditMode() && this.vehiculoId()
+      ? this.vehiculoService.actualizarVehiculo(this.vehiculoId()!, payload)
+      : this.vehiculoService.crearVehiculo(payload);
+
+    request$.subscribe({
       next: () => {
         this.isSubmitting.set(false);
         // Redirigir a la vista de clientes o listado de vehículos
@@ -134,7 +180,7 @@ export class VehiculoFormComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        console.error('Error al registrar vehículo en la API:', err);
+        console.error('Error al procesar vehículo en la API:', err);
 
         // Manejo descriptivo de errores provistos por el backend
         let hasFieldError = false;
