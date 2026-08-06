@@ -7,6 +7,7 @@ export interface OrdenPayload {
   vehiculo_id: string;
   descripcion_problema: string;
   fecha_ingreso: string; // YYYY-MM-DD
+  estado?: string;
 }
 
 export interface OrdenResponse {

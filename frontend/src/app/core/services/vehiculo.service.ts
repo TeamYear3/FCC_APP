@@ -30,4 +30,11 @@ export class VehiculoService {
   getVehiculos(): Observable<VehiculoResponse[]> {
     return this.http.get<VehiculoResponse[]>(this.apiUrl);
   }
+
+  /**
+   * Obtiene los detalles de un vehículo por su ID (GET /api/vehiculos/<id>/)
+   */
+  getVehiculoById(id: string): Observable<VehiculoResponse> {
+    return this.http.get<VehiculoResponse>(`${this.apiUrl}${id}/`);
+  }
 }
