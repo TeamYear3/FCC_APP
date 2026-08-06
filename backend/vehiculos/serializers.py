@@ -19,6 +19,7 @@ class VehiculoSerializer(serializers.ModelSerializer):
             'does_not_exist': 'El cliente especificado no existe.'
         }
     )
+    numero_chasis = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Vehiculo

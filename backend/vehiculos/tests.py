@@ -438,4 +438,19 @@ class VehiculoAPITestCase(APITestCase):
         response_get = self.client.get(self.url_detalle)
         self.assertEqual(response_get.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_crear_vehiculo_sin_chasis_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA777BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021
+            # numero_chasis omitido
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(response.data["numero_chasis"])
+
+
 
