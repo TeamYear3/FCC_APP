@@ -61,6 +61,7 @@ export class VehiculoFormComponent implements OnInit {
         Validators.required,
         Validators.pattern(/^([A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/i)
       ]],
+      numero_chasis: ['', [Validators.maxLength(50)]],
       nro_chasis: ['', [Validators.maxLength(50)]],
       kilometraje: [null, [Validators.min(0)]],
       color: ['', [Validators.maxLength(50)]],
@@ -103,9 +104,14 @@ export class VehiculoFormComponent implements OnInit {
   cargarDatosVehiculo(id: string): void {
     this.vehiculoService.obtenerVehiculoPorId(id).subscribe({
       next: (vehiculo) => {
-        this.vehiculoForm.patchValue(vehiculo);
+        this.vehiculoForm.patchValue({
+          ...vehiculo,
+          numero_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || '',
+          nro_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || ''
+        });
         this.vehiculoForm.get('patente')?.disable(); // Bloqueamos patente por regla de negocio
-        this.vehiculoForm.get('nro_chasis')?.disable(); // Bloqueamos chasis por regla de negocio en modo edición (TK028)
+        this.vehiculoForm.get('numero_chasis')?.disable(); // Bloqueamos chasis por regla de negocio en modo edición (TK028)
+        this.vehiculoForm.get('nro_chasis')?.disable();
 
         // Preseleccionar el cliente asociado
         if (vehiculo.cliente_id) {
@@ -167,10 +173,12 @@ export class VehiculoFormComponent implements OnInit {
     this.errorMessage.set(null);
 
     const formValue = this.vehiculoForm.getRawValue();
+    const chasisVal = (formValue.numero_chasis || formValue.nro_chasis || '').toUpperCase().trim();
     const payload: VehiculoCreatePayload = {
       cliente_id: formValue.cliente_id,
       patente: formValue.patente ? formValue.patente.toUpperCase().trim() : '',
-      nro_chasis: formValue.nro_chasis ? formValue.nro_chasis.toUpperCase().trim() : '',
+      numero_chasis: chasisVal,
+      nro_chasis: chasisVal,
       marca: formValue.marca.trim(),
       modelo: formValue.modelo.trim(),
       anio: formValue.anio ? Number(formValue.anio) : null,
