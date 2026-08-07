@@ -204,8 +204,8 @@ class VehiculoAPITestCase(APITestCase):
             "modelo": "208"
         }
         response = self.client.post(self.url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("patente", response.data)
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("detail", response.data)
 
     def test_crear_vehiculo_cliente_inexistente(self):
         import uuid
@@ -333,6 +333,7 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+<<<<<<< HEAD
 
 from ordenes.models import OrdenTrabajo
 
@@ -391,3 +392,122 @@ class HistorialVehiculoAPITestCase(APITestCase):
         url = reverse('historial-vehiculo', kwargs={'pk': uuid.uuid4()})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_crear_vehiculo_patente_duplicada_retorna_409(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear un vehículo con patente específica
+        Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA222BB",
+            marca="Renault",
+            modelo="Clio"
+        )
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "aa222bb", # duplicada (debe ser insensible a mayúsculas/minúsculas)
+            "marca": "Peugeot",
+            "modelo": "208"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("detail", response.data)
+
+    def test_crear_vehiculo_chasis_duplicado_retorna_409(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear un vehículo con chasis específico
+        Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA333BB",
+            numero_chasis="CHASIS12345678901",
+            marca="Renault",
+            modelo="Clio"
+        )
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA444BB",
+            "numero_chasis": "chasis12345678901", # duplicado
+            "marca": "Peugeot",
+            "modelo": "208"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("detail", response.data)
+
+    def test_actualizar_vehiculo_bloqueo_numero_chasis(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Asignamos chasis inicial
+        self.vehiculo.numero_chasis = "CHASISINIT123"
+        self.vehiculo.save()
+
+        data = {
+            "numero_chasis": "NUEVOCHASIS999"
+        }
+        response = self.client.patch(self.url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["numero_chasis"], "CHASISINIT123")
+
+        # Verificar en base de datos que no se haya modificado
+        self.vehiculo.refresh_from_db()
+        self.assertEqual(self.vehiculo.numero_chasis, "CHASISINIT123")
+
+    def test_listar_vehiculos_filtrado_por_cliente(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear otro vehículo para el cliente_nuevo
+        Vehiculo.objects.create(
+            cliente=self.cliente_nuevo,
+            patente="AA888BB",
+            marca="Ford",
+            modelo="Fiesta"
+        )
+        # Listar filtrando por cliente_actual (que tiene self.vehiculo)
+        response = self.client.get(f"{self.url}?cliente={self.cliente_actual.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+
+    def test_eliminar_vehiculo_sin_ordenes_hace_hard_delete(self):
+        self.client.force_authenticate(user=self.admin_user)
+        vehiculo_libre = Vehiculo.objects.create(
+            cliente=self.cliente_actual,
+            patente="AA999BB",
+            marca="Fiat",
+            modelo="Cronos"
+        )
+        url_del = reverse('detalle-vehiculo', kwargs={'pk': vehiculo_libre.id})
+        response = self.client.delete(url_del)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Verificar que ya no existe en la BD
+        self.assertFalse(Vehiculo.objects.filter(id=vehiculo_libre.id).exists())
+
+    def test_eliminar_vehiculo_con_ordenes_hace_soft_delete(self):
+        from ordenes.models import OrdenTrabajo
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear una orden vinculada a self.vehiculo
+        OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Falla en alternador y batería"
+        )
+        response = self.client.delete(self.url_detalle)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        # Debe seguir existiendo en la base de datos pero inactivo
+        self.vehiculo.refresh_from_db()
+        self.assertFalse(self.vehiculo.activo)
+
+        # No debe figurar en el queryset de detalle ni de listado de activos
+        response_get = self.client.get(self.url_detalle)
+        self.assertEqual(response_get.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_crear_vehiculo_sin_chasis_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA777BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021
+            # numero_chasis omitido
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(response.data["numero_chasis"])
