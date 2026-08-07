@@ -216,6 +216,26 @@
           </div>
         </div>
 
+        <!-- Campo Número de Chasis (Opcional en Alta, Bloqueado en Edición - TK028) -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-gray-400 pl-1 block">Número de Chasis (opcional)</label>
+          <div class="bg-[#121212] border border-[#2A2A2A] rounded-xl px-3.5 py-3 flex items-center gap-3 focus-within:border-[#FFCC00] transition-colors">
+            <!-- Ícono Chasis / Engranaje-Motor -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <input 
+              type="text" 
+              formControlName="nro_chasis"
+              placeholder="Ingrese N° de Chasis (Ej: 8AGEK123...)" 
+              class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+          <div *ngIf="vehiculoForm.get('nro_chasis')?.invalid && vehiculoForm.get('nro_chasis')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('nro_chasis')?.errors?.['serverError']" class="font-bold">{{ vehiculoForm.get('nro_chasis')?.errors?.['serverError'] }}</span>
+          </div>
+        </div>
+
         <!-- Campo Kilometraje -->
         <div class="space-y-1.5">
           <label class="text-xs font-medium text-gray-400 pl-1 block">Kilometraje</label>
@@ -297,5 +317,73 @@
       </button>
 
     </form>
+  </div>
+</div>
+
+<!-- Modal de Advertencia de Unicidad Global (Error 409 Conflict - TK020 & TK028) -->
+<div *ngIf="mostrarModalUnicidad()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+  <div class="bg-[#1E1E1E] border border-[#FFCC00]/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5">
+    
+    <!-- Encabezado del Modal -->
+    <div class="flex items-center gap-3 border-b border-[#2A2A2A] pb-4">
+      <div class="p-2.5 bg-[#FFCC00]/10 border border-[#FFCC00]/20 rounded-xl text-[#FFCC00] shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold text-white leading-snug">Advertencia de Unicidad Global</h3>
+        <p class="text-xs text-gray-400">Coincidencia de vehículo detectada</p>
+      </div>
+    </div>
+
+    <!-- Cuerpo del mensaje -->
+    <div class="space-y-3">
+      <p class="text-sm text-gray-300 leading-relaxed">
+        {{ datosConflicto()?.mensaje }}
+      </p>
+
+      <div class="bg-[#121212] border border-[#2A2A2A] rounded-xl p-3.5 space-y-1.5 text-xs">
+        <div class="flex justify-between text-gray-400">
+          <span>Patente ingresada:</span>
+          <span class="font-mono text-white font-bold">{{ datosConflicto()?.patente || 'N/A' }}</span>
+        </div>
+        <div *ngIf="datosConflicto()?.nro_chasis" class="flex justify-between text-gray-400">
+          <span>N° de Chasis:</span>
+          <span class="font-mono text-white font-bold">{{ datosConflicto()?.nro_chasis }}</span>
+        </div>
+        <div class="flex justify-between text-gray-400 pt-1 border-t border-[#2A2A2A]">
+          <span>Propietario registrado:</span>
+          <span class="text-[#FFCC00] font-semibold">{{ datosConflicto()?.clienteNombre }}</span>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-400 italic">
+        Un vehículo no puede pertenecer a dos clientes simultáneamente. ¿Desea proceder a reasignar la titularidad del vehículo al cliente seleccionado?
+      </p>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex flex-col gap-2 pt-2">
+      <button 
+        type="button" 
+        (click)="confirmarReasignacion()"
+        class="w-full bg-[#FFCC00] hover:bg-[#e6b800] text-[#121212] font-bold py-3 rounded-xl transition-colors text-sm shadow-lg shadow-[#FFCC00]/10 flex items-center justify-center gap-2"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        <span>Gestionar Reasignación de Titularidad</span>
+      </button>
+
+      <button 
+        type="button" 
+        (click)="cerrarModalUnicidad()"
+        class="w-full bg-[#2A2A2A] hover:bg-[#333333] text-gray-300 font-medium py-2.5 rounded-xl transition-colors text-sm"
+      >
+        Cancelar
+      </button>
+    </div>
+
   </div>
 </div>

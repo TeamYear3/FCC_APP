@@ -11,6 +11,7 @@ export interface VehiculoCreatePayload {
   anio?: number | null;
   kilometraje?: number | null;
   color?: string;
+  nro_chasis?: string;
   foto_url?: string | null;
 }
 

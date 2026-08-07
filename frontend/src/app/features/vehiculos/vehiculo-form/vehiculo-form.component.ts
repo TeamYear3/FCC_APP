@@ -28,6 +28,13 @@ export class VehiculoFormComponent implements OnInit {
   readonly clienteSeleccionado = signal<ClienteResponse | null>(null);
   readonly isEditMode = signal<boolean>(false);
   readonly vehiculoId = signal<string | null>(null);
+  readonly mostrarModalUnicidad = signal<boolean>(false);
+  readonly datosConflicto = signal<{
+    patente?: string;
+    nro_chasis?: string;
+    clienteNombre?: string;
+    mensaje?: string;
+  } | null>(null);
 
   vehiculoForm!: FormGroup;
 
@@ -54,6 +61,7 @@ export class VehiculoFormComponent implements OnInit {
         Validators.required,
         Validators.pattern(/^([A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/i)
       ]],
+      nro_chasis: ['', [Validators.maxLength(50)]],
       kilometraje: [null, [Validators.min(0)]],
       color: ['', [Validators.maxLength(50)]],
       informacion_adicional: ['', [Validators.maxLength(255)]]
@@ -97,6 +105,7 @@ export class VehiculoFormComponent implements OnInit {
       next: (vehiculo) => {
         this.vehiculoForm.patchValue(vehiculo);
         this.vehiculoForm.get('patente')?.disable(); // Bloqueamos patente por regla de negocio
+        this.vehiculoForm.get('nro_chasis')?.disable(); // Bloqueamos chasis por regla de negocio en modo edición (TK028)
 
         // Preseleccionar el cliente asociado
         if (vehiculo.cliente_id) {
@@ -160,7 +169,8 @@ export class VehiculoFormComponent implements OnInit {
     const formValue = this.vehiculoForm.getRawValue();
     const payload: VehiculoCreatePayload = {
       cliente_id: formValue.cliente_id,
-      patente: formValue.patente.toUpperCase().trim(),
+      patente: formValue.patente ? formValue.patente.toUpperCase().trim() : '',
+      nro_chasis: formValue.nro_chasis ? formValue.nro_chasis.toUpperCase().trim() : '',
       marca: formValue.marca.trim(),
       modelo: formValue.modelo.trim(),
       anio: formValue.anio ? Number(formValue.anio) : null,
@@ -181,6 +191,18 @@ export class VehiculoFormComponent implements OnInit {
       error: (err) => {
         this.isSubmitting.set(false);
         console.error('Error al procesar vehículo en la API:', err);
+
+        // Interceptamos error 409 Conflict (Unicidad Global - Vehículo existente bajo otro cliente)
+        if (err.status === 409) {
+          this.mostrarModalUnicidad.set(true);
+          this.datosConflicto.set({
+            patente: payload.patente,
+            nro_chasis: payload.nro_chasis,
+            clienteNombre: err.error?.cliente_propietario || err.error?.cliente_nombre || 'otro cliente',
+            mensaje: err.error?.detail || err.error?.mensaje || 'El vehículo con esta patente o número de chasis ya se encuentra registrado a nombre de otro cliente.'
+          });
+          return;
+        }
 
         // Manejo descriptivo de errores provistos por el backend
         let hasFieldError = false;
@@ -205,5 +227,14 @@ export class VehiculoFormComponent implements OnInit {
         }
       }
     });
+  }
+
+  cerrarModalUnicidad(): void {
+    this.mostrarModalUnicidad.set(false);
+    this.datosConflicto.set(null);
+  }
+
+  confirmarReasignacion(): void {
+    this.cerrarModalUnicidad();
   }
 }
