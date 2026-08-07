@@ -519,4 +519,23 @@ class HistorialVehiculoAPITestCase(APITestCase):
         self.assertIn('attachment; filename=', response['Content-Disposition'])
         self.assertTrue(len(response.content) > 0)
 
+    def test_reasignar_vehiculo_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        nuevo_cliente = Cliente.objects.create(
+            nombre="Nuevo",
+            apellido="Titular",
+            tipo_documento="DNI",
+            dni_cuit="99887766",
+            condicion_iva="CF"
+        )
+        url = reverse('reasignar-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {'nuevo_cliente_id': str(nuevo_cliente.id)}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.vehiculo.refresh_from_db()
+        self.assertEqual(self.vehiculo.cliente.id, nuevo_cliente.id)
+        self.assertTrue(self.vehiculo.activo)
+
+
 

@@ -230,3 +230,35 @@ class ExportarHistorialPDFView(APIView):
         return response
 
 
+from clientes.models import Cliente
+from rest_framework import status
+
+
+class ReasignarVehiculoView(APIView):
+    def get_permissions(self):
+        return [IsAuthenticated(), EsAdministrador()]
+
+    def post(self, request, pk):
+        nuevo_cliente_id = request.data.get('nuevo_cliente_id') or request.data.get('cliente_id')
+        if not nuevo_cliente_id:
+            return Response({'detail': 'Debe especificar el ID del nuevo cliente.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            vehiculo = Vehiculo.objects.get(id=pk)
+        except Vehiculo.DoesNotExist:
+            raise NotFound("El vehículo especificado no existe.")
+
+        try:
+            nuevo_cliente = Cliente.objects.get(id=nuevo_cliente_id)
+        except Cliente.DoesNotExist:
+            return Response({'detail': 'El cliente destino especificado no existe.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        vehiculo.cliente = nuevo_cliente
+        vehiculo.activo = True
+        vehiculo.save()
+
+        serializer = VehiculoSerializer(vehiculo)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+

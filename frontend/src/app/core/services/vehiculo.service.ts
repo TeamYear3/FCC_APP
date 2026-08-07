@@ -84,4 +84,13 @@ export class VehiculoService {
   descargarHistorialPDF(id: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}${id}/historial/pdf/`, { responseType: 'blob' });
   }
+
+  /**
+   * Reasigna la titularidad de un vehículo a un nuevo cliente (POST /api/vehiculos/<id>/reasignar/)
+   */
+  reasignarVehiculo(vehiculoId: string, nuevoClienteId: string): Observable<VehiculoResponse> {
+    return this.http.post<VehiculoResponse>(`${this.apiUrl}${vehiculoId}/reasignar/`, {
+      nuevo_cliente_id: nuevoClienteId
+    });
+  }
 }

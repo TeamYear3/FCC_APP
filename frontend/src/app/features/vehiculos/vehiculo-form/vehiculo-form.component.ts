@@ -29,7 +29,9 @@ export class VehiculoFormComponent implements OnInit {
   readonly isEditMode = signal<boolean>(false);
   readonly vehiculoId = signal<string | null>(null);
   readonly mostrarModalUnicidad = signal<boolean>(false);
+  readonly reasignando = signal<boolean>(false);
   readonly datosConflicto = signal<{
+    vehiculo_id?: string;
     patente?: string;
     nro_chasis?: string;
     clienteNombre?: string;
@@ -204,6 +206,7 @@ export class VehiculoFormComponent implements OnInit {
         if (err.status === 409) {
           this.mostrarModalUnicidad.set(true);
           this.datosConflicto.set({
+            vehiculo_id: err.error?.vehiculo_id || err.error?.id,
             patente: payload.patente,
             nro_chasis: payload.nro_chasis,
             clienteNombre: err.error?.cliente_propietario || err.error?.cliente_nombre || 'otro cliente',
@@ -243,6 +246,28 @@ export class VehiculoFormComponent implements OnInit {
   }
 
   confirmarReasignacion(): void {
-    this.cerrarModalUnicidad();
+    const clienteId = this.vehiculoForm.get('cliente_id')?.value;
+    const conflicto = this.datosConflicto();
+    const vehiculoId = conflicto?.vehiculo_id;
+
+    if (!clienteId || !vehiculoId) {
+      this.cerrarModalUnicidad();
+      return;
+    }
+
+    this.reasignando.set(true);
+    this.vehiculoService.reasignarVehiculo(vehiculoId, clienteId).subscribe({
+      next: () => {
+        this.reasignando.set(false);
+        this.cerrarModalUnicidad();
+        this.router.navigate(['/clientes']);
+      },
+      error: (err) => {
+        this.reasignando.set(false);
+        this.cerrarModalUnicidad();
+        console.error('Error al reasignar vehículo:', err);
+        this.errorMessage.set('No se pudo completar la reasignación de la titularidad.');
+      }
+    });
   }
 }
