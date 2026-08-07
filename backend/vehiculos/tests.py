@@ -537,5 +537,19 @@ class HistorialVehiculoAPITestCase(APITestCase):
         self.assertEqual(self.vehiculo.cliente.id, nuevo_cliente.id)
         self.assertTrue(self.vehiculo.activo)
 
+    def test_historial_cliente_acceso_prohibido_vehiculo_ajeno(self):
+        usuario_cliente = User.objects.create_user(
+            email="cliente_ajeno@example.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="clientepassword123"
+        )
+        self.client.force_authenticate(user=usuario_cliente)
+        url = reverse('historial-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
 
 

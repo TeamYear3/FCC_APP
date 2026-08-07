@@ -83,4 +83,9 @@ describe('VehiculoHistorialComponent', () => {
     component.descargarPDF();
     expect(mockVehiculoService.descargarHistorialPDF).toHaveBeenCalledWith('123-uuid');
   });
+
+  it('debe calcular correctamente si una etapa de la línea de tiempo ha sido alcanzada', () => {
+    expect(component.isEtapaAlcanzada('ingresado')).toBe(true);
+    expect(component.isEtapaAlcanzada('finalizado')).toBe(true);
+  });
 });

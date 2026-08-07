@@ -93,6 +93,26 @@ export class VehiculoHistorialComponent implements OnInit {
     });
   }
 
+  readonly etapasTimeline = [
+    { key: 'ingresado', label: 'Ingresado' },
+    { key: 'en_presupuesto', label: 'En Presupuesto' },
+    { key: 'aprobado', label: 'Aprobado' },
+    { key: 'en_proceso', label: 'En Proceso' },
+    { key: 'finalizado', label: 'Finalizado' }
+  ];
+
+  isEtapaAlcanzada(key: string): boolean {
+    const list = this.ordenes();
+    if (!list || list.length === 0) return false;
+    const estadoActual = (list[0]?.estado || '').toLowerCase();
+    
+    const ordenEstados = ['ingresado', 'en_presupuesto', 'aprobado', 'en_proceso', 'finalizado'];
+    const idxActual = ordenEstados.indexOf(estadoActual);
+    const idxEtapa = ordenEstados.indexOf(key);
+
+    return idxEtapa !== -1 && idxActual !== -1 && idxEtapa <= idxActual;
+  }
+
   getEstadoBadgeClass(estado: string): string {
     switch (estado?.toLowerCase()) {
       case 'ingresado':

@@ -1,8 +1,10 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from core.permissions import EsAdministrador, EsTecnico
+from core.permissions import EsAdministrador, EsTecnico, EsCliente
+from rest_framework.exceptions import NotFound, PermissionDenied
 from .models import Vehiculo
 from .serializers import VehiculoSerializer
+
 
 class CrearVehiculoView(generics.ListCreateAPIView):
     serializer_class = VehiculoSerializer
@@ -38,7 +40,6 @@ class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
 
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound
 from ordenes.models import OrdenTrabajo
 from ordenes.serializers import OrdenTrabajoSerializer
 
@@ -63,12 +64,20 @@ class HistorialVehiculoView(generics.ListAPIView):
     pagination_class = HistorialVehiculoPagination
 
     def get_permissions(self):
-        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get_queryset(self):
         vehiculo_id = self.kwargs.get('pk')
-        if not Vehiculo.objects.filter(id=vehiculo_id).exists():
+        try:
+            vehiculo = Vehiculo.objects.select_related('cliente__usuario').get(id=vehiculo_id)
+        except Vehiculo.DoesNotExist:
             raise NotFound("El vehículo especificado no existe.")
+
+        user = self.request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            if not vehiculo.cliente or vehiculo.cliente.usuario_id != user.id:
+                raise PermissionDenied("No tiene autorización para consultar la información de este vehículo.")
+
         return OrdenTrabajo.objects.filter(vehiculo_id=vehiculo_id).order_by('-fecha_ingreso', '-creado_en')
 
 
@@ -83,13 +92,17 @@ from reportlab.lib import colors
 
 class ExportarHistorialPDFView(APIView):
     def get_permissions(self):
-        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get(self, request, pk):
         try:
-            vehiculo = Vehiculo.objects.select_related('cliente').get(id=pk, activo=True)
+            vehiculo = Vehiculo.objects.select_related('cliente__usuario').get(id=pk, activo=True)
         except Vehiculo.DoesNotExist:
             raise NotFound("El vehículo especificado no existe.")
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not vehiculo.cliente or vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para exportar la información de este vehículo.")
 
         ordenes = OrdenTrabajo.objects.filter(vehiculo=vehiculo).order_by('-fecha_ingreso', '-creado_en')
 
