@@ -7,6 +7,11 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
     vehiculo_id = serializers.UUIDField(required=True)
     descripcion_problema = serializers.CharField(required=True, allow_blank=False)
     fecha_ingreso = serializers.DateField(required=True)
+    estado = serializers.ChoiceField(
+        choices=EstadoOrden.choices,
+        default=EstadoOrden.INGRESADO,
+        required=False
+    )
 
     class Meta:
         model = OrdenTrabajo
@@ -29,7 +34,6 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'id',
             'numero_ot',
             'vehiculo',
-            'estado',
             'tecnico',
             'fecha_entrega',
             'comentario_rechazo',
@@ -48,10 +52,10 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
         vehiculo = Vehiculo.objects.get(id=vehiculo_id)
         orden = OrdenTrabajo.objects.create(
             vehiculo=vehiculo,
-            estado=EstadoOrden.INGRESADO,
             **validated_data
         )
         return orden
+
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)

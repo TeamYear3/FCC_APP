@@ -48,6 +48,74 @@
           </div>
         </div>
 
+        <!-- Selector de Modo de Admisión (Premium / MD3) -->
+        <div class="flex flex-col gap-2">
+          <label class="typography-body-highlight text-white uppercase tracking-wide">
+            Modo de Ingreso <span class="text-color-primary-accent">*</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-md">
+            <!-- Modo Presupuesto -->
+            <label
+              class="relative flex flex-col p-md rounded-card border-2 bg-black/30 hover:bg-black/50 cursor-pointer transition-all duration-200"
+              [class.border-color-primary-accent]="modoSeleccionado === 'PRESUPUESTO'"
+              [class.border-white/10]="modoSeleccionado !== 'PRESUPUESTO'"
+            >
+              <input
+                type="radio"
+                formControlName="modo"
+                value="PRESUPUESTO"
+                class="sr-only"
+              />
+              <div class="flex items-center gap-2 mb-1">
+                <span
+                  class="w-4 h-4 rounded-full border flex items-center justify-center transition-colors"
+                  [class.border-color-primary-accent]="modoSeleccionado === 'PRESUPUESTO'"
+                  [class.border-white/30]="modoSeleccionado !== 'PRESUPUESTO'"
+                >
+                  <span
+                    *ngIf="modoSeleccionado === 'PRESUPUESTO'"
+                    class="w-2 h-2 rounded-full bg-color-primary-accent"
+                  ></span>
+                </span>
+                <span class="font-bold text-sm text-white uppercase">Modo Presupuesto</span>
+              </div>
+              <span class="text-xs text-color-text-secondary">
+                Ingreso rápido del vehículo para tasación. Sin turno obligatorio ni aceptación previa de cotización.
+              </span>
+            </label>
+
+            <!-- Modo Orden de Trabajo -->
+            <label
+              class="relative flex flex-col p-md rounded-card border-2 bg-black/30 hover:bg-black/50 cursor-pointer transition-all duration-200"
+              [class.border-color-primary-accent]="modoSeleccionado === 'ORDEN_TRABAJO'"
+              [class.border-white/10]="modoSeleccionado !== 'ORDEN_TRABAJO'"
+            >
+              <input
+                type="radio"
+                formControlName="modo"
+                value="ORDEN_TRABAJO"
+                class="sr-only"
+              />
+              <div class="flex items-center gap-2 mb-1">
+                <span
+                  class="w-4 h-4 rounded-full border flex items-center justify-center transition-colors"
+                  [class.border-color-primary-accent]="modoSeleccionado === 'ORDEN_TRABAJO'"
+                  [class.border-white/30]="modoSeleccionado !== 'ORDEN_TRABAJO'"
+                >
+                  <span
+                    *ngIf="modoSeleccionado === 'ORDEN_TRABAJO'"
+                    class="w-2 h-2 rounded-full bg-color-primary-accent"
+                  ></span>
+                </span>
+                <span class="font-bold text-sm text-white uppercase">Orden de Trabajo</span>
+              </div>
+              <span class="text-xs text-color-text-secondary">
+                Ingreso formal a taller con asignación de turno, conformidad explícita del cliente y datos fiscales verificados.
+              </span>
+            </label>
+          </div>
+        </div>
+
         <!-- Selector de Vehículo -->
         <div class="flex flex-col gap-2">
           <label class="typography-body-highlight text-white uppercase tracking-wide">
@@ -62,10 +130,135 @@
           </span>
         </div>
 
+        <!-- Resumen del Vehículo Seleccionado (En tiempo real) -->
+        <div
+          *ngIf="selectedVehiculoDetails()"
+          class="p-md rounded-card bg-black/40 border border-white/10 flex flex-col gap-md animate-fadeIn"
+        >
+          <div class="flex items-center justify-between border-b border-white/10 pb-2">
+            <span class="text-xs font-bold text-color-primary-accent uppercase tracking-wider">
+              Ficha Técnica del Vehículo
+            </span>
+            <span class="px-2.5 py-0.5 bg-color-primary-accent text-black font-extrabold text-xs rounded-badge">
+              {{ selectedVehiculoDetails()?.patente }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-md text-sm">
+            <div>
+              <span class="block text-xs text-color-text-secondary mb-0.5">Marca / Modelo</span>
+              <span class="font-semibold text-white">{{ selectedVehiculoDetails()?.marca }} {{ selectedVehiculoDetails()?.modelo }}</span>
+            </div>
+            <div>
+              <span class="block text-xs text-color-text-secondary mb-0.5">Año</span>
+              <span class="font-semibold text-white">{{ selectedVehiculoDetails()?.anio || 'N/A' }}</span>
+            </div>
+            <div>
+              <span class="block text-xs text-color-text-secondary mb-0.5">Kilometraje</span>
+              <span class="font-semibold text-white">{{ selectedVehiculoDetails()?.kilometraje | number }} km</span>
+            </div>
+            <div>
+              <span class="block text-xs text-color-text-secondary mb-0.5">Color</span>
+              <span class="font-semibold text-white">{{ selectedVehiculoDetails()?.color || 'N/A' }}</span>
+            </div>
+          </div>
+
+          <!-- Propietario/Titular del Vehículo -->
+          <div *ngIf="selectedClienteDetails()" class="border-t border-white/5 pt-3 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-color-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div class="text-xs">
+              <span class="block text-[10px] text-color-text-secondary uppercase">Propietario / Titular</span>
+              <span class="font-bold text-white">
+                {{ selectedClienteDetails()?.nombre }} {{ selectedClienteDetails()?.apellido }}
+              </span>
+              <span class="text-color-text-secondary ml-1">
+                ({{ selectedClienteDetails()?.tipo_documento }}: {{ selectedClienteDetails()?.dni_cuit }})
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección de Datos del Turno y Aceptación (Solo para Modo Orden de Trabajo) -->
+        <div
+          *ngIf="modoSeleccionado === 'ORDEN_TRABAJO'"
+          class="p-md rounded-card bg-black/20 border border-dashed border-white/15 flex flex-col gap-4 animate-fadeIn"
+        >
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-badge text-[10px] font-bold uppercase tracking-wider">
+              Requisitos de Admisión
+            </span>
+          </div>
+
+          <!-- Selector de Turno Agendado -->
+          <div class="flex flex-col gap-2">
+            <label for="turno_id" class="typography-body-highlight text-white uppercase tracking-wide">
+              Vincular Turno Agendado <span class="text-color-primary-accent">*</span>
+            </label>
+            <select
+              id="turno_id"
+              formControlName="turno_id"
+              class="w-full min-h-[48px] px-md py-3 rounded-card bg-black/40 border border-white/10 text-white typography-body-highlight focus:outline-none focus:border-color-primary-accent transition-colors duration-200"
+              [class.border-red-500]="ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched"
+            >
+              <option [ngValue]="null">-- Seleccione un turno disponible --</option>
+              <option *ngFor="let t of turnosDisponibles" [value]="t.id">{{ t.descripcion }}</option>
+            </select>
+            <span
+              *ngIf="ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched"
+              class="text-red-400 text-xs mt-1"
+            >
+              Es obligatorio vincular un turno agendado para abrir una Orden de Trabajo.
+            </span>
+          </div>
+
+          <!-- Consentimiento y Facturación -->
+          <div class="flex flex-col gap-md pt-2">
+            <!-- Aceptación explícita -->
+            <label class="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                formControlName="cliente_acepto"
+                class="w-5 h-5 rounded border-white/15 bg-black/40 text-color-primary-accent focus:ring-color-primary-accent focus:ring-offset-black transition-colors shrink-0 mt-0.5 cursor-pointer"
+              />
+              <div class="text-sm">
+                <span class="font-bold text-white group-hover:text-color-primary-accent transition-colors">
+                  Aceptación y Aprobación del Cliente
+                </span>
+                <p class="text-xs text-color-text-secondary mt-1">
+                  El cliente acepta de forma explícita el ingreso del vehículo al taller, validando los síntomas declarados y autorizando el diagnóstico inicial.
+                </p>
+              </div>
+            </label>
+            <span
+              *ngIf="ordenForm.get('cliente_acepto')?.invalid && ordenForm.get('cliente_acepto')?.touched"
+              class="text-red-400 text-xs mt-1 pl-8"
+            >
+              Debe contar con la aceptación y conformidad explícita del cliente para proceder.
+            </span>
+
+            <!-- Datos de Facturación Mínimos -->
+            <div class="flex items-start gap-3 mt-2">
+              <div class="w-5 h-5 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div class="text-xs text-color-text-secondary">
+                <span class="font-bold text-white">Datos Fiscales Verificados</span>
+                <p class="mt-0.5">La facturación se emitirá según la condición tributaria definida en la ficha técnica del titular.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Descripción del problema -->
         <div class="flex flex-col gap-2">
           <label for="descripcion_problema" class="typography-body-highlight text-white uppercase tracking-wide">
-            Descripción del Problema / Falla Reportada <span class="text-color-primary-accent">*</span>
+            Descripción del Problema / Falla Fielmente Reportada <span class="text-color-primary-accent">*</span>
           </label>
           <textarea
             id="descripcion_problema"
@@ -127,7 +320,7 @@
             [disabled]="ordenForm.invalid || isSubmitting()"
             class="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg cursor-pointer"
           >
-            <span *ngIf="!isSubmitting()">Crear Orden</span>
+            <span *ngIf="!isSubmitting()">{{ modoSeleccionado === 'PRESUPUESTO' ? 'Crear Presupuesto' : 'Crear Orden' }}</span>
             <span *ngIf="isSubmitting()" class="flex items-center gap-2">
               <span class="w-4 h-4 rounded-full border-2 border-black border-t-transparent animate-spin"></span>
               Procesando...
