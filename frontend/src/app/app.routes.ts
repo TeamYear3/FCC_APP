@@ -89,6 +89,15 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'vehiculos/:id/historial',
+    canActivate: [roleGuardFn],
+    data: { roles: ['admin', 'tecnico'] },
+    loadComponent: () =>
+      import('./features/vehiculos/vehiculo-historial/vehiculo-historial.component').then(
+        (m) => m.VehiculoHistorialComponent
+      )
+  },
+  {
     path: 'vehiculos/nuevo',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },

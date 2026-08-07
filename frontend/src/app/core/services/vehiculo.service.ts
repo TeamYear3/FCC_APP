@@ -22,6 +22,13 @@ export interface VehiculoResponse extends VehiculoCreatePayload {
   actualizado_en: string;
 }
 
+export interface HistorialVehiculoResponse {
+  total_items: number;
+  total_pages: number;
+  current_page: number;
+  results: any[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -62,5 +69,19 @@ export class VehiculoService {
    */
   getVehiculoById(id: string): Observable<VehiculoResponse> {
     return this.http.get<VehiculoResponse>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
+   * Obtiene el historial de intervenciones de un vehículo con paginación (GET /api/vehiculos/<id>/historial/)
+   */
+  obtenerHistorialVehiculo(id: string, page: number = 1, limit: number = 10): Observable<HistorialVehiculoResponse> {
+    return this.http.get<HistorialVehiculoResponse>(`${this.apiUrl}${id}/historial/?page=${page}&limit=${limit}`);
+  }
+
+  /**
+   * Descarga el reporte en PDF del historial de un vehículo (GET /api/vehiculos/<id>/historial/pdf/)
+   */
+  descargarHistorialPDF(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}${id}/historial/pdf/`, { responseType: 'blob' });
   }
 }
