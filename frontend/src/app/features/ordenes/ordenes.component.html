@@ -76,6 +76,85 @@
       </button>
     </div>
 
+    <!-- Panel de Búsqueda y Filtros Avanzados (TK056) -->
+    <div class="bg-[#121215] border border-zinc-800/90 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+        <div class="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#FFCC00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">Búsqueda y Filtros Avanzados</h2>
+        </div>
+        <button
+          type="button"
+          (click)="limpiarFiltros()"
+          class="text-xs text-zinc-400 hover:text-[#FFCC00] transition-colors flex items-center gap-1 bg-transparent border-0 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Limpiar filtros
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+        <!-- Búsqueda Patente / Cliente -->
+        <div class="space-y-1">
+          <label class="text-zinc-400 font-medium block">Patente / Cliente</label>
+          <div class="bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 flex items-center gap-2 focus-within:border-[#FFCC00] transition-colors">
+            <input
+              type="text"
+              [ngModel]="busqueda()"
+              (ngModelChange)="busqueda.set($event); onFiltroChange()"
+              placeholder="Ej: ABC123 o Pérez..."
+              class="bg-transparent text-white placeholder-zinc-500 w-full focus:outline-none text-xs font-medium"
+            />
+          </div>
+        </div>
+
+        <!-- Selector de Estado -->
+        <div class="space-y-1">
+          <label class="text-zinc-400 font-medium block">Estado de la Orden</label>
+          <select
+            [ngModel]="estadoFiltro()"
+            (ngModelChange)="estadoFiltro.set($event); onFiltroChange()"
+            class="w-full bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-[#FFCC00] text-xs font-medium cursor-pointer"
+          >
+            <option value="todos">Todos los Estados</option>
+            <option value="ingresado">Ingresado</option>
+            <option value="en_presupuesto">En Presupuesto</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="en_proceso">En Proceso</option>
+            <option value="finalizado">Finalizado</option>
+            <option value="entregado">Entregado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <!-- Fecha Desde -->
+        <div class="space-y-1">
+          <label class="text-zinc-400 font-medium block">Fecha Desde</label>
+          <input
+            type="date"
+            [ngModel]="fechaDesde()"
+            (ngModelChange)="fechaDesde.set($event); onFiltroChange()"
+            class="w-full bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-[#FFCC00] text-xs font-medium cursor-pointer"
+          />
+        </div>
+
+        <!-- Fecha Hasta -->
+        <div class="space-y-1">
+          <label class="text-zinc-400 font-medium block">Fecha Hasta</label>
+          <input
+            type="date"
+            [ngModel]="fechaHasta()"
+            (ngModelChange)="fechaHasta.set($event); onFiltroChange()"
+            class="w-full bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-[#FFCC00] text-xs font-medium cursor-pointer"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- Tarjeta Principal de Resumen de Orden Activa (Order Work Card - Página 4) -->
     <div class="bg-color-surface-container border border-color-primary-accent/40 rounded-card p-md sm:p-lg mb-lg shadow-2xl">
       <!-- Extremo Superior Izquierdo: Número de orden e información del vehículo / Extremo Superior Derecho: Badge Semántico -->

@@ -182,15 +182,24 @@ class OrdenTrabajoAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["estado"], "ingresado")
 
-    def test_crear_orden_rechazado_como_cliente(self):
+    def test_crear_orden_como_cliente_prohibido(self):
         self.client.force_authenticate(user=self.cliente_user)
         data = {
             "vehiculo_id": str(self.vehiculo.id),
-            "descripcion_problema": "Fallo en embrague",
+            "descripcion_problema": "Intento de alta cliente",
             "fecha_ingreso": "2026-07-16"
         }
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_filtrar_ordenes_multi_criterio_tk056(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('crear-orden-trabajo')
+        response = self.client.get(f"{url}?patente=AB123CD&estado=ingresado")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("results", response.data)
+        self.assertIn("total_items", response.data)
+
 
     def test_crear_orden_rechazado_sin_autenticacion(self):
         data = {

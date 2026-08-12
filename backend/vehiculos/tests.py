@@ -332,7 +332,6 @@ class VehiculoAPITestCase(APITestCase):
         self.client.logout()
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
     def test_crear_vehiculo_patente_duplicada_retorna_409(self):
         self.client.force_authenticate(user=self.admin_user)
         # Crear un vehículo con patente específica
@@ -451,6 +450,106 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(response.data["numero_chasis"])
+
+
+from ordenes.models import OrdenTrabajo
+
+class HistorialVehiculoAPITestCase(APITestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            email="admin_historial@example.com",
+            nombre="Admin",
+            apellido="Historial",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Propietario",
+            apellido="Test",
+            tipo_documento="DNI",
+            dni_cuit="44332211",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="HH111HH",
+            marca="Honda",
+            modelo="Civic",
+            anio=2021
+        )
+        # Crear 15 Órdenes de Trabajo para probar la paginación de 10 por página
+        for i in range(15):
+            OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema=f"Mantenimiento programado {i+1}",
+                fecha_ingreso="2026-01-01"
+            )
+
+    def test_obtener_historial_vehiculo_paginado_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse('historial-vehiculo', kwargs={'pk': self.vehiculo.id})
+        
+        # Pagina 1 (limit=10 por defecto)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total_items'], 15)
+        self.assertEqual(response.data['total_pages'], 2)
+        self.assertEqual(response.data['current_page'], 1)
+        self.assertEqual(len(response.data['results']), 10)
+
+        # Pagina 2
+        response_p2 = self.client.get(f"{url}?page=2")
+        self.assertEqual(response_p2.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_p2.data['current_page'], 2)
+        self.assertEqual(len(response_p2.data['results']), 5)
+
+    def test_obtener_historial_vehiculo_inexistente_retorna_404(self):
+        import uuid
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse('historial-vehiculo', kwargs={'pk': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_exportar_historial_pdf_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse('exportar-historial-pdf', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('attachment; filename=', response['Content-Disposition'])
+        self.assertTrue(len(response.content) > 0)
+
+    def test_reasignar_vehiculo_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        nuevo_cliente = Cliente.objects.create(
+            nombre="Nuevo",
+            apellido="Titular",
+            tipo_documento="DNI",
+            dni_cuit="99887766",
+            condicion_iva="CF"
+        )
+        url = reverse('reasignar-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {'nuevo_cliente_id': str(nuevo_cliente.id)}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.vehiculo.refresh_from_db()
+        self.assertEqual(self.vehiculo.cliente.id, nuevo_cliente.id)
+        self.assertTrue(self.vehiculo.activo)
+
+    def test_historial_cliente_acceso_prohibido_vehiculo_ajeno(self):
+        usuario_cliente = User.objects.create_user(
+            email="cliente_ajeno@example.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="clientepassword123"
+        )
+        self.client.force_authenticate(user=usuario_cliente)
+        url = reverse('historial-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 
 

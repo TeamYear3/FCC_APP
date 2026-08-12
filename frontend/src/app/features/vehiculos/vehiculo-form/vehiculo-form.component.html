@@ -10,7 +10,14 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
       </a>
-      <h1 class="text-xl font-semibold text-white tracking-wide">Nuevo Vehículo</h1>
+      <div class="text-center">
+        <h2 class="text-2xl font-black text-white tracking-tight">
+          {{ isEditMode() ? 'Edición de Vehículo' : 'Alta de Vehículo' }}
+        </h2>
+        <p class="text-xs text-gray-400 mt-1">
+          {{ isEditMode() ? 'Modifique datos. La patente no puede ser alterada.' : 'Ingrese los datos del vehículo y propietario.' }}
+        </p>
+      </div>
       <div class="p-2 text-[#FFCC00] flex items-center justify-center">
         <!-- Ícono coche superior derecha -->
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -97,11 +104,14 @@
         </ng-template>
 
         <!-- Validación visual de cliente requerido -->
-        <div *ngIf="vehiculoForm.get('cliente_id')?.invalid && vehiculoForm.get('cliente_id')?.touched" class="text-xs text-red-400 flex items-center gap-1.5 pt-1">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <div *ngIf="vehiculoForm.get('cliente_id')?.invalid && vehiculoForm.get('cliente_id')?.touched" class="text-xs text-red-400 flex items-start gap-1.5 pt-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Debe vincular el vehículo a un cliente propietario.</span>
+          <div class="flex flex-col">
+            <span *ngIf="vehiculoForm.get('cliente_id')?.errors?.['required']">Debe vincular el vehículo a un cliente propietario.</span>
+            <span *ngIf="vehiculoForm.get('cliente_id')?.errors?.['serverError']">{{ vehiculoForm.get('cliente_id')?.errors?.['serverError'] }}</span>
+          </div>
         </div>
       </div>
 
@@ -131,8 +141,9 @@
               class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
             />
           </div>
-          <div *ngIf="vehiculoForm.get('marca')?.invalid && vehiculoForm.get('marca')?.touched" class="text-xs text-red-400 pl-1">
-            La marca es obligatoria (mínimo 2 caracteres).
+          <div *ngIf="vehiculoForm.get('marca')?.invalid && vehiculoForm.get('marca')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('marca')?.errors?.['required'] || vehiculoForm.get('marca')?.errors?.['minlength']">La marca es obligatoria (mínimo 2 caracteres).</span>
+            <span *ngIf="vehiculoForm.get('marca')?.errors?.['serverError']">{{ vehiculoForm.get('marca')?.errors?.['serverError'] }}</span>
           </div>
         </div>
 
@@ -151,8 +162,9 @@
               class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
             />
           </div>
-          <div *ngIf="vehiculoForm.get('modelo')?.invalid && vehiculoForm.get('modelo')?.touched" class="text-xs text-red-400 pl-1">
-            El modelo es obligatorio (mínimo 2 caracteres).
+          <div *ngIf="vehiculoForm.get('modelo')?.invalid && vehiculoForm.get('modelo')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('modelo')?.errors?.['required'] || vehiculoForm.get('modelo')?.errors?.['minlength']">El modelo es obligatorio (mínimo 2 caracteres).</span>
+            <span *ngIf="vehiculoForm.get('modelo')?.errors?.['serverError']">{{ vehiculoForm.get('modelo')?.errors?.['serverError'] }}</span>
           </div>
         </div>
 
@@ -177,8 +189,9 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <div *ngIf="vehiculoForm.get('anio')?.invalid && vehiculoForm.get('anio')?.touched" class="text-xs text-red-400 pl-1">
-            Ingrese un año válido (1900 - Actualidad).
+          <div *ngIf="vehiculoForm.get('anio')?.invalid && vehiculoForm.get('anio')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('anio')?.errors?.['min'] || vehiculoForm.get('anio')?.errors?.['max']">Ingrese un año válido (1900 - Actualidad).</span>
+            <span *ngIf="vehiculoForm.get('anio')?.errors?.['serverError']">{{ vehiculoForm.get('anio')?.errors?.['serverError'] }}</span>
           </div>
         </div>
 
@@ -194,11 +207,32 @@
               type="text" 
               formControlName="patente"
               placeholder="Ingrese Patente (Ej: ABC123 o AB123CD)" 
-              class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium uppercase tracking-wider"
+              class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
-          <div *ngIf="vehiculoForm.get('patente')?.invalid && vehiculoForm.get('patente')?.touched" class="text-xs text-red-400 pl-1">
-            Formato inválido. Debe ser una patente argentina válida (ej. ABC123 o AB123CD).
+          <div *ngIf="vehiculoForm.get('patente')?.invalid && vehiculoForm.get('patente')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('patente')?.errors?.['required'] || vehiculoForm.get('patente')?.errors?.['pattern']">Formato inválido. Debe ser una patente argentina válida (ej. ABC123 o AB123CD).</span>
+            <span *ngIf="vehiculoForm.get('patente')?.errors?.['serverError']" class="font-bold">{{ vehiculoForm.get('patente')?.errors?.['serverError'] }}</span>
+          </div>
+        </div>
+
+        <!-- Campo Número de Chasis (Opcional en Alta, Bloqueado en Edición - TK028) -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-gray-400 pl-1 block">Número de Chasis (opcional)</label>
+          <div class="bg-[#121212] border border-[#2A2A2A] rounded-xl px-3.5 py-3 flex items-center gap-3 focus-within:border-[#FFCC00] transition-colors">
+            <!-- Ícono Chasis / Engranaje-Motor -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <input 
+              type="text" 
+              formControlName="nro_chasis"
+              placeholder="Ingrese N° de Chasis (Ej: 8AGEK123...)" 
+              class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+          <div *ngIf="vehiculoForm.get('nro_chasis')?.invalid && vehiculoForm.get('nro_chasis')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('nro_chasis')?.errors?.['serverError']" class="font-bold">{{ vehiculoForm.get('nro_chasis')?.errors?.['serverError'] }}</span>
           </div>
         </div>
 
@@ -217,8 +251,9 @@
               class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
             />
           </div>
-          <div *ngIf="vehiculoForm.get('kilometraje')?.invalid && vehiculoForm.get('kilometraje')?.touched" class="text-xs text-red-400 pl-1">
-            El kilometraje no puede ser negativo.
+          <div *ngIf="vehiculoForm.get('kilometraje')?.invalid && vehiculoForm.get('kilometraje')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('kilometraje')?.errors?.['min']">El kilometraje no puede ser negativo.</span>
+            <span *ngIf="vehiculoForm.get('kilometraje')?.errors?.['serverError']">{{ vehiculoForm.get('kilometraje')?.errors?.['serverError'] }}</span>
           </div>
         </div>
 
@@ -236,6 +271,9 @@
               placeholder="Ingrese Color (Ej: Gris Plata, Blanco, Negro)" 
               class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
             />
+          </div>
+          <div *ngIf="vehiculoForm.get('color')?.invalid && vehiculoForm.get('color')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+            <span *ngIf="vehiculoForm.get('color')?.errors?.['serverError']">{{ vehiculoForm.get('color')?.errors?.['serverError'] }}</span>
           </div>
         </div>
       </div>
@@ -270,9 +308,92 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span>{{ isSubmitting() ? 'Guardando Vehículo...' : 'Guardar Vehículo' }}</span>
+        <span>
+          {{ isSubmitting() 
+             ? (isEditMode() ? 'Guardando...' : 'Registrando...') 
+             : (isEditMode() ? 'Guardar Cambios' : 'Guardar Vehículo') 
+          }}
+        </span>
       </button>
 
     </form>
+  </div>
+</div>
+
+<!-- Modal de Advertencia de Unicidad Global (Error 409 Conflict - TK020 & TK028) -->
+<div *ngIf="mostrarModalUnicidad()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+  <div class="bg-[#1E1E1E] border border-[#FFCC00]/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-5">
+    
+    <!-- Encabezado del Modal -->
+    <div class="flex items-center gap-3 border-b border-[#2A2A2A] pb-4">
+      <div class="p-2.5 bg-[#FFCC00]/10 border border-[#FFCC00]/20 rounded-xl text-[#FFCC00] shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold text-white leading-snug">Advertencia de Unicidad Global</h3>
+        <p class="text-xs text-gray-400">Coincidencia de vehículo detectada</p>
+      </div>
+    </div>
+
+    <!-- Cuerpo del mensaje -->
+    <div class="space-y-3">
+      <p class="text-sm text-gray-300 leading-relaxed">
+        {{ datosConflicto()?.mensaje }}
+      </p>
+
+      <div class="bg-[#121212] border border-[#2A2A2A] rounded-xl p-3.5 space-y-1.5 text-xs">
+        <div class="flex justify-between text-gray-400">
+          <span>Patente ingresada:</span>
+          <span class="font-mono text-white font-bold">{{ datosConflicto()?.patente || 'N/A' }}</span>
+        </div>
+        <div *ngIf="datosConflicto()?.nro_chasis" class="flex justify-between text-gray-400">
+          <span>N° de Chasis:</span>
+          <span class="font-mono text-white font-bold">{{ datosConflicto()?.nro_chasis }}</span>
+        </div>
+        <div class="flex justify-between text-gray-400 pt-1 border-t border-[#2A2A2A]">
+          <span>Propietario registrado:</span>
+          <span class="text-[#FFCC00] font-semibold">{{ datosConflicto()?.clienteNombre }}</span>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-400 italic">
+        Un vehículo no puede pertenecer a dos clientes simultáneamente. ¿Desea proceder a reasignar la titularidad del vehículo al cliente seleccionado?
+      </p>
+    </div>
+
+    <!-- Acciones -->
+    <div class="flex flex-col gap-2 pt-2">
+      <button 
+        type="button" 
+        (click)="confirmarReasignacion()"
+        [disabled]="reasignando()"
+        class="w-full bg-[#FFCC00] hover:bg-[#e6b800] text-[#121212] font-bold py-3 rounded-xl transition-colors text-sm shadow-lg shadow-[#FFCC00]/10 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <ng-container *ngIf="reasignando(); else reasignarTexto">
+          <svg class="animate-spin h-4 w-4 text-[#121212]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Reasignando Titularidad...
+        </ng-container>
+        <ng-template #reasignarTexto>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span>Confirmar Reasignación de Titularidad</span>
+        </ng-template>
+      </button>
+
+      <button 
+        type="button" 
+        (click)="cerrarModalUnicidad()"
+        class="w-full bg-[#2A2A2A] hover:bg-[#333333] text-gray-300 font-medium py-2.5 rounded-xl transition-colors text-sm"
+      >
+        Cancelar
+      </button>
+    </div>
+
   </div>
 </div>

@@ -9,7 +9,7 @@ import { vi } from 'vitest';
 describe('VehiculoFormComponent', () => {
   let component: VehiculoFormComponent;
   let fixture: ComponentFixture<VehiculoFormComponent>;
-  let vehiculoServiceSpy: { crearVehiculo: ReturnType<typeof vi.fn> };
+  let vehiculoServiceSpy: { crearVehiculo: ReturnType<typeof vi.fn>; reasignarVehiculo: ReturnType<typeof vi.fn> };
   let clienteServiceSpy: { obtenerClientes: ReturnType<typeof vi.fn> };
 
   const mockClientes: ClienteResponse[] = [
@@ -36,7 +36,10 @@ describe('VehiculoFormComponent', () => {
   ];
 
   beforeEach(async () => {
-    vehiculoServiceSpy = { crearVehiculo: vi.fn() };
+    vehiculoServiceSpy = {
+      crearVehiculo: vi.fn(),
+      reasignarVehiculo: vi.fn().mockReturnValue(of({ id: 'uuid-veh-123', cliente_id: 'uuid-cli-1' }))
+    };
     clienteServiceSpy = { obtenerClientes: vi.fn().mockReturnValue(of(mockClientes)) };
 
     await TestBed.configureTestingModule({
@@ -140,7 +143,17 @@ describe('VehiculoFormComponent', () => {
 
     component.onSubmit();
 
-    expect(component.errorMessage()).toContain('Ya existe un vehículo registrado con esta patente.');
+    expect(component.vehiculoForm.get('patente')?.errors?.['serverError']).toBe('Ya existe un vehículo registrado con esta patente.');
+    expect(component.errorMessage()).toBeNull();
     expect(component.isSubmitting()).toBe(false);
   });
+
+  it('debe llamar a reasignarVehiculo al confirmar la reasignacion', () => {
+    component.seleccionarCliente(mockClientes[0]);
+    component.datosConflicto.set({ vehiculo_id: 'uuid-veh-123', patente: 'AA111BB' });
+    component.confirmarReasignacion();
+
+    expect(vehiculoServiceSpy.reasignarVehiculo).toHaveBeenCalledWith('uuid-veh-123', 'uuid-cli-1');
+  });
 });
+
