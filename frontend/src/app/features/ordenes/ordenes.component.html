@@ -304,5 +304,12 @@
       <span>Expediente #OT-1257 protegido y auditado</span>
     </div>
     <span>Material Design 3 · Dark Mode Optimizado</span>
-  </div>
+  <!-- Modal de Actualización de Estado (TK036) -->
+  <app-orden-estado-modal
+    [mostrar]="mostrarModalEstado()"
+    [orden]="ordenSeleccionadaEstado()"
+    (cerrado)="mostrarModalEstado.set(false)"
+    (estadoActualizado)="onEstadoActualizado()"
+  ></app-orden-estado-modal>
 </div>
+

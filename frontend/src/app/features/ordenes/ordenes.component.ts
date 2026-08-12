@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenFiltros } from '../../core/services/orden.service';
+import { OrdenEstadoModalComponent } from './orden-estado-modal/orden-estado-modal.component';
 
 export interface ServiceTask {
   id: number;
@@ -18,7 +19,7 @@ export type OrderTab = 'Detalle' | 'Servicios' | 'Repuestos' | 'Pagos' | 'Notas'
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, OrdenEstadoModalComponent],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.css'
 })
@@ -29,6 +30,10 @@ export class OrdenesComponent implements OnInit {
 
   readonly userRole = this.authService.userRoleSignal;
   readonly successOT = signal<string | null>(null);
+
+  // Control del modal de estado (TK036)
+  readonly mostrarModalEstado = signal<boolean>(false);
+  readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
 
   // Filtros Avanzados (TK056)
   readonly busqueda = signal<string>('');
@@ -42,6 +47,7 @@ export class OrdenesComponent implements OnInit {
   readonly paginaActual = signal<number>(1);
   readonly totalPaginas = signal<number>(1);
   readonly totalItems = signal<number>(0);
+
 
   ngOnInit(): void {
     if (typeof window !== 'undefined' && window.history.state?.successOT) {
@@ -164,4 +170,14 @@ export class OrdenesComponent implements OnInit {
     this.authService.logout();
     this.router.navigate(['/autenticacion']);
   }
+
+  abrirModalEstado(orden: OrdenResponse): void {
+    this.ordenSeleccionadaEstado.set(orden);
+    this.mostrarModalEstado.set(true);
+  }
+
+  onEstadoActualizado(): void {
+    this.cargarOrdenes(this.paginaActual());
+  }
 }
+
