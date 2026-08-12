@@ -40,7 +40,7 @@ export class RoleGuard implements CanActivate {
     // 3. Obtener roles permitidos en la configuración de la ruta data: { roles: [...] }
     const expectedRoles = (route.data?.['roles'] as Array<'admin' | 'tecnico' | 'cliente'>) || [];
 
-    // 4. Criterio estricto: El rol "Cliente" solo puede navegar hacia el portal de transparencia, nunca hacia vistas administrativas
+    // 4. Criterio estricto: El rol "Cliente" solo puede navegar hacia el Portal del Cliente, nunca hacia vistas administrativas
     if (userRole === 'cliente') {
       const pathSegments = route.url ? route.url.map(s => s.path.toLowerCase()) : [];
       const isAdministrative = pathSegments.some(path =>

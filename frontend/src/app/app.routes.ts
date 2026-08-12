@@ -17,13 +17,18 @@ export const routes: Routes = [
       )
   },
   {
-    path: 'transparencia',
+    path: 'portal-cliente',
     canActivate: [roleGuardFn],
     data: { roles: ['cliente', 'tecnico', 'admin'] },
     loadComponent: () =>
-      import('./features/portal-transparencia/portal-transparencia.component').then(
-        (m) => m.PortalTransparenciaComponent
+      import('./features/portal-cliente/portal-cliente.component').then(
+        (m) => m.PortalClienteComponent
       )
+  },
+  {
+    path: 'transparencia',
+    redirectTo: 'portal-cliente',
+    pathMatch: 'full'
   },
   {
     path: 'admin',

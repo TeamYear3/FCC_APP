@@ -24,6 +24,7 @@ export interface OrdenResponse {
   actualizado_en: string;
   vehiculo_patente?: string;
   cliente_nombre?: string;
+  monto_total?: number;
 }
 
 export interface OrdenFiltros {

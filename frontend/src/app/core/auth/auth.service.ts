@@ -226,7 +226,7 @@ export class AuthService {
           } else if (role === 'tecnico') {
             this.router.navigate(['/ordenes']);
           } else {
-            this.router.navigate(['/transparencia']);
+            this.router.navigate(['/portal-cliente']);
           }
         },
         error: (err) => {
@@ -235,6 +235,22 @@ export class AuthService {
           this.authErrorSignal.set(msg);
         }
       });
+  }
+
+  /**
+   * Decodifica y retorna el objeto de usuario alojado en el JWT token.
+   */
+  getUserFromToken(): { id?: string; email?: string; nombre?: string; apellido?: string; role?: string } | null {
+    const token = this.getStoredToken();
+    if (!token) return null;
+    try {
+      const payloadBase64 = token.split('.')[1];
+      if (!payloadBase64) return null;
+      const decodedJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(decodedJson);
+    } catch {
+      return null;
+    }
   }
 
   /**

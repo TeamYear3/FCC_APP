@@ -18,7 +18,7 @@ export class NoAutorizadoComponent {
 
   goBack(): void {
     if (this.userRole() === 'cliente') {
-      this.router.navigate(['/transparencia']);
+      this.router.navigate(['/portal-cliente']);
     } else if (this.userRole() === 'admin') {
       this.router.navigate(['/admin']);
     } else if (this.userRole() === 'tecnico') {

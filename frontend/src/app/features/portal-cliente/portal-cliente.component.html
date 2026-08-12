@@ -1,0 +1,204 @@
+<div class="min-h-screen bg-[#121212] text-[#E0E0E0] pb-24 flex flex-col items-center select-none">
+  
+  <!-- Contenedor Principal responsive -->
+  <div class="w-full max-w-4xl px-4 pt-6 space-y-6">
+    
+    <!-- Top Bar (Header oficial Portal del Cliente) -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 border-b border-[#2A2A2A] gap-4">
+      <div class="flex items-center gap-3">
+        <!-- Logo Taller FCC APP -->
+        <div class="w-12 h-12 rounded-xl bg-[#1E1E1E] border border-[#FFCC00]/40 flex items-center justify-center shadow-lg">
+          <span class="font-black text-[#FFCC00] text-lg tracking-tighter">FCC</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-0.5">
+            <span class="px-2 py-0.5 bg-[#FFCC00]/10 text-[#FFCC00] border border-[#FFCC00]/20 rounded-md text-[10px] font-extrabold uppercase tracking-wider">
+              Portal del Cliente
+            </span>
+            <span class="text-xs text-gray-400">Acceso Oficial</span>
+          </div>
+          <h1 class="text-2xl font-black text-white tracking-tight uppercase">
+            Portal del Cliente
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+        <div class="text-xs text-right hidden sm:block">
+          <span class="text-gray-400 block">Bienvenido/a</span>
+          <span class="text-white font-bold">{{ userName() }}</span>
+        </div>
+
+        <button
+          type="button"
+          (click)="logout()"
+          class="px-4 py-2.5 rounded-full border border-[#2A2A2A] bg-[#1E1E1E] hover:bg-[#2A2A2A] text-gray-300 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Indicador de Carga Spinner -->
+    <div *ngIf="cargando()" class="py-16 text-center space-y-3">
+      <div class="w-10 h-10 border-4 border-[#FFCC00] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-xs text-gray-400 font-medium">Cargando tus órdenes de trabajo...</p>
+    </div>
+
+    <!-- Mensaje de Error si la llamada API falla -->
+    <div *ngIf="!cargando() && errorMessage()" class="bg-red-900/40 border border-red-500/80 text-red-200 px-4 py-3 rounded-xl flex items-start gap-3 shadow-md animate-fadeIn">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <div class="text-sm font-medium">{{ errorMessage() }}</div>
+    </div>
+
+    <!-- Estado Vacío cuando el cliente no posee órdenes -->
+    <div *ngIf="!cargando() && !errorMessage() && listaOrdenes().length === 0" class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-10 text-center space-y-3 shadow-xl">
+      <div class="w-14 h-14 rounded-full bg-[#FFCC00]/10 border border-[#FFCC00]/20 flex items-center justify-center text-[#FFCC00] mx-auto">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-white">No posees Órdenes de Trabajo registradas</h3>
+      <p class="text-xs text-gray-400 max-w-sm mx-auto">
+        Actualmente no hay servicios activos o intervenciones asociadas a tus vehículos en el taller.
+      </p>
+    </div>
+
+    <!-- Listado Dinámico de Tarjetas de Orden de Trabajo (Figma Dark Cards) -->
+    <div *ngIf="!cargando() && listaOrdenes().length > 0" class="space-y-4">
+      <div 
+        *ngFor="let ot of listaOrdenes()" 
+        class="bg-[#1E1E1E] border border-[#2A2A2A] hover:border-[#FFCC00]/40 rounded-2xl p-5 shadow-xl transition-all space-y-4 animate-fadeIn"
+      >
+        <!-- Encabezado de la Tarjeta OT -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
+          <div class="flex items-center gap-3">
+            <span class="text-xl font-black text-[#FFCC00] font-mono tracking-tight">{{ ot.numero_ot }}</span>
+            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider" [ngClass]="getEstadoBadgeClass(ot.estado)">
+              {{ getEstadoDisplay(ot.estado) }}
+            </span>
+          </div>
+
+          <div class="text-xs text-gray-400 flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Ingreso: <strong class="text-white font-medium">{{ ot.fecha_ingreso }}</strong></span>
+          </div>
+        </div>
+
+        <!-- Información del Vehículo y Problema -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div class="sm:col-span-2 space-y-1">
+            <span class="text-gray-400 font-semibold block uppercase tracking-wider text-[10px]">Vehículo Registrado</span>
+            <div class="text-white font-bold text-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#FFCC00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+              </svg>
+              <span>Patente: <strong class="font-mono text-[#FFCC00] uppercase">{{ ot.vehiculo_patente || 'N/A' }}</strong></span>
+            </div>
+            <p class="text-gray-300 text-xs pt-1 leading-relaxed">
+              <strong class="text-gray-400">Motivo de consulta:</strong> {{ ot.descripcion_problema }}
+            </p>
+          </div>
+
+          <div class="sm:text-right bg-[#121212] border border-[#2A2A2A] rounded-xl p-3 flex flex-col justify-between">
+            <span class="text-gray-400 font-semibold block uppercase tracking-wider text-[10px]">Monto Estimado</span>
+            <div class="text-[#FFCC00] font-black text-lg">
+              ${{ (ot.monto_total || 0) | number:'1.2-2' }}
+            </div>
+            <span class="text-[10px] text-gray-500">Mano de obra e insumos</span>
+          </div>
+        </div>
+
+        <!-- Botón para ver el historial cronológico -->
+        <div class="pt-2 border-t border-[#2A2A2A] flex justify-end">
+          <button 
+            type="button" 
+            (click)="verHistorialOT(ot)"
+            class="bg-[#121212] hover:bg-[#2A2A2A] border border-[#FFCC00]/40 text-[#FFCC00] font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Ver Historial de Estados</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal de Historial Cronológico de la OT -->
+<div *ngIf="mostrarModalHistorial()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+  <div class="bg-[#1E1E1E] border border-[#FFCC00]/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+    
+    <!-- Encabezado del Modal -->
+    <div class="flex items-center justify-between border-b border-[#2A2A2A] pb-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-[#FFCC00]/10 border border-[#FFCC00]/20 rounded-xl text-[#FFCC00]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white leading-snug">Historial de Estados</h3>
+          <p class="text-xs text-gray-400">OT: <span class="text-[#FFCC00] font-mono font-bold">{{ ordenSeleccionada()?.numero_ot }}</span></p>
+        </div>
+      </div>
+      <button (click)="cerrarModalHistorial()" class="text-gray-400 hover:text-white transition-colors p-1 bg-transparent border-0 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Carga del Historial -->
+    <div *ngIf="cargandoHistorial()" class="py-8 text-center space-y-2">
+      <div class="w-8 h-8 border-3 border-[#FFCC00] border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-xs text-gray-400">Cargando cronología de la orden...</p>
+    </div>
+
+    <!-- Lista Cronológica (Stepper / Timeline) -->
+    <div *ngIf="!cargandoHistorial() && historialDatos()" class="space-y-4 max-h-72 overflow-y-auto pr-1">
+      <div *ngIf="historialDatos()!.historial.length === 0" class="text-center py-6 text-xs text-gray-400">
+        Sin eventos de cambio de estado registrados.
+      </div>
+
+      <div *ngFor="let item of historialDatos()!.historial; let first = first" class="relative pl-6 border-l-2 border-[#2A2A2A] space-y-1 pb-4 last:pb-0">
+        <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-[#1E1E1E]" [ngClass]="first ? 'bg-[#FFCC00]' : 'bg-gray-600'"></div>
+        
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-white uppercase">{{ getEstadoDisplay(item.estado_nuevo) }}</span>
+          <span class="text-[10px] text-gray-400">{{ item.creado_en | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+
+        <p *ngIf="item.comentario" class="text-xs text-gray-300 italic bg-[#121212] p-2 rounded-lg border border-[#2A2A2A] mt-1">
+          "{{ item.comentario }}"
+        </p>
+
+        <span class="text-[10px] text-gray-500 block">Registrado por: {{ item.usuario_nombre }}</span>
+      </div>
+    </div>
+
+    <!-- Botón Cerrar -->
+    <div class="pt-2 flex justify-end">
+      <button 
+        type="button" 
+        (click)="cerrarModalHistorial()"
+        class="bg-[#2A2A2A] hover:bg-[#333333] text-gray-300 font-medium py-2 px-5 rounded-xl text-xs transition-colors cursor-pointer border-0"
+      >
+        Cerrar
+      </button>
+    </div>
+
+  </div>
+</div>

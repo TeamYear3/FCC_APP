@@ -91,13 +91,13 @@ describe('RoleGuard', () => {
     expect(result).toBe(mockUrlTree);
   });
 
-  it('should allow "cliente" role to access portal de transparencia when roles permit', () => {
+  it('should allow "cliente" role to access portal del cliente when roles permit', () => {
     authService.isAuthenticated.mockReturnValue(true);
     authService.getUserRole.mockReturnValue('cliente');
 
     const route = {
       data: { roles: ['cliente', 'tecnico', 'admin'] },
-      url: [new UrlSegment('transparencia', {})]
+      url: [new UrlSegment('portal-cliente', {})]
     } as unknown as ActivatedRouteSnapshot;
 
     const result = guard.canActivate(route, {} as RouterStateSnapshot);
