@@ -1,10 +1,19 @@
 from django.urls import path
-from .views import CrearOrdenTrabajoView, AgregarManoDeObraView, AgregarRepuestoView
+from .views import (
+    CrearOrdenTrabajoView,
+    AgregarManoDeObraView,
+    AgregarRepuestoView,
+    ConsultarHistorialOrdenView,
+    ActualizarEstadoOrdenView
+)
 
 urlpatterns = [
     path('ordenes/', CrearOrdenTrabajoView.as_view(), name='crear-orden-trabajo'),
     path('ordenes/<uuid:orden_id>/items/mano-de-obra/', AgregarManoDeObraView.as_view(), name='agregar-mano-de-obra'),
     path('ordenes/<uuid:orden_id>/items/repuestos/', AgregarRepuestoView.as_view(), name='agregar-repuesto'),
+    path('ordenes/<uuid:orden_id>/historial/', ConsultarHistorialOrdenView.as_view(), name='consultar-historial-orden'),
+    path('ordenes/<uuid:orden_id>/estado/', ActualizarEstadoOrdenView.as_view(), name='actualizar-estado-orden'),
 ]
+
 
 

@@ -90,3 +90,40 @@ class ItemPresupuesto(models.Model):
         return f"{self.get_tipo_display()}: {self.descripcion} (${self.subtotal:.2f})"
 
 
+class HistorialEstadoOrden(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    orden_trabajo = models.ForeignKey(
+        OrdenTrabajo,
+        on_delete=models.CASCADE,
+        related_name="historial_estados"
+    )
+    estado_anterior = models.CharField(
+        max_length=20,
+        choices=EstadoOrden.choices,
+        null=True,
+        blank=True
+    )
+    estado_nuevo = models.CharField(
+        max_length=20,
+        choices=EstadoOrden.choices
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="historiales_ordenes_creadas"
+    )
+    comentario = models.TextField(null=True, blank=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        verbose_name = 'Historial de Estado de Orden'
+        verbose_name_plural = 'Historiales de Estados de Orden'
+
+    def __str__(self):
+        return f"{self.orden_trabajo.numero_ot}: {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+

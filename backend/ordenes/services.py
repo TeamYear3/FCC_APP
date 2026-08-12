@@ -26,10 +26,20 @@ def evaluar_transicion_presupuesto(orden: OrdenTrabajo) -> bool:
     si se encuentra en estado 'INGRESADO' y posee ítems de presupuesto asociados.
     """
     if orden.estado == EstadoOrden.INGRESADO and orden.items_presupuesto.exists():
+        estado_anterior = orden.estado
         orden.estado = EstadoOrden.EN_PRESUPUESTO
         orden.save(update_fields=['estado', 'actualizado_en'])
+
+        from .models import HistorialEstadoOrden
+        HistorialEstadoOrden.objects.create(
+            orden_trabajo=orden,
+            estado_anterior=estado_anterior,
+            estado_nuevo=EstadoOrden.EN_PRESUPUESTO,
+            comentario="Transición automática al cargar ítems de presupuesto."
+        )
         return True
     return False
+
 
 
 def notificar_presupuesto_websocket(orden: OrdenTrabajo) -> dict:
