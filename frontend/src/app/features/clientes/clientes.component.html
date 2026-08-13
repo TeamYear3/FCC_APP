@@ -85,7 +85,7 @@
 
       <div class="flex flex-wrap items-center gap-3">
         <a
-          routerLink="/clientes/nuevo"
+          routerLink="/admin/clientes/nuevo"
           class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -93,7 +93,7 @@
           <span>+ Nuevo Cliente</span>
         </a>
         <a
-          routerLink="/vehiculos/nuevo"
+          routerLink="/admin/vehiculos/nuevo"
           class="min-h-[48px] px-lg py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
           <!-- Ícono coche -->
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -165,7 +165,7 @@
           </button>
           
           <a
-            [routerLink]="['/clientes/editar', cli.id]"
+            [routerLink]="['/admin/clientes/editar', cli.id]"
             class="flex-1 min-h-[44px] rounded-pill bg-color-primary-accent hover:bg-color-primary-accent/90 text-black typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer decoration-none shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
