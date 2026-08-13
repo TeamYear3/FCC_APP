@@ -19,7 +19,7 @@
     <div class="w-40 h-1 bg-color-primary-accent rounded-full mt-1 mb-6 shadow-[0_0_10px_rgba(255,204,0,0.4)]"></div>
 
     <!-- Card de Autenticación estilo Glassmorphism -->
-    <div class="w-full bg-black/60 backdrop-blur-md border border-white/10 rounded-card p-6 shadow-2xl flex flex-col gap-6">
+    <div class="w-full bg-black/60 backdrop-blur-md border border-color-primary-accent/25 rounded-card p-6 shadow-[0_0_25px_rgba(255,204,0,0.15)] flex flex-col gap-6">
       
       <!-- Título según el modo -->
       <div class="text-center">
@@ -45,7 +45,7 @@
               type="email" 
               formControlName="email" 
               placeholder="ejemplo@correo.com"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
           </div>
           <div>
@@ -54,7 +54,7 @@
               type="password" 
               formControlName="password" 
               placeholder="••••••••"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
           </div>
 
@@ -116,7 +116,7 @@
                 type="text" 
                 formControlName="nombre" 
                 placeholder="Juan"
-                class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+                class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
             </div>
             <div>
@@ -125,7 +125,7 @@
                 type="text" 
                 formControlName="apellido" 
                 placeholder="Pérez"
-                class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+                class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
             </div>
           </div>
@@ -135,7 +135,7 @@
               type="email" 
               formControlName="email" 
               placeholder="juan@correo.com"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
           </div>
           <div>
@@ -144,7 +144,7 @@
               type="password" 
               formControlName="password" 
               placeholder="•••••••• (mín. 6 caracteres)"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
           </div>
           <div>
@@ -153,7 +153,7 @@
               type="password" 
               formControlName="confirmPassword" 
               placeholder="••••••••"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
             @if (registroForm.hasError('mismatch') && registroForm.get('confirmPassword')?.touched) {
               <span class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
@@ -193,7 +193,7 @@
               type="email" 
               formControlName="email" 
               placeholder="ejemplo@correo.com"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
           </div>
 
@@ -229,7 +229,7 @@
               type="password" 
               formControlName="password" 
               placeholder="•••••••• (mín. 6 caracteres)"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
           </div>
           <div>
@@ -238,7 +238,7 @@
               type="password" 
               formControlName="confirmPassword" 
               placeholder="••••••••"
-              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all text-sm"
+              class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
             @if (resetConfirmForm.hasError('mismatch') && resetConfirmForm.get('confirmPassword')?.touched) {
               <span class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
