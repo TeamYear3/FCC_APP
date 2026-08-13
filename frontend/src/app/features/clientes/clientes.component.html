@@ -1,14 +1,13 @@
 <div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
   
   <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
-  <div class="max-w-6xl mx-auto w-full relative z-10 flex-1">
+  <div class="max-w-[1400px] mx-auto w-full relative z-10 flex-1">
     
     <!-- Encabezado / Header -->
     <app-page-component
       titulo="Directorio de Clientes y Flotas"
       categoria="Cartera de Clientes"
       [userRole]="userRole()"
-      [mostrarLogout]="!isAdminView()"
     ></app-page-component>
 
     <!-- Bloques del Tablero Principal (Dashboard Core Cards - MD3 Alignment) -->
@@ -81,7 +80,7 @@
     </div>
 
     <!-- Directorio en Tarjetas (Order Work Cards style - #1E1E1E) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md">
       <div *ngFor="let cli of listaClientes" 
            class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1">
         
@@ -155,7 +154,7 @@
   </div>
 
   <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
-  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+  <div class="max-w-[1400px] mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption">
     <div class="flex items-center gap-4">
       <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
         <span class="w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>
