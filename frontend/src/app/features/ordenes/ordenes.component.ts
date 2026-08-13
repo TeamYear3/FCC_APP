@@ -29,6 +29,7 @@ export class OrdenesComponent implements OnInit {
 
   readonly userRole = this.authService.userRoleSignal;
   readonly successOT = signal<string | null>(null);
+  readonly nuevaOrdenUrl = signal<string>('/ordenes/nueva');
 
   // Filtros Avanzados (TK056)
   readonly busqueda = signal<string>('');
@@ -44,9 +45,12 @@ export class OrdenesComponent implements OnInit {
   readonly totalItems = signal<number>(0);
 
   ngOnInit(): void {
+    const isAdmin = this.router.url.startsWith('/admin');
+    this.nuevaOrdenUrl.set(isAdmin ? '/admin/ordenes/nueva' : '/ordenes/nueva');
+    
     if (typeof window !== 'undefined' && window.history.state?.successOT) {
       this.successOT.set(window.history.state.successOT);
-      window.history.replaceState({}, '', '/ordenes');
+      window.history.replaceState({}, '', isAdmin ? '/admin/ordenes' : '/ordenes');
     }
     this.cargarOrdenes(1);
   }

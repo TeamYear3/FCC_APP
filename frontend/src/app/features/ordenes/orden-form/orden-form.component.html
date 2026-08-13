@@ -24,7 +24,7 @@
 
       <!-- Botón Volver -->
       <a
-        routerLink="/ordenes"
+        [routerLink]="returnUrl()"
         class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-white/10 bg-transparent text-color-text-secondary font-bold typography-body-highlight transition-all duration-200 hover:bg-white/5 active:scale-[0.98] flex items-center gap-2 cursor-pointer decoration-none"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -308,7 +308,7 @@
         <div class="flex flex-col sm:flex-row items-center justify-end gap-md">
           <!-- Botón Cancelar -->
           <a
-            routerLink="/ordenes"
+            [routerLink]="returnUrl()"
             class="w-full sm:w-auto min-h-[48px] px-md py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight hover:bg-color-primary-accent/10 active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer decoration-none"
           >
             Cancelar
