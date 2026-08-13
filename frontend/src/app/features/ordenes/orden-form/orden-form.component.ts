@@ -27,6 +27,7 @@ export class OrdenFormComponent implements OnInit {
   // Señales para almacenar los detalles cargados en tiempo real
   readonly selectedVehiculoDetails = signal<VehiculoResponse | null>(null);
   readonly selectedClienteDetails = signal<ClienteResponse | null>(null);
+  readonly returnUrl = signal<string>('/ordenes');
 
   ordenForm!: FormGroup;
 
@@ -39,6 +40,7 @@ export class OrdenFormComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.returnUrl.set(this.router.url.startsWith('/admin') ? '/admin/ordenes' : '/ordenes');
     const hoy = new Date();
     const hoyString = hoy.getFullYear() + '-' + 
                       String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -124,7 +126,7 @@ export class OrdenFormComponent implements OnInit {
     this.ordenService.crearOrden(payload).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
-        this.router.navigate(['/ordenes'], {
+        this.router.navigate([this.returnUrl()], {
           state: { successOT: res.numero_ot }
         });
       },

@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { VehiculoService, VehiculoResponse, HistorialVehiculoResponse } from '../../../core/services/vehiculo.service';
 
 @Component({
@@ -12,7 +12,9 @@ import { VehiculoService, VehiculoResponse, HistorialVehiculoResponse } from '..
 export class VehiculoHistorialComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly vehiculoService = inject(VehiculoService);
+  private readonly router = inject(Router);
 
+  readonly returnUrl = signal<string>('/ordenes');
   readonly vehiculo = signal<VehiculoResponse | null>(null);
   readonly ordenes = signal<any[]>([]);
   readonly cargando = signal<boolean>(true);
@@ -28,6 +30,7 @@ export class VehiculoHistorialComponent implements OnInit {
   vehiculoId: string = '';
 
   ngOnInit(): void {
+    this.returnUrl.set(this.router.url.startsWith('/admin') ? '/admin/ordenes' : '/ordenes');
     this.vehiculoId = this.route.snapshot.params['id'];
     if (this.vehiculoId) {
       this.cargarDetalleVehiculo();
