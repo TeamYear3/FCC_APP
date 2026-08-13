@@ -1,18 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-
-export interface OrderSummary {
-  numeroOrden: string;
-  vehiculo: string;
-  patente: string;
-  estado: 'En proceso' | 'En revisión' | 'Pendiente';
-  cliente: string;
-  fechaIngreso: string;
-  precioTotal: string;
-  descripcion: string;
-}
+import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/services/orden.service';
 
 @Component({
   selector: 'app-portal-cliente',
@@ -21,44 +11,104 @@ export interface OrderSummary {
   templateUrl: './portal-cliente.component.html',
   styleUrl: './portal-cliente.component.css'
 })
-export class PortalClienteComponent {
+export class PortalClienteComponent implements OnInit {
   readonly authService = inject(AuthService);
+  readonly ordenService = inject(OrdenService);
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
+  readonly userName = signal<string>('');
 
-  readonly misOrdenes: OrderSummary[] = [
-    {
-      numeroOrden: '#OT-1257',
-      vehiculo: 'Volkswagen Amarok V6 3.0 TDI',
-      patente: 'AD 456 XY',
-      estado: 'En proceso',
-      cliente: 'Carlos Rodríguez',
-      fechaIngreso: '16 Jul 2026 - 08:30 AM',
-      precioTotal: '$ 485,000.00',
-      descripcion: 'Reemplazo de kit de distribución y cambio de aceite sintético.'
-    },
-    {
-      numeroOrden: '#OT-1242',
-      vehiculo: 'Ford Ranger XLT 2.2 Diesel',
-      patente: 'AF 889 WZ',
-      estado: 'En revisión',
-      cliente: 'Carlos Rodríguez',
-      fechaIngreso: '14 Jul 2026 - 15:15 PM',
-      precioTotal: '$ 310,500.00',
-      descripcion: 'Diagnóstico electrónico computarizado e inspección de frenos ABS.'
-    },
-    {
-      numeroOrden: '#OT-1260',
-      vehiculo: 'Toyota Corolla Cross 2.0 Hybrid',
-      patente: 'AE 123 KL',
-      estado: 'Pendiente',
-      cliente: 'Carlos Rodríguez',
-      fechaIngreso: 'Agendado para 18 Jul 2026',
-      precioTotal: '$ 125,000.00',
-      descripcion: 'Alineación 3D, balanceo y control preventivo de suspensión.'
+  readonly listaOrdenes = signal<OrdenResponse[]>([]);
+  readonly cargando = signal<boolean>(true);
+  readonly errorMessage = signal<string | null>(null);
+
+  // Modal para consultar historial de la OT seleccionada
+  readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
+  readonly historialDatos = signal<OrdenHistorialResponse | null>(null);
+  readonly cargandoHistorial = signal<boolean>(false);
+  readonly mostrarModalHistorial = signal<boolean>(false);
+
+  ngOnInit(): void {
+    const user = this.authService.getUserFromToken();
+    if (user) {
+      const full = `${user.nombre || ''} ${user.apellido || ''}`.trim();
+      this.userName.set(full || user.email || 'Cliente');
     }
-  ];
+    this.cargarOrdenesCliente();
+  }
+
+  cargarOrdenesCliente(): void {
+    this.cargando.set(true);
+    this.errorMessage.set(null);
+
+    this.ordenService.obtenerOrdenes({}, 1, 50).subscribe({
+      next: (res) => {
+        this.listaOrdenes.set(res.results || []);
+        this.cargando.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar órdenes en Portal del Cliente:', err);
+        this.errorMessage.set('No se pudieron obtener tus órdenes de trabajo. Por favor, verifica tu conexión.');
+        this.cargando.set(false);
+      }
+    });
+  }
+
+  verHistorialOT(orden: OrdenResponse): void {
+    this.ordenSeleccionada.set(orden);
+    this.mostrarModalHistorial.set(true);
+    this.cargandoHistorial.set(true);
+    this.historialDatos.set(null);
+
+    this.ordenService.obtenerEstadoHistorial(orden.id).subscribe({
+      next: (res) => {
+        this.historialDatos.set(res);
+        this.cargandoHistorial.set(false);
+      },
+      error: (err) => {
+        console.error('Error al obtener historial de OT:', err);
+        this.cargandoHistorial.set(false);
+      }
+    });
+  }
+
+  cerrarModalHistorial(): void {
+    this.mostrarModalHistorial.set(false);
+    this.ordenSeleccionada.set(null);
+    this.historialDatos.set(null);
+  }
+
+  getEstadoBadgeClass(estado: string): string {
+    switch (estado?.toLowerCase()) {
+      case 'ingresado':
+        return 'bg-blue-500/20 text-blue-400 border border-blue-500/40';
+      case 'en_presupuesto':
+        return 'bg-[#FFCC00]/20 text-[#FFCC00] border border-[#FFCC00]/40';
+      case 'aprobado':
+        return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+      case 'en_proceso':
+        return 'bg-purple-500/20 text-purple-400 border border-purple-500/40';
+      case 'finalizado':
+        return 'bg-green-500/20 text-green-400 border border-green-500/40';
+      case 'rechazado':
+        return 'bg-red-500/20 text-red-400 border border-red-500/40';
+      default:
+        return 'bg-zinc-800 text-zinc-400 border border-zinc-700';
+    }
+  }
+
+  getEstadoDisplay(estado: string): string {
+    switch (estado?.toLowerCase()) {
+      case 'ingresado': return 'Ingresado';
+      case 'en_presupuesto': return 'En Presupuesto';
+      case 'aprobado': return 'Aprobado';
+      case 'en_proceso': return 'En Proceso';
+      case 'finalizado': return 'Finalizado';
+      case 'rechazado': return 'Rechazado';
+      default: return estado || 'N/A';
+    }
+  }
 
   logout(): void {
     this.authService.logout();

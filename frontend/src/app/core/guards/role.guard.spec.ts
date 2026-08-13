@@ -91,7 +91,7 @@ describe('RoleGuard', () => {
     expect(result).toBe(mockUrlTree);
   });
 
-  it('should allow "cliente" role to access portal-cliente when roles permit', () => {
+  it('should allow "cliente" role to access portal del cliente when roles permit', () => {
     authService.isAuthenticated.mockReturnValue(true);
     authService.getUserRole.mockReturnValue('cliente');
 

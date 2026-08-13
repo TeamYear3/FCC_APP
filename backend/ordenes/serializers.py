@@ -139,3 +139,36 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+from .models import HistorialEstadoOrden
+
+
+class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
+    usuario_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HistorialEstadoOrden
+        fields = [
+            'id',
+            'estado_anterior',
+            'estado_nuevo',
+            'usuario',
+            'usuario_nombre',
+            'comentario',
+            'creado_en'
+        ]
+        read_only_fields = fields
+
+    def get_usuario_nombre(self, obj):
+        if obj.usuario:
+            nombre_completo = f"{getattr(obj.usuario, 'nombre', '')} {getattr(obj.usuario, 'apellido', '')}".strip()
+            return nombre_completo or obj.usuario.email
+        return "Sistema"
+
+
+
+class ActualizarEstadoOrdenSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(choices=EstadoOrden.choices, required=True)
+    comentario = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+

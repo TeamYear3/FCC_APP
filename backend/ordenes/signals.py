@@ -100,10 +100,17 @@ def enviar_email_orden_background(orden_id):
 @receiver(post_save, sender=OrdenTrabajo)
 def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
     """
-    Señal de Django para disparar automáticamente el correo al cliente
-    cuando se crea exitosamente una Orden de Trabajo.
+    Señal de Django para registrar el historial de estado inicial y disparar el correo al cliente.
     """
     if created:
+        from .models import HistorialEstadoOrden
+        HistorialEstadoOrden.objects.create(
+            orden_trabajo=instance,
+            estado_anterior=None,
+            estado_nuevo=instance.estado,
+            comentario="Orden de Trabajo registrada en el sistema."
+        )
+
         # Envío automático de email en segundo plano (asíncrono y no bloqueante)
         try:
             threading.Thread(
@@ -117,4 +124,5 @@ def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
                 f"Error al iniciar el hilo de envío de correo para la orden {instance.id}: {str(e)}",
                 exc_info=True
             )
+
 

@@ -24,6 +24,7 @@ export interface OrdenResponse {
   actualizado_en: string;
   vehiculo_patente?: string;
   cliente_nombre?: string;
+  monto_total?: number;
 }
 
 export interface OrdenFiltros {
@@ -40,6 +41,23 @@ export interface OrdenesPaginadasResponse {
   total_pages: number;
   current_page: number;
   results: OrdenResponse[];
+}
+
+export interface HistorialEstadoItem {
+  id: string;
+  estado_anterior: string | null;
+  estado_nuevo: string;
+  usuario_nombre: string;
+  comentario?: string | null;
+  creado_en: string;
+}
+
+export interface OrdenHistorialResponse {
+  orden_id: string;
+  numero_ot: string;
+  estado_actual: string;
+  estado_actual_display: string;
+  historial: HistorialEstadoItem[];
 }
 
 @Injectable({
@@ -73,4 +91,19 @@ export class OrdenService {
 
     return this.http.get<OrdenesPaginadasResponse>(this.apiUrl, { params });
   }
+
+  /**
+   * Consultar estado actual e historial cronológico de la OT (GET /api/ordenes/<id>/historial/) (TK046)
+   */
+  obtenerEstadoHistorial(ordenId: string): Observable<OrdenHistorialResponse> {
+    return this.http.get<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/historial/`);
+  }
+
+  /**
+   * Actualizar el estado de la OT (PATCH /api/ordenes/<id>/estado/) (TK033 & TK035)
+   */
+  actualizarEstado(ordenId: string, estado: string, comentario: string = ''): Observable<OrdenHistorialResponse> {
+    return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, { estado, comentario });
+  }
 }
+

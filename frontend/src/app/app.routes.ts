@@ -26,6 +26,11 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'transparencia',
+    redirectTo: 'portal-cliente',
+    pathMatch: 'full'
+  },
+  {
     path: 'admin',
     canActivate: [roleGuardFn],
     data: { roles: ['admin'] },

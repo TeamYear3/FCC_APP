@@ -155,5 +155,28 @@ describe('VehiculoFormComponent', () => {
 
     expect(vehiculoServiceSpy.reasignarVehiculo).toHaveBeenCalledWith('uuid-veh-123', 'uuid-cli-1');
   });
+
+  it('debe inhabilitar patente y numero_chasis al cargar datos de vehiculo en modo edicion (TK028)', () => {
+    const vehiculoMock = {
+      id: 'uuid-veh-100',
+      cliente_id: 'uuid-cli-1',
+      patente: 'AA999ZZ',
+      numero_chasis: '8AW1234567890',
+      nro_chasis: '8AW1234567890',
+      marca: 'Toyota',
+      modelo: 'Hilux',
+      anio: 2022
+    };
+
+    const spyObtener = vi.fn().mockReturnValue(of(vehiculoMock));
+    (component as any).vehiculoService.obtenerVehiculoPorId = spyObtener;
+
+    component.cargarDatosVehiculo('uuid-veh-100');
+
+    expect(component.vehiculoForm.get('patente')?.disabled).toBe(true);
+    expect(component.vehiculoForm.get('numero_chasis')?.disabled).toBe(true);
+    expect(component.vehiculoForm.get('nro_chasis')?.disabled).toBe(true);
+  });
 });
+
 

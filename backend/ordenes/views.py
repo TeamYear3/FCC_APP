@@ -111,3 +111,76 @@ class AgregarRepuestoView(APIView):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
+from rest_framework.exceptions import PermissionDenied
+from .models import HistorialEstadoOrden
+from .serializers import HistorialEstadoOrdenSerializer, ActualizarEstadoOrdenSerializer
+
+
+class ConsultarHistorialOrdenView(APIView):
+    """
+    TK046: Endpoint GET /api/ordenes/<orden_id>/historial/
+    Retorna el estado actual de la OT y la lista de su historial cronológico.
+    Restringe el acceso si el rol es 'cliente' y la OT no pertenece a sus vehículos.
+    """
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar esta Orden de Trabajo.")
+
+        historial_qs = orden.historial_estados.all()
+        historial_serializer = HistorialEstadoOrdenSerializer(historial_qs, many=True)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'estado_actual': orden.estado,
+            'estado_actual_display': orden.get_estado_display(),
+            'historial': historial_serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class ActualizarEstadoOrdenView(APIView):
+    """
+    TK033 & TK035: Endpoint PATCH /api/ordenes/<orden_id>/estado/
+    Permite a Administradores y Técnicos actualizar el estado de la OT y registra el cambio en HistorialEstadoOrden.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+
+    def patch(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
+        serializer = ActualizarEstadoOrdenSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        nuevo_estado = serializer.validated_data['estado']
+        comentario = serializer.validated_data.get('comentario', '')
+        estado_anterior = orden.estado
+
+        if estado_anterior != nuevo_estado:
+            orden.estado = nuevo_estado
+            orden.save(update_fields=['estado', 'actualizado_en'])
+
+            HistorialEstadoOrden.objects.create(
+                orden_trabajo=orden,
+                estado_anterior=estado_anterior,
+                estado_nuevo=nuevo_estado,
+                usuario=request.user,
+                comentario=comentario
+            )
+
+        historial_serializer = HistorialEstadoOrdenSerializer(orden.historial_estados.all(), many=True)
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'estado_actual': orden.estado,
+            'estado_actual_display': orden.get_estado_display(),
+            'historial': historial_serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+

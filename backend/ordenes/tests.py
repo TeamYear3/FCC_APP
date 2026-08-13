@@ -776,6 +776,95 @@ class OrdenTrabajoEmailTest(TestCase):
         self.assertIsNotNone(orden.id)
 
 
+from rest_framework.test import APITestCase
+from django.urls import reverse
+from .models import HistorialEstadoOrden
+
+
+class HistorialEstadoOrdenAPITestCase(APITestCase):
+    def setUp(self):
+        self.user_admin = User.objects.create_user(
+            email="admin_historial@taller.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="password123"
+        )
+        self.user_cliente = User.objects.create_user(
+            email="cliente_historial@taller.com",
+            nombre="Cliente",
+            apellido="Duenio",
+            rol="cliente",
+            password="password123"
+        )
+        self.user_ajeno = User.objects.create_user(
+            email="ajeno@taller.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Cliente",
+            apellido="Duenio",
+            tipo_documento="DNI",
+            dni_cuit="33444555",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AB123CD",
+            marca="Toyota",
+            modelo="Corolla"
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido en el motor"
+        )
+
+    def test_consultar_historial_orden_exito_admin(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('consultar-historial-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['orden_id'], str(self.orden.id))
+        self.assertEqual(response.data['estado_actual'], 'ingresado')
+        self.assertTrue(len(response.data['historial']) >= 1)
+
+    def test_consultar_historial_orden_exito_propietario(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('consultar-historial-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_consultar_historial_orden_bloqueado_cliente_ajeno(self):
+        self.client.force_authenticate(user=self.user_ajeno)
+        url = reverse('consultar-historial-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_actualizar_estado_orden_y_registro_historial(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('actualizar-estado-orden', kwargs={'orden_id': self.orden.id})
+        payload = {
+            "estado": "en_proceso",
+            "comentario": "Iniciando trabajos de reparación."
+        }
+        response = self.client.patch(url, payload, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['estado_actual'], 'en_proceso')
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, 'en_proceso')
+
+        ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden).first()
+        self.assertEqual(ultimo_registro.estado_anterior, 'ingresado')
+        self.assertEqual(ultimo_registro.estado_nuevo, 'en_proceso')
+        self.assertEqual(ultimo_registro.comentario, 'Iniciando trabajos de reparación.')
+
+
+
 
 
 
