@@ -35,26 +35,25 @@
           </svg>
         </span>
         <div>
-          <span class="font-extrabold text-color-primary-accent">¡Orden de Trabajo Creada con Éxito!</span>
-          <p class="typography-caption text-color-text-secondary mt-0.5">Se ha registrado la orden <strong class="text-white">{{ successOT() }}</strong> en el sistema.</p>
+          Se ha creado correctamente la orden <strong class="text-color-status-review uppercase tracking-wider">#{{ successOT() }}</strong>.
         </div>
       </div>
       <button
         type="button"
         (click)="successOT.set(null)"
-        class="text-color-text-secondary hover:text-white transition-colors cursor-pointer p-1 bg-transparent border-0"
+        class="p-2 text-zinc-400 hover:text-white transition-colors bg-transparent border-0 cursor-pointer"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
 
     <!-- Panel de Búsqueda y Filtros Avanzados (TK056) -->
-    <div class="bg-[#121215] border border-zinc-800/90 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4">
-      <div class="flex items-center justify-between border-b border-zinc-800/60 pb-3">
+    <div class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-white/5 pb-3">
         <div class="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#FFCC00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <h2 class="text-sm font-bold text-white uppercase tracking-wider">Búsqueda y Filtros Avanzados</h2>
@@ -62,7 +61,7 @@
         <button
           type="button"
           (click)="limpiarFiltros()"
-          class="text-xs text-zinc-400 hover:text-[#FFCC00] transition-colors flex items-center gap-1 bg-transparent border-0 cursor-pointer"
+          class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1 bg-transparent border-0 cursor-pointer"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -75,7 +74,7 @@
         <!-- Búsqueda Patente / Cliente -->
         <div class="space-y-1">
           <label class="text-zinc-400 font-medium block">Patente / Cliente</label>
-          <div class="bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 flex items-center gap-2 focus-within:border-[#FFCC00] transition-colors">
+          <div class="bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 flex items-center gap-2 focus-within:border-color-primary-accent transition-colors">
             <input
               type="text"
               [ngModel]="busqueda()"
@@ -92,7 +91,7 @@
           <select
             [ngModel]="estadoFiltro()"
             (ngModelChange)="estadoFiltro.set($event); onFiltroChange()"
-            class="w-full bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-[#FFCC00] text-xs font-medium cursor-pointer"
+            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
           >
             <option value="todos">Todos los Estados</option>
             <option value="ingresado">Ingresado</option>
@@ -112,7 +111,7 @@
             type="date"
             [ngModel]="fechaDesde()"
             (ngModelChange)="fechaDesde.set($event); onFiltroChange()"
-            class="w-full bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-[#FFCC00] text-xs font-medium cursor-pointer"
+            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
           />
         </div>
 
@@ -123,7 +122,7 @@
             type="date"
             [ngModel]="fechaHasta()"
             (ngModelChange)="fechaHasta.set($event); onFiltroChange()"
-            class="w-full bg-[#1A1A1E] border border-zinc-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-[#FFCC00] text-xs font-medium cursor-pointer"
+            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
           />
         </div>
       </div>
@@ -155,7 +154,7 @@
       </div>
 
       <!-- Zona Inferior: Datos del Cliente, Fecha técnica y Presupuesto divididos por línea horizontal gris oscuro -->
-      <div class="pt-md border-t border-[#333333] grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="pt-md border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <span class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold">Titular / Cliente</span>
           <p class="typography-body-highlight text-white mt-0.5">Carlos Rodríguez</p>
@@ -268,7 +267,7 @@
   </div>
 
   <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
-  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption">
     <div class="flex items-center gap-4">
       <span class="flex items-center gap-1.5 text-color-status-review font-semibold">
         <span class="w-2 h-2 rounded-full bg-color-status-review animate-ping"></span>
