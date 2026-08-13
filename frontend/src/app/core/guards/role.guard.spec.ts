@@ -71,7 +71,7 @@ describe('RoleGuard', () => {
     } as unknown as ActivatedRouteSnapshot;
 
     const result = guard.canActivate(route, {} as RouterStateSnapshot);
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/no-autorizado']);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/acceso-denegado']);
     expect(result).toBe(mockUrlTree);
   });
 
@@ -87,7 +87,7 @@ describe('RoleGuard', () => {
     } as unknown as ActivatedRouteSnapshot;
 
     const result = guard.canActivate(route, {} as RouterStateSnapshot);
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/no-autorizado']);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/acceso-denegado']);
     expect(result).toBe(mockUrlTree);
   });
 
