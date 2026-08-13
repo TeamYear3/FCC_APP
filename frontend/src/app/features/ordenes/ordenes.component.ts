@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenFiltros } from '../../core/services/orden.service';
+import { PageComponent } from '../../shared/components/page-component/page-component';
 
 export interface ServiceTask {
   id: number;
@@ -18,7 +19,7 @@ export type OrderTab = 'Detalle' | 'Servicios' | 'Repuestos' | 'Pagos' | 'Notas'
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, PageComponent],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.css'
 })
@@ -28,6 +29,7 @@ export class OrdenesComponent implements OnInit {
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
+  readonly isAdminView = signal<boolean>(false);
   readonly successOT = signal<string | null>(null);
   readonly nuevaOrdenUrl = signal<string>('/ordenes/nueva');
 
@@ -46,6 +48,7 @@ export class OrdenesComponent implements OnInit {
 
   ngOnInit(): void {
     const isAdmin = this.router.url.startsWith('/admin');
+    this.isAdminView.set(isAdmin);
     this.nuevaOrdenUrl.set(isAdmin ? '/admin/ordenes/nueva' : '/ordenes/nueva');
     
     if (typeof window !== 'undefined' && window.history.state?.successOT) {

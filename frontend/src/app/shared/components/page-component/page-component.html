@@ -1,0 +1,44 @@
+<header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+  <div class="flex items-center gap-md">
+    <!-- Logo mini del taller -->
+    <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
+      <span class="font-extrabold text-color-primary-accent text-lg tracking-tighter">FCC</span>
+    </div>
+    <div>
+      <div class="flex items-center gap-2 mb-1">
+        @if (categoria) {
+          <span class="px-2 py-0.5 bg-color-primary-accent/15 text-color-primary-accent border border-color-primary-accent/30 rounded-badge typography-caption font-bold uppercase tracking-wider">
+            {{ categoria }}
+          </span>
+        }
+        @if (userRole) {
+          <span class="typography-caption text-color-text-secondary">Rol activo: <strong class="text-color-primary-accent uppercase tracking-wide">{{ userRole }}</strong></span>
+        }
+      </div>
+      <h1 class="typography-h1-display tracking-tight uppercase leading-none">
+        {{ titulo }}
+      </h1>
+      @if (subtitulo) {
+        <p class="text-color-text-secondary text-sm mt-1">{{ subtitulo }}</p>
+      }
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <!-- Proyección de Acciones -->
+    <ng-content select="[actions]"></ng-content>
+
+    @if (mostrarLogout) {
+      <!-- Botón Secundario Outline / Salir -->
+      <button
+        type="button"
+        (click)="logout()"
+        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] flex items-center gap-2 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Cerrar Sesión</span>
+      </button>
+    }
+  </div>
+</header>
