@@ -12,7 +12,7 @@
     </div>
 
     <!-- Menú de Enlaces -->
-    <nav class="flex flex-col gap-2">
+    <nav (click)="sidebarService.closeSidebar()" class="nav flex flex-col gap-2">
       <!-- Dashboard -->
       <a 
         routerLink="/admin/dashboard" 

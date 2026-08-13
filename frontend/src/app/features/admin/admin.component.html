@@ -1,6 +1,15 @@
 <div class="flex h-screen bg-color-bg-main overflow-hidden text-white font-sans">
+  <!-- Fondo translúcido móvil para cerrar al hacer clic fuera (Drawer Overlay) -->
+  @if (sidebarService.isSidebarOpen()) {
+    <div (click)="sidebarService.closeSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"></div>
+  }
+
   <!-- Barra lateral (Sidebar) -->
-  <app-sidebar class="w-64 flex-shrink-0 hidden md:block"></app-sidebar>
+  <app-sidebar 
+    [class.translate-x-0]="sidebarService.isSidebarOpen()"
+    [class.-translate-x-full]="!sidebarService.isSidebarOpen()"
+    class="fixed inset-y-0 left-0 w-64 z-50 md:relative md:translate-x-0 transition-transform duration-300 ease-in-out block flex-shrink-0"
+  ></app-sidebar>
   
   <!-- Contenedor principal para Navbar y Contenido -->
   <div class="flex flex-col flex-1 overflow-hidden">

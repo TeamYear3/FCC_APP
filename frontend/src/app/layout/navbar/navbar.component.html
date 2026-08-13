@@ -1,6 +1,18 @@
 <header class="bg-color-surface-container border-b border-white/10 px-6 py-4 flex items-center justify-between text-white shadow-md">
   <!-- Izquierda: Buscador Universal -->
   <div class="flex items-center gap-4 flex-1 max-w-md">
+    <!-- Botón Hamburguesa Móvil -->
+    <button 
+      type="button"
+      (click)="sidebarService.toggleSidebar()" 
+      class="block md:hidden text-zinc-400 hover:text-white transition-colors p-2 rounded-lg bg-zinc-900 border border-zinc-800"
+      aria-label="Abrir navegación lateral"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+
     <div class="relative w-full">
       <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
