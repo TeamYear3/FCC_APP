@@ -32,7 +32,98 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/admin/admin.component').then(
         (m) => m.AdminComponent
-      )
+      ),
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/admin/taller-dashboard/taller-dashboard.component').then(
+            (m) => m.TallerDashboardComponent
+          )
+      },
+      {
+        path: 'clientes',
+        loadComponent: () =>
+          import('./features/clientes/clientes.component').then(
+            (m) => m.ClientesComponent
+          )
+      },
+      {
+        path: 'clientes/nuevo',
+        loadComponent: () =>
+          import('./features/clientes/cliente-form/cliente-form.component').then(
+            (m) => m.ClienteFormComponent
+          )
+      },
+      {
+        path: 'clientes/editar/:id',
+        loadComponent: () =>
+          import('./features/clientes/cliente-form/cliente-form.component').then(
+            (m) => m.ClienteFormComponent
+          )
+      },
+      {
+        path: 'ordenes',
+        loadComponent: () =>
+          import('./features/ordenes/ordenes.component').then(
+            (m) => m.OrdenesComponent
+          )
+      },
+      {
+        path: 'ordenes/nueva',
+        loadComponent: () =>
+          import('./features/ordenes/orden-form/orden-form.component').then(
+            (m) => m.OrdenFormComponent
+          )
+      },
+      {
+        path: 'turnos',
+        loadComponent: () =>
+          import('./features/turnos/turnos-agenda.component').then(
+            (m) => m.TurnosAgendaComponent
+          )
+      },
+      {
+        path: 'facturacion',
+        loadComponent: () =>
+          import('./features/facturacion/facturacion-calendario.component').then(
+            (m) => m.FacturacionCalendarioComponent
+          )
+      },
+      {
+        path: 'configuracion',
+        loadComponent: () =>
+          import('./features/configuracion/configuracion-perfil-modal.component').then(
+            (m) => m.ConfiguracionPerfilModalComponent
+          )
+      },
+      {
+        path: 'vehiculos/nuevo',
+        loadComponent: () =>
+          import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
+            (m) => m.VehiculoFormComponent
+          )
+      },
+      {
+        path: 'vehiculos/editar/:id',
+        loadComponent: () =>
+          import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
+            (m) => m.VehiculoFormComponent
+          )
+      },
+      {
+        path: 'vehiculos/:id/historial',
+        loadComponent: () =>
+          import('./features/vehiculos/vehiculo-historial/vehiculo-historial.component').then(
+            (m) => m.VehiculoHistorialComponent
+          )
+      },
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
+      }
+    ]
   },
   {
     path: 'ordenes/nueva',
@@ -121,3 +212,4 @@ export const routes: Routes = [
     redirectTo: 'autenticacion'
   }
 ];
+
