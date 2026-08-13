@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 declare global {
@@ -206,6 +207,45 @@ export class AuthService {
    */
   loginDev(role: 'admin' | 'tecnico' | 'cliente'): Observable<{ access: string; refresh: string }> {
     return this.http.post<{ access: string; refresh: string }>(`${environment.apiUrl}/auth/dev-login/`, { rol: role });
+  }
+
+  /**
+   * Autenticación tradicional mediante email y contraseña.
+   */
+  login(email: string, password: string): Observable<{ access: string; refresh: string }> {
+    return this.http.post<{ access: string; refresh: string }>(`${environment.apiUrl}/auth/login/`, { email, password }).pipe(
+      tap((res) => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('fcc_refresh_token', res.refresh);
+        }
+        this.setToken(res.access);
+      })
+    );
+  }
+
+  /**
+   * Registro tradicional para nuevos clientes.
+   */
+  registro(nombre: string, apellido: string, email: string, password: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/auth/registro/`, { nombre, apellido, email, password });
+  }
+
+  /**
+   * Solicitud de recuperación de contraseña.
+   */
+  requestPasswordReset(email: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/auth/password-reset/`, { email });
+  }
+
+  /**
+   * Confirmación y actualización de la nueva contraseña.
+   */
+  confirmPasswordReset(uid: string, token: string, newPassword: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/auth/password-reset-confirm/`, {
+      uid,
+      token,
+      new_password: newPassword
+    });
   }
 
   /**
