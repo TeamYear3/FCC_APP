@@ -1,0 +1,95 @@
+<aside class="w-64 h-full bg-[#1e1e1e] border-r border-white/10 flex flex-col justify-between text-white p-6 shadow-lg">
+  <!-- Sección Superior: Marca e Isotopo -->
+  <div>
+    <div class="flex items-center gap-3 mb-8">
+      <div class="w-10 h-10 rounded-card bg-black/40 border border-color-primary-accent/40 flex items-center justify-center shadow">
+        <span class="font-extrabold text-color-primary-accent text-md tracking-tighter">FCC</span>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-white tracking-wider uppercase leading-none">FCC Taller</h1>
+        <span class="text-[10px] text-color-text-secondary uppercase tracking-widest">Panel de Control</span>
+      </div>
+    </div>
+
+    <!-- Menú de Enlaces -->
+    <nav class="flex flex-col gap-2">
+      <!-- Dashboard -->
+      <a 
+        routerLink="/admin/dashboard" 
+        routerLinkActive="bg-color-primary-accent/15 text-color-primary-accent border-l-4 border-color-primary-accent" 
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-color-text-secondary hover:text-white hover:bg-white/5 transition-all decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
+        </svg>
+        <span>Dashboard</span>
+      </a>
+
+      <!-- Clientes -->
+      <a 
+        routerLink="/admin/clientes" 
+        routerLinkActive="bg-color-primary-accent/15 text-color-primary-accent border-l-4 border-color-primary-accent" 
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-color-text-secondary hover:text-white hover:bg-white/5 transition-all decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <span>Clientes</span>
+      </a>
+
+      <!-- Órdenes de Trabajo -->
+      <a 
+        routerLink="/admin/ordenes" 
+        routerLinkActive="bg-color-primary-accent/15 text-color-primary-accent border-l-4 border-color-primary-accent" 
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-color-text-secondary hover:text-white hover:bg-white/5 transition-all decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        <span>Órdenes de Trabajo</span>
+      </a>
+
+      <!-- Turnos -->
+      <a 
+        routerLink="/admin/turnos" 
+        routerLinkActive="bg-color-primary-accent/15 text-color-primary-accent border-l-4 border-color-primary-accent" 
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-color-text-secondary hover:text-white hover:bg-white/5 transition-all decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span>Agenda Turnos</span>
+      </a>
+
+      <!-- Facturación -->
+      <a 
+        routerLink="/admin/facturacion" 
+        routerLinkActive="bg-color-primary-accent/15 text-color-primary-accent border-l-4 border-color-primary-accent" 
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-color-text-secondary hover:text-white hover:bg-white/5 transition-all decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>Facturación</span>
+      </a>
+
+      <!-- Perfil -->
+      <a 
+        routerLink="/admin/configuracion" 
+        routerLinkActive="bg-color-primary-accent/15 text-color-primary-accent border-l-4 border-color-primary-accent" 
+        class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-color-text-secondary hover:text-white hover:bg-white/5 transition-all decoration-none"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        <span>Mi Perfil</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Sección Inferior: Versión -->
+  <div class="border-t border-white/5 pt-4 text-center">
+    <span class="text-[10px] text-color-text-secondary tracking-widest uppercase">Versión 1.0.0</span>
+  </div>
+</aside>
