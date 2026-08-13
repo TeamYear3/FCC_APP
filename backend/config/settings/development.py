@@ -15,3 +15,7 @@ DATABASES = {
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
     }
 }
+
+# Consola como backend de email en desarrollo para evitar errores de envío SMTP
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
