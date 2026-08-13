@@ -28,7 +28,7 @@
     <!-- Proyección de Acciones -->
     <ng-content select="[actions]"></ng-content>
 
-    @if (mostrarLogout) {
+    @if (mostrarLogoutLocal()) {
       <!-- Botón Secundario Outline / Salir -->
       <button
         type="button"
