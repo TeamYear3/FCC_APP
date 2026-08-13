@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-color-bg-main text-color-text-primary p-md sm:p-lg">
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-4xl mx-auto">
     <!-- Cabecera y Navegación de Regreso -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-lg">
       <div>
@@ -11,7 +11,7 @@
         </p>
       </div>
       <a
-        routerLink="/admin/clientes"
+        routerLink="/clientes"
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-pill border border-white/15 hover:bg-white/5 text-color-text-secondary hover:text-white transition-colors text-sm font-medium self-start sm:self-auto"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -22,7 +22,7 @@
     </div>
 
     <!-- Contenedor Principal (Card MD3 / Isometría oscura) -->
-    <div class="bg-color-surface-container border border-color-primary-accent/25 rounded-card p-md sm:p-lg shadow-[0_0_20px_rgba(255,204,0,0.08)]">
+    <div class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg shadow-xl">
       <!-- Mensaje de Error General de la API -->
       <div *ngIf="errorMessage()" class="bg-red-900/40 border border-red-500/50 text-red-300 p-md rounded-badge mb-lg flex items-start gap-3">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
@@ -244,7 +244,7 @@
         <!-- Botones de Acción -->
         <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-4 pt-4 border-t border-white/10">
           <a
-            routerLink="/admin/clientes"
+            routerLink="/clientes"
             class="w-full sm:w-auto text-center px-6 py-3 rounded-pill border border-white/20 hover:bg-white/5 transition-colors text-color-text-secondary font-medium text-sm"
           >
             Cancelar

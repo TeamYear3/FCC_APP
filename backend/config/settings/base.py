@@ -131,7 +131,3 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "FCC App <noreply@fccapp.co
 
 # Client Portal Configuration (Frontend URL)
 CLIENT_PORTAL_URL = os.getenv("CLIENT_PORTAL_URL", "https://fccapp.com")
-
-# Password Reset Token Timeout (1 hour in seconds)
-PASSWORD_RESET_TIMEOUT = 3600
-

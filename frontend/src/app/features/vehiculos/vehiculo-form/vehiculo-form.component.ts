@@ -28,7 +28,6 @@ export class VehiculoFormComponent implements OnInit {
   readonly clienteSeleccionado = signal<ClienteResponse | null>(null);
   readonly isEditMode = signal<boolean>(false);
   readonly vehiculoId = signal<string | null>(null);
-  readonly returnUrl = signal<string>('/clientes');
   readonly mostrarModalUnicidad = signal<boolean>(false);
   readonly reasignando = signal<boolean>(false);
   readonly datosConflicto = signal<{
@@ -55,7 +54,6 @@ export class VehiculoFormComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.returnUrl.set(this.router.url.startsWith('/admin') ? '/admin/clientes' : '/clientes');
     this.vehiculoForm = this.fb.group({
       cliente_id: ['', [Validators.required]],
       marca: ['', [Validators.required, Validators.minLength(2)]],
@@ -198,7 +196,7 @@ export class VehiculoFormComponent implements OnInit {
       next: () => {
         this.isSubmitting.set(false);
         // Redirigir a la vista de clientes o listado de vehículos
-        this.router.navigate([this.returnUrl()]);
+        this.router.navigate(['/clientes']);
       },
       error: (err) => {
         this.isSubmitting.set(false);
@@ -262,7 +260,7 @@ export class VehiculoFormComponent implements OnInit {
       next: () => {
         this.reasignando.set(false);
         this.cerrarModalUnicidad();
-        this.router.navigate([this.returnUrl()]);
+        this.router.navigate(['/clientes']);
       },
       error: (err) => {
         this.reasignando.set(false);

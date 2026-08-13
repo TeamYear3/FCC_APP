@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { AccesoDenegadoComponent } from './acceso-denegado.component';
+import { PortalTransparenciaComponent } from './portal-transparencia.component';
 import { provideRouter } from '@angular/router';
 
-describe('AccesoDenegadoComponent', () => {
-  let component: AccesoDenegadoComponent;
-  let fixture: ComponentFixture<AccesoDenegadoComponent>;
+describe('PortalTransparenciaComponent', () => {
+  let component: PortalTransparenciaComponent;
+  let fixture: ComponentFixture<PortalTransparenciaComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AccesoDenegadoComponent],
+      imports: [PortalTransparenciaComponent],
       providers: [provideRouter([])]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AccesoDenegadoComponent);
+    fixture = TestBed.createComponent(PortalTransparenciaComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

@@ -71,7 +71,7 @@ describe('RoleGuard', () => {
     } as unknown as ActivatedRouteSnapshot;
 
     const result = guard.canActivate(route, {} as RouterStateSnapshot);
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/acceso-denegado']);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/no-autorizado']);
     expect(result).toBe(mockUrlTree);
   });
 
@@ -87,17 +87,17 @@ describe('RoleGuard', () => {
     } as unknown as ActivatedRouteSnapshot;
 
     const result = guard.canActivate(route, {} as RouterStateSnapshot);
-    expect(router.createUrlTree).toHaveBeenCalledWith(['/acceso-denegado']);
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/no-autorizado']);
     expect(result).toBe(mockUrlTree);
   });
 
-  it('should allow "cliente" role to access portal-cliente when roles permit', () => {
+  it('should allow "cliente" role to access portal de transparencia when roles permit', () => {
     authService.isAuthenticated.mockReturnValue(true);
     authService.getUserRole.mockReturnValue('cliente');
 
     const route = {
       data: { roles: ['cliente', 'tecnico', 'admin'] },
-      url: [new UrlSegment('portal-cliente', {})]
+      url: [new UrlSegment('transparencia', {})]
     } as unknown as ActivatedRouteSnapshot;
 
     const result = guard.canActivate(route, {} as RouterStateSnapshot);

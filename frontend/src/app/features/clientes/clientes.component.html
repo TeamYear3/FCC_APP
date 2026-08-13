@@ -1,14 +1,39 @@
 <div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
   
   <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
-  <div class="max-w-[1400px] mx-auto w-full relative z-10 flex-1">
+  <div class="max-w-6xl mx-auto w-full relative z-10 flex-1">
     
     <!-- Encabezado / Header -->
-    <app-page-component
-      titulo="Directorio de Clientes y Flotas"
-      categoria="Cartera de Clientes"
-      [userRole]="userRole()"
-    ></app-page-component>
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+      <div class="flex items-center gap-md">
+        <!-- Logo mini del taller -->
+        <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
+          <span class="font-extrabold text-color-primary-accent text-lg tracking-tighter">FCC</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 bg-color-primary-accent/15 text-color-primary-accent border border-color-primary-accent/30 rounded-badge typography-caption font-bold uppercase tracking-wider">
+              Cartera de Clientes
+            </span>
+            <span class="typography-caption text-color-text-secondary">Rol activo: <strong class="text-color-primary-accent uppercase tracking-wide">{{ userRole() || 'tecnico' }}</strong></span>
+          </div>
+          <h1 class="typography-h1-display tracking-tight uppercase leading-none">
+            Directorio de Clientes y Flotas
+          </h1>
+        </div>
+      </div>
+
+      <!-- Botón Secundario Outline / Salir -->
+      <button
+        type="button"
+        (click)="logout()"
+        class="min-h-[48px] px-md py-2.5 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] flex items-center gap-2 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Cerrar Sesión</span>
+      </button>
+    </header>
 
     <!-- Bloques del Tablero Principal (Dashboard Core Cards - MD3 Alignment) -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-md mb-lg">
@@ -60,7 +85,7 @@
 
       <div class="flex flex-wrap items-center gap-3">
         <a
-          routerLink="/admin/clientes/nuevo"
+          routerLink="/clientes/nuevo"
           class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -68,7 +93,7 @@
           <span>+ Nuevo Cliente</span>
         </a>
         <a
-          routerLink="/admin/vehiculos/nuevo"
+          routerLink="/vehiculos/nuevo"
           class="min-h-[48px] px-lg py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
           <!-- Ícono coche -->
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -80,7 +105,7 @@
     </div>
 
     <!-- Directorio en Tarjetas (Order Work Cards style - #1E1E1E) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md">
       <div *ngFor="let cli of listaClientes" 
            class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1">
         
@@ -140,7 +165,7 @@
           </button>
           
           <a
-            [routerLink]="['/admin/clientes/editar', cli.id]"
+            [routerLink]="['/clientes/editar', cli.id]"
             class="flex-1 min-h-[44px] rounded-pill bg-color-primary-accent hover:bg-color-primary-accent/90 text-black typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer decoration-none shadow-md"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -154,7 +179,7 @@
   </div>
 
   <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
-  <div class="max-w-[1400px] mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption">
+  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
     <div class="flex items-center gap-4">
       <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
         <span class="w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>

@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AutenticacionComponent } from './autenticacion.component';
 import { AuthService } from '../../core/auth/auth.service';
-import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -27,8 +26,7 @@ describe('AutenticacionComponent', () => {
     await TestBed.configureTestingModule({
       imports: [AutenticacionComponent],
       providers: [
-        { provide: AuthService, useValue: mockAuthService },
-        provideRouter([])
+        { provide: AuthService, useValue: mockAuthService }
       ]
     }).compileComponents();
 

@@ -5,20 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import TokenError
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
-from django.conf import settings
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import (
-    GoogleAuthSerializer,
-    LogoutSerializer,
-    CustomTokenObtainPairSerializer,
-    RegistroUsuarioSerializer,
-    PasswordResetSerializer,
-    PasswordResetConfirmSerializer,
-)
+from .serializers import GoogleAuthSerializer, LogoutSerializer
 
 Usuario = get_user_model()
 
@@ -128,94 +115,4 @@ class DevLoginView(APIView):
             "access": str(refresh.access_token),
             "refresh": str(refresh)
         }, status=status.HTTP_200_OK)
-
-
-class LoginView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
-    permission_classes = [AllowAny]
-
-
-class RegistroView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = RegistroUsuarioSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        user = serializer.save()
-        return Response(
-            {
-                "detail": "Usuario registrado exitosamente.",
-                "usuario": {
-                    "email": user.email,
-                    "nombre": user.nombre,
-                    "apellido": user.apellido,
-                    "rol": user.rol
-                }
-            },
-            status=status.HTTP_201_CREATED
-        )
-
-
-class PasswordResetView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = PasswordResetSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        email = serializer.validated_data["email"]
-        user = Usuario.objects.get(email=email)
-
-        token = default_token_generator.make_token(user)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-
-        reset_link = f"{settings.CLIENT_PORTAL_URL}/autenticacion?uid={uid}&token={token}"
-
-        subject = "Recuperación de Contraseña - FCC App"
-        message = (
-            f"Hola {user.nombre},\n\n"
-            f"Hemos recibido una solicitud para restablecer tu contraseña. "
-            f"Para proceder, haz clic en el siguiente enlace o cópialo en tu navegador:\n\n"
-            f"{reset_link}\n\n"
-            f"Este enlace tiene una validez de 1 hora.\n\n"
-            f"Si no solicitaste este cambio, puedes ignorar este correo.\n\n"
-            f"Saludos,\nEl equipo de FCC App"
-        )
-
-        try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            return Response(
-                {"error": f"No se pudo enviar el correo de recuperación. Detalle: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        return Response(
-            {"detail": "Se ha enviado un correo electrónico con las instrucciones para restablecer tu contraseña."},
-            status=status.HTTP_200_OK
-        )
-
-
-class PasswordResetConfirmView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        serializer.save()
-        return Response(
-            {"detail": "Tu contraseña ha sido restablecida exitosamente."},
-            status=status.HTTP_200_OK
-        )
-
 
