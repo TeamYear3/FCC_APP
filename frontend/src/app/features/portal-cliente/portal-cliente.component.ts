@@ -15,13 +15,13 @@ export interface OrderSummary {
 }
 
 @Component({
-  selector: 'app-portal-transparencia',
+  selector: 'app-portal-cliente',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './portal-transparencia.component.html',
-  styleUrl: './portal-transparencia.component.css'
+  templateUrl: './portal-cliente.component.html',
+  styleUrl: './portal-cliente.component.css'
 })
-export class PortalTransparenciaComponent {
+export class PortalClienteComponent {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 

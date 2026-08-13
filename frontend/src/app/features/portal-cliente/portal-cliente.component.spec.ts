@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NoAutorizadoComponent } from './no-autorizado.component';
+import { PortalClienteComponent } from './portal-cliente.component';
 import { provideRouter } from '@angular/router';
 
-describe('NoAutorizadoComponent', () => {
-  let component: NoAutorizadoComponent;
-  let fixture: ComponentFixture<NoAutorizadoComponent>;
+describe('PortalClienteComponent', () => {
+  let component: PortalClienteComponent;
+  let fixture: ComponentFixture<PortalClienteComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoAutorizadoComponent],
+      imports: [PortalClienteComponent],
       providers: [provideRouter([])]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(NoAutorizadoComponent);
+    fixture = TestBed.createComponent(PortalClienteComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

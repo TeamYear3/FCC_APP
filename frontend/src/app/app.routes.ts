@@ -10,19 +10,19 @@ export const routes: Routes = [
       )
   },
   {
-    path: 'no-autorizado',
+    path: 'acceso-denegado',
     loadComponent: () =>
-      import('./features/no-autorizado/no-autorizado.component').then(
-        (m) => m.NoAutorizadoComponent
+      import('./features/acceso-denegado/acceso-denegado.component').then(
+        (m) => m.AccesoDenegadoComponent
       )
   },
   {
-    path: 'transparencia',
+    path: 'portal-cliente',
     canActivate: [roleGuardFn],
     data: { roles: ['cliente', 'tecnico', 'admin'] },
     loadComponent: () =>
-      import('./features/portal-transparencia/portal-transparencia.component').then(
-        (m) => m.PortalTransparenciaComponent
+      import('./features/portal-cliente/portal-cliente.component').then(
+        (m) => m.PortalClienteComponent
       )
   },
   {

@@ -4,13 +4,13 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
-  selector: 'app-no-autorizado',
+  selector: 'app-acceso-denegado',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './no-autorizado.component.html',
-  styleUrl: './no-autorizado.component.css'
+  templateUrl: './acceso-denegado.component.html',
+  styleUrl: './acceso-denegado.component.css'
 })
-export class NoAutorizadoComponent {
+export class AccesoDenegadoComponent {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -18,7 +18,7 @@ export class NoAutorizadoComponent {
 
   goBack(): void {
     if (this.userRole() === 'cliente') {
-      this.router.navigate(['/transparencia']);
+      this.router.navigate(['/portal-cliente']);
     } else if (this.userRole() === 'admin') {
       this.router.navigate(['/admin']);
     } else if (this.userRole() === 'tecnico') {

@@ -266,7 +266,7 @@ export class AuthService {
           } else if (role === 'tecnico') {
             this.router.navigate(['/ordenes']);
           } else {
-            this.router.navigate(['/transparencia']);
+            this.router.navigate(['/portal-cliente']);
           }
         },
         error: (err) => {
