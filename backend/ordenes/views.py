@@ -1,16 +1,21 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
-from core.permissions import EsAdministrador, EsTecnico
-from .models import OrdenTrabajo
-from .serializers import OrdenTrabajoSerializer, ItemManoDeObraSerializer, ItemRepuestoSerializer
-
-from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
+from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico
+from .serializers import (
+    OrdenTrabajoSerializer,
+    ItemManoDeObraSerializer,
+    ItemRepuestoSerializer,
+    HistorialEstadoOrdenSerializer,
+    ActualizarEstadoOrdenSerializer,
+    AdjuntoDiagnosticoSerializer
+)
+from .storage import subir_imagen_diagnostico, eliminar_imagen_diagnostico
 
 
 class OrdenTrabajoPagination(PageNumberPagination):
@@ -181,6 +186,60 @@ class ActualizarEstadoOrdenView(APIView):
             'estado_actual_display': orden.get_estado_display(),
             'historial': historial_serializer.data
         }, status=status.HTTP_200_OK)
+
+
+class AdjuntoDiagnosticoListCreateView(APIView):
+    """
+    TK052: Endpoint GET/POST /api/ordenes/<orden_id>/adjuntos/ y /api/diagnosticos/adjuntos/
+    Subida de imágenes de diagnóstico a Cloudinary (o almacenamiento local) y persistencia de metadatos.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
+        adjuntos = orden.adjuntos_diagnostico.all()
+        serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, orden_id=None, *args, **kwargs):
+        target_orden_id = orden_id or request.data.get('orden_trabajo') or request.data.get('orden_id')
+        if not target_orden_id:
+            return Response({'error': 'Debe especificar el ID de la orden de trabajo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        orden = get_object_or_404(OrdenTrabajo, id=target_orden_id)
+        file_obj = request.FILES.get('archivo') or request.FILES.get('file') or request.FILES.get('imagen')
+        if not file_obj:
+            return Response({'error': 'No se adjuntó ningún archivo de imagen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        resultado_upload = subir_imagen_diagnostico(file_obj, orden.id)
+
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=orden,
+            url_secure=resultado_upload['url_secure'],
+            public_id=resultado_upload['public_id'],
+            nombre_archivo=resultado_upload['nombre_archivo'],
+            tamanio=resultado_upload['tamanio'],
+            mime_type=resultado_upload['mime_type'],
+            creado_por=request.user if request.user.is_authenticated else None
+        )
+
+        serializer = AdjuntoDiagnosticoSerializer(adjunto)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AdjuntoDiagnosticoDetailView(APIView):
+    """
+    TK052: Endpoint DELETE /api/diagnosticos/adjuntos/<adjunto_id>/
+    Elimina la imagen del proveedor de almacenamiento (Cloudinary / Local) y su registro.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+
+    def delete(self, request, adjunto_id, *args, **kwargs):
+        adjunto = get_object_or_404(AdjuntoDiagnostico, id=adjunto_id)
+        eliminar_imagen_diagnostico(adjunto.public_id)
+        adjunto.delete()
+        return Response({'message': 'Adjunto de diagnóstico eliminado exitosamente.'}, status=status.HTTP_204_NO_CONTENT)
+
 
 
 

@@ -139,7 +139,7 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-from .models import HistorialEstadoOrden
+from .models import HistorialEstadoOrden, AdjuntoDiagnostico
 
 
 class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
@@ -169,6 +169,43 @@ class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
 class ActualizarEstadoOrdenSerializer(serializers.Serializer):
     estado = serializers.ChoiceField(choices=EstadoOrden.choices, required=True)
     comentario = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AdjuntoDiagnosticoSerializer(serializers.ModelSerializer):
+    creado_por_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AdjuntoDiagnostico
+        fields = [
+            'id',
+            'orden_trabajo',
+            'url_secure',
+            'public_id',
+            'nombre_archivo',
+            'tamanio',
+            'mime_type',
+            'creado_por',
+            'creado_por_nombre',
+            'creado_en'
+        ]
+        read_only_fields = [
+            'id',
+            'url_secure',
+            'public_id',
+            'nombre_archivo',
+            'tamanio',
+            'mime_type',
+            'creado_por',
+            'creado_por_nombre',
+            'creado_en'
+        ]
+
+    def get_creado_por_nombre(self, obj):
+        if obj.creado_por:
+            full = f"{getattr(obj.creado_por, 'nombre', '')} {getattr(obj.creado_por, 'apellido', '')}".strip()
+            return full or obj.creado_por.email
+        return "Técnico"
+
 
 
 

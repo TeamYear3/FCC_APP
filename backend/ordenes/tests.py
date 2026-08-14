@@ -864,6 +864,88 @@ class HistorialEstadoOrdenAPITestCase(APITestCase):
         self.assertEqual(ultimo_registro.comentario, 'Iniciando trabajos de reparación.')
 
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import AdjuntoDiagnostico
+
+
+class AdjuntoDiagnosticoAPITest(APITestCase):
+    def setUp(self):
+        self.user_tecnico = User.objects.create_user(
+            email="tecnico_foto@fcc.com",
+            password="Password123!",
+            rol="tecnico",
+            nombre="Técnico",
+            apellido="Pruebas"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Cliente",
+            apellido="Diagnostico",
+            tipo_documento="DNI",
+            dni_cuit="77889900",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="FOTO123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Diagnóstico con fotos"
+        )
+
+    def test_subir_adjunto_diagnostico_exito(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        
+        foto_mock = SimpleUploadedFile("motor.jpg", b"contenido_de_imagen_falsa", content_type="image/jpeg")
+        response = self.client.post(url, {'archivo': foto_mock}, format='multipart')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['nombre_archivo'], 'motor.jpg')
+        self.assertTrue('url_secure' in response.data)
+
+        self.assertEqual(AdjuntoDiagnostico.objects.filter(orden_trabajo=self.orden).count(), 1)
+
+    def test_listar_adjuntos_diagnostico(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="rueda.png",
+            tamanio=1024,
+            creado_por=self.user_tecnico
+        )
+
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['nombre_archivo'], 'rueda.png')
+
+    def test_eliminar_adjunto_diagnostico(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="a_borrar.jpg",
+            tamanio=2048,
+            creado_por=self.user_tecnico
+        )
+
+        url = reverse('eliminar-adjunto-diagnostico', kwargs={'adjunto_id': adjunto.id})
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(AdjuntoDiagnostico.objects.filter(id=adjunto.id).count(), 0)
+
+
+
 
 
 
