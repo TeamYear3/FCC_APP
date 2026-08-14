@@ -1,8 +1,10 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/services/orden.service';
+import { WebSocketService } from '../../core/services/websocket.service';
 
 @Component({
   selector: 'app-portal-cliente',
@@ -11,13 +13,15 @@ import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/
   templateUrl: './portal-cliente.component.html',
   styleUrl: './portal-cliente.component.css'
 })
-export class PortalClienteComponent implements OnInit {
+export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   readonly ordenService = inject(OrdenService);
+  readonly webSocketService = inject(WebSocketService);
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
   readonly userName = signal<string>('');
+  readonly estadoSocket = this.webSocketService.estadoConexion;
 
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
   readonly cargando = signal<boolean>(true);
@@ -29,6 +33,8 @@ export class PortalClienteComponent implements OnInit {
   readonly cargandoHistorial = signal<boolean>(false);
   readonly mostrarModalHistorial = signal<boolean>(false);
 
+  private socketSub: Subscription | null = null;
+
   ngOnInit(): void {
     const user = this.authService.getUserFromToken();
     if (user) {
@@ -36,6 +42,29 @@ export class PortalClienteComponent implements OnInit {
       this.userName.set(full || user.email || 'Cliente');
     }
     this.cargarOrdenesCliente();
+    this.iniciarWebSocket();
+  }
+
+  iniciarWebSocket(): void {
+    this.webSocketService.conectar();
+    this.socketSub = this.webSocketService.escucharEvento<{ orden_id: string; estado: string; nuevo_estado?: string }>('orden_actualizada').subscribe({
+      next: (payload) => {
+        if (!payload || !payload.orden_id) return;
+        const targetState = payload.nuevo_estado || payload.estado;
+        if (!targetState) return;
+
+        // Actualizar reactivamente la lista de órdenes
+        this.listaOrdenes.update(actuales =>
+          actuales.map(ot => ot.id === payload.orden_id ? { ...ot, estado: targetState } : ot)
+        );
+
+        // Si la modal de historial está abierta para esta OT, refrescar el historial
+        const sel = this.ordenSeleccionada();
+        if (sel && sel.id === payload.orden_id) {
+          this.verHistorialOT({ ...sel, estado: targetState });
+        }
+      }
+    });
   }
 
   cargarOrdenesCliente(): void {
@@ -113,5 +142,12 @@ export class PortalClienteComponent implements OnInit {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/autenticacion']);
+  }
+
+  ngOnDestroy(): void {
+    if (this.socketSub) {
+      this.socketSub.unsubscribe();
+    }
+    this.webSocketService.desconectar();
   }
 }
