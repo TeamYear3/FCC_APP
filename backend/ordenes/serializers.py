@@ -84,6 +84,7 @@ class ItemManoDeObraSerializer(serializers.ModelSerializer):
             'cantidad',
             'precio_unitario',
             'subtotal',
+            'completado',
             'creado_en',
             'actualizado_en'
         ]
@@ -119,6 +120,7 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
             'cantidad',
             'precio_unitario',
             'subtotal',
+            'completado',
             'creado_en',
             'actualizado_en'
         ]
@@ -137,6 +139,24 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['tipo'] = TipoItem.REPUESTO
         return super().create(validated_data)
+
+
+class ItemPresupuestoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ItemPresupuesto
+        fields = [
+            'id',
+            'orden_trabajo',
+            'tipo',
+            'descripcion',
+            'cantidad',
+            'precio_unitario',
+            'subtotal',
+            'completado',
+            'creado_en',
+            'actualizado_en'
+        ]
+        read_only_fields = ['id', 'orden_trabajo', 'subtotal', 'creado_en', 'actualizado_en']
 
 
 from .models import HistorialEstadoOrden, AdjuntoDiagnostico

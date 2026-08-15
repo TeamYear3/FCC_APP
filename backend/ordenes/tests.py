@@ -945,6 +945,80 @@ class AdjuntoDiagnosticoAPITest(APITestCase):
         self.assertEqual(AdjuntoDiagnostico.objects.filter(id=adjunto.id).count(), 0)
 
 
+class ItemsPresupuestoAPITest(APITestCase):
+    """
+    TK043: Pruebas unitarias para gestión de ítems de presupuesto (Listar, Completado, Eliminar).
+    """
+
+    def setUp(self):
+        self.cliente_user = User.objects.create_user(
+            email="cliente_items@taller.com",
+            password="Password123!",
+            nombre="Cliente",
+            apellido="Items",
+            rol="cliente"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_items@taller.com",
+            password="Password123!",
+            nombre="Tecnico",
+            apellido="Items",
+            rol="tecnico"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            dni_cuit="20445566778",
+            telefono="1122334455"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ITM123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general e ítems"
+        )
+        self.item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo="repuesto",
+            descripcion="Filtro de aire Bosch",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("5000.00")
+        )
+
+    def test_listar_items_presupuesto(self):
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse('listar-items-presupuesto', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['descripcion'], "Filtro de aire Bosch")
+        self.assertFalse(response.data[0]['completado'])
+
+    def test_marcar_item_completado(self):
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse('marcar-item-completado', kwargs={'orden_id': self.orden.id, 'item_id': self.item.id})
+        response = self.client.patch(url, {'completado': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['completado'])
+
+        # Alternar sin enviar valor explícito
+        response = self.client.patch(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['completado'])
+
+    def test_eliminar_item_presupuesto(self):
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse('eliminar-item-presupuesto', kwargs={'orden_id': self.orden.id, 'item_id': self.item.id})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ItemPresupuesto.objects.filter(id=self.item.id).count(), 0)
+
+
+
 
 
 

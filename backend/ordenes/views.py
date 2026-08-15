@@ -6,11 +6,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
-from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico
+from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico, ItemPresupuesto
 from .serializers import (
     OrdenTrabajoSerializer,
     ItemManoDeObraSerializer,
     ItemRepuestoSerializer,
+    ItemPresupuestoSerializer,
     HistorialEstadoOrdenSerializer,
     ActualizarEstadoOrdenSerializer,
     AdjuntoDiagnosticoSerializer
@@ -241,5 +242,56 @@ class AdjuntoDiagnosticoDetailView(APIView):
         return Response({'message': 'Adjunto de diagnóstico eliminado exitosamente.'}, status=status.HTTP_204_NO_CONTENT)
 
 
+class ListarItemsPresupuestoView(APIView):
+    """
+    TK043: Endpoint GET /api/ordenes/<orden_id>/items/
+    Lista todos los ítems de presupuesto (mano de obra y repuestos) de una OT.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
+        items = orden.items_presupuesto.all()
+        serializer = ItemPresupuestoSerializer(items, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class MarcarItemCompletadoView(APIView):
+    """
+    TK043: Endpoint PATCH /api/ordenes/<orden_id>/items/<item_id>/completado/
+    Alterna o establece el estado `completado` de una tarea o repuesto durante la reparación.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+
+    def patch(self, request, orden_id, item_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
+        item = get_object_or_404(ItemPresupuesto, id=item_id, orden_trabajo=orden)
+
+        if 'completado' in request.data:
+            item.completado = bool(request.data['completado'])
+        else:
+            item.completado = not item.completado
+
+        item.save(update_fields=['completado', 'actualizado_en'])
+        serializer = ItemPresupuestoSerializer(item)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class EliminarItemPresupuestoView(APIView):
+    """
+    TK043: Endpoint DELETE /api/ordenes/<orden_id>/items/<item_id>/
+    Elimina un ítem del presupuesto y actualiza el monto total de la OT.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+
+    def delete(self, request, orden_id, item_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
+        item = get_object_or_404(ItemPresupuesto, id=item_id, orden_trabajo=orden)
+        item.delete()
+
+        # Recalcular el monto total de la OT
+        total = sum(i.subtotal for i in orden.items_presupuesto.all())
+        orden.monto_total = total
+        orden.save(update_fields=['monto_total', 'actualizado_en'])
+
+        return Response({'message': 'Ítem eliminado del presupuesto exitosamente.', 'monto_total': float(total)}, status=status.HTTP_200_OK)

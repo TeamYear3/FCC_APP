@@ -1,0 +1,214 @@
+<div class="presupuesto-container">
+  
+  <!-- Encabezado de Sección -->
+  <div class="header-section">
+    <div class="title-group">
+      <span class="section-icon">📊</span>
+      <h3 class="section-title">
+        {{ modoEjecucion ? 'Checklist de Ejecución y Tareas' : 'Presupuesto de Trabajo' }}
+      </h3>
+    </div>
+    <div class="badge-total">
+      <span class="total-label">Total Estimado:</span>
+      <span class="total-amount">${{ montoTotal() | number:'1.2-2' }}</span>
+    </div>
+  </div>
+
+  <!-- Alertas de Error y Éxito -->
+  <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
+    ⚠️ {{ errorMessage() }}
+  </div>
+  <div *ngIf="successMessage()" class="alert alert-success" role="alert">
+    ✅ {{ successMessage() }}
+  </div>
+
+  <!-- Modo Ejecución: Barra de Progreso -->
+  <div *ngIf="modoEjecucion && totalTareas() > 0" class="progreso-card">
+    <div class="progreso-header">
+      <span class="progreso-text">
+        Progreso de Trabajo: <strong>{{ tareasCompletadas() }} de {{ totalTareas() }} tareas concluidas</strong>
+      </span>
+      <span class="progreso-porcentaje">{{ porcentajeProgreso() }}%</span>
+    </div>
+    <div class="progreso-bar-bg">
+      <div class="progreso-bar-fill" [style.width.%]="porcentajeProgreso()"></div>
+    </div>
+  </div>
+
+  <!-- Formulario de Carga de Ítem (Solo en Modo Presupuesto) -->
+  <div *ngIf="!modoEjecucion" class="add-item-card">
+    <h4 class="card-subtitle">
+      <span class="subtitle-icon">➕</span> Agregar Ítem al Presupuesto
+    </h4>
+    
+    <div class="form-grid">
+      <!-- Selector Tipo de Ítem -->
+      <div class="form-group">
+        <label class="form-label">Tipo de Ítem</label>
+        <div class="type-selector">
+          <button 
+            type="button" 
+            class="type-btn"
+            [class.active]="nuevoTipo() === 'repuesto'"
+            (click)="nuevoTipo.set('repuesto')">
+            📦 Repuesto
+          </button>
+          <button 
+            type="button" 
+            class="type-btn"
+            [class.active]="nuevoTipo() === 'mano_de_obra'"
+            (click)="nuevoTipo.set('mano_de_obra')">
+            🔧 Mano de Obra
+          </button>
+        </div>
+      </div>
+
+      <!-- Descripción -->
+      <div class="form-group col-span-2">
+        <label class="form-label">Descripción</label>
+        <div class="input-icon-wrapper">
+          <span class="input-icon">📝</span>
+          <input 
+            type="text" 
+            class="form-control"
+            placeholder="Ej. Pastillas de freno delanteras Bosch"
+            [ngModel]="nuevaDescripcion()"
+            (ngModelChange)="nuevaDescripcion.set($event)"
+            [disabled]="guardando()" />
+        </div>
+      </div>
+
+      <!-- Cantidad -->
+      <div class="form-group">
+        <label class="form-label">Cantidad</label>
+        <div class="input-icon-wrapper">
+          <span class="input-icon">🔢</span>
+          <input 
+            type="number" 
+            class="form-control"
+            min="0.1" 
+            step="0.5"
+            [ngModel]="nuevaCantidad()"
+            (ngModelChange)="nuevaCantidad.set($event)"
+            [disabled]="guardando()" />
+        </div>
+      </div>
+
+      <!-- Precio Unitario -->
+      <div class="form-group">
+        <label class="form-label">Precio Unitario ($)</label>
+        <div class="input-icon-wrapper">
+          <span class="input-icon">💲</span>
+          <input 
+            type="number" 
+            class="form-control"
+            placeholder="0.00"
+            min="0"
+            step="100"
+            [ngModel]="nuevoPrecioUnitario()"
+            (ngModelChange)="nuevoPrecioUnitario.set($event)"
+            [disabled]="guardando()" />
+        </div>
+      </div>
+
+      <!-- Subtotal Calculado del Ítem -->
+      <div class="form-group subtotal-group">
+        <label class="form-label">Subtotal Ítem</label>
+        <div class="subtotal-badge">
+          ${{ subtotalNuevoItem() | number:'1.2-2' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón Agregar -->
+    <div class="action-row">
+      <button 
+        type="button" 
+        class="btn-agregar" 
+        (click)="agregarItem()"
+        [disabled]="guardando()">
+        <span *ngIf="!guardando()">➕ Agregar Ítem</span>
+        <span *ngIf="guardando()">⏳ Guardando...</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Estado Cargando -->
+  <div *ngIf="cargando()" class="loading-state">
+    <div class="spinner"></div>
+    <span>Cargando ítems del presupuesto...</span>
+  </div>
+
+  <!-- Lista de Ítems / Tabla / Checklist -->
+  <div *ngIf="!cargando()" class="items-list-container">
+    <div *ngIf="items().length === 0" class="empty-state">
+      <span class="empty-icon">📂</span>
+      <p>No hay ítems agregados al presupuesto todavia.</p>
+    </div>
+
+    <div *ngIf="items().length > 0" class="items-table-wrapper">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th *ngIf="modoEjecucion" class="col-check">Estado</th>
+            <th class="col-tipo">Tipo</th>
+            <th class="col-desc">Descripción</th>
+            <th class="col-cant">Cant.</th>
+            <th class="col-precio">P. Unitario</th>
+            <th class="col-subtotal">Subtotal</th>
+            <th *ngIf="!modoEjecucion" class="col-actions">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of items()" [class.row-completada]="item.completado">
+            <!-- Checkbox Modo Ejecución -->
+            <td *ngIf="modoEjecucion" class="col-check">
+              <label class="custom-checkbox">
+                <input 
+                  type="checkbox" 
+                  [checked]="item.completado"
+                  (change)="toggleCompletado(item)" />
+                <span class="checkmark"></span>
+              </label>
+            </td>
+
+            <!-- Tipo Badge -->
+            <td class="col-tipo">
+              <span class="item-type-badge" [class.badge-repuesto]="item.tipo === 'repuesto'" [class.badge-mano]="item.tipo === 'mano_de_obra'">
+                {{ item.tipo === 'mano_de_obra' ? '🔧 Mano Obra' : '📦 Repuesto' }}
+              </span>
+            </td>
+
+            <!-- Descripción -->
+            <td class="col-desc">
+              <span class="desc-text" [class.text-strikethrough]="modoEjecucion && item.completado">
+                {{ item.descripcion }}
+              </span>
+            </td>
+
+            <!-- Cantidad -->
+            <td class="col-cant">{{ item.cantidad }}</td>
+
+            <!-- Precio Unitario -->
+            <td class="col-precio">${{ item.precio_unitario | number:'1.2-2' }}</td>
+
+            <!-- Subtotal -->
+            <td class="col-subtotal font-bold">${{ item.subtotal | number:'1.2-2' }}</td>
+
+            <!-- Eliminar en Modo Presupuesto -->
+            <td *ngIf="!modoEjecucion" class="col-actions">
+              <button 
+                type="button" 
+                class="btn-delete"
+                title="Eliminar Ítem"
+                (click)="eliminarItem(item)">
+                🗑️
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
