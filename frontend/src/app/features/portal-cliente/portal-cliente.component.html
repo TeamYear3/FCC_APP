@@ -42,95 +42,227 @@
       </div>
     </div>
 
-    <!-- Indicador de Carga Spinner -->
-    <div *ngIf="cargando()" class="py-16 text-center space-y-3">
-      <div class="w-10 h-10 border-4 border-[#FFCC00] border-t-transparent rounded-full animate-spin mx-auto"></div>
-      <p class="text-xs text-gray-400 font-medium">Cargando tus órdenes de trabajo...</p>
-    </div>
-
-    <!-- Mensaje de Error si la llamada API falla -->
-    <div *ngIf="!cargando() && errorMessage()" class="bg-red-900/40 border border-red-500/80 text-red-200 px-4 py-3 rounded-xl flex items-start gap-3 shadow-md animate-fadeIn">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <div class="text-sm font-medium">{{ errorMessage() }}</div>
-    </div>
-
-    <!-- Estado Vacío cuando el cliente no posee órdenes -->
-    <div *ngIf="!cargando() && !errorMessage() && listaOrdenes().length === 0" class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-10 text-center space-y-3 shadow-xl">
-      <div class="w-14 h-14 rounded-full bg-[#FFCC00]/10 border border-[#FFCC00]/20 flex items-center justify-center text-[#FFCC00] mx-auto">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      </div>
-      <h3 class="text-lg font-bold text-white">No posees Órdenes de Trabajo registradas</h3>
-      <p class="text-xs text-gray-400 max-w-sm mx-auto">
-        Actualmente no hay servicios activos o intervenciones asociadas a tus vehículos en el taller.
-      </p>
-    </div>
-
-    <!-- Listado Dinámico de Tarjetas de Orden de Trabajo (Figma Dark Cards) -->
-    <div *ngIf="!cargando() && listaOrdenes().length > 0" class="space-y-4">
-      <div 
-        *ngFor="let ot of listaOrdenes()" 
-        class="bg-[#1E1E1E] border border-[#2A2A2A] hover:border-[#FFCC00]/40 rounded-2xl p-5 shadow-xl transition-all space-y-4 animate-fadeIn"
+    <!-- Tabs de Navegación -->
+    <div class="flex border-b border-[#2A2A2A] gap-6 text-sm">
+      <button 
+        type="button" 
+        (click)="cambiarTab('ordenes')"
+        class="pb-3 font-bold transition-all border-b-2 cursor-pointer bg-transparent border-0"
+        [ngClass]="tabActivo() === 'ordenes' ? 'text-[#FFCC00] border-[#FFCC00]' : 'text-gray-400 border-transparent hover:text-white'"
       >
-        <!-- Encabezado de la Tarjeta OT -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
-          <div class="flex items-center gap-3">
-            <span class="text-xl font-black text-[#FFCC00] font-mono tracking-tight">{{ ot.numero_ot }}</span>
-            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider" [ngClass]="getEstadoBadgeClass(ot.estado)">
-              {{ getEstadoDisplay(ot.estado) }}
-            </span>
-          </div>
+        Órdenes de Trabajo
+      </button>
+      <button 
+        type="button" 
+        (click)="cambiarTab('vehiculos')"
+        class="pb-3 font-bold transition-all border-b-2 cursor-pointer bg-transparent border-0"
+        [ngClass]="tabActivo() === 'vehiculos' ? 'text-[#FFCC00] border-[#FFCC00]' : 'text-gray-400 border-transparent hover:text-white'"
+      >
+        Mis Vehículos y Mantenimiento
+      </button>
+    </div>
 
-          <div class="text-xs text-gray-400 flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span>Ingreso: <strong class="text-white font-medium">{{ ot.fecha_ingreso }}</strong></span>
-          </div>
+    <!-- SECCIÓN: ÓRDENES DE TRABAJO -->
+    <div *ngIf="tabActivo() === 'ordenes'" class="space-y-6">
+      <!-- Indicador de Carga Spinner -->
+      <div *ngIf="cargando()" class="py-16 text-center space-y-3">
+        <div class="w-10 h-10 border-4 border-[#FFCC00] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="text-xs text-gray-400 font-medium">Cargando tus órdenes de trabajo...</p>
+      </div>
+
+      <!-- Mensaje de Error si la llamada API falla -->
+      <div *ngIf="!cargando() && errorMessage()" class="bg-red-900/40 border border-red-500/80 text-red-200 px-4 py-3 rounded-xl flex items-start gap-3 shadow-md animate-fadeIn">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div class="text-sm font-medium">{{ errorMessage() }}</div>
+      </div>
+
+      <!-- Estado Vacío cuando el cliente no posee órdenes -->
+      <div *ngIf="!cargando() && !errorMessage() && listaOrdenes().length === 0" class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-10 text-center space-y-3 shadow-xl">
+        <div class="w-14 h-14 rounded-full bg-[#FFCC00]/10 border border-[#FFCC00]/20 flex items-center justify-center text-[#FFCC00] mx-auto">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
         </div>
+        <h3 class="text-lg font-bold text-white">No posees Órdenes de Trabajo registradas</h3>
+        <p class="text-xs text-gray-400 max-w-sm mx-auto">
+          Actualmente no hay servicios activos o intervenciones asociadas a tus vehículos en el taller.
+        </p>
+      </div>
 
-        <!-- Información del Vehículo y Problema -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div class="sm:col-span-2 space-y-1">
-            <span class="text-gray-400 font-semibold block uppercase tracking-wider text-[10px]">Vehículo Registrado</span>
-            <div class="text-white font-bold text-sm flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#FFCC00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+      <!-- Listado Dinámico de Tarjetas de Orden de Trabajo (Figma Dark Cards) -->
+      <div *ngIf="!cargando() && listaOrdenes().length > 0" class="space-y-4">
+        <div 
+          *ngFor="let ot of listaOrdenes()" 
+          class="bg-[#1E1E1E] border border-[#2A2A2A] hover:border-[#FFCC00]/40 rounded-2xl p-5 shadow-xl transition-all space-y-4 animate-fadeIn"
+        >
+          <!-- Encabezado de la Tarjeta OT -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2A2A2A] pb-3">
+            <div class="flex items-center gap-3">
+              <span class="text-xl font-black text-[#FFCC00] font-mono tracking-tight">{{ ot.numero_ot }}</span>
+              <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider" [ngClass]="getEstadoBadgeClass(ot.estado)">
+                {{ getEstadoDisplay(ot.estado) }}
+              </span>
+            </div>
+
+            <div class="text-xs text-gray-400 flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span>Patente: <strong class="font-mono text-[#FFCC00] uppercase">{{ ot.vehiculo_patente || 'N/A' }}</strong></span>
+              <span>Ingreso: <strong class="text-white font-medium">{{ ot.fecha_ingreso }}</strong></span>
             </div>
-            <p class="text-gray-300 text-xs pt-1 leading-relaxed">
-              <strong class="text-gray-400">Motivo de consulta:</strong> {{ ot.descripcion_problema }}
-            </p>
           </div>
 
-          <div class="sm:text-right bg-[#121212] border border-[#2A2A2A] rounded-xl p-3 flex flex-col justify-between">
-            <span class="text-gray-400 font-semibold block uppercase tracking-wider text-[10px]">Monto Estimado</span>
-            <div class="text-[#FFCC00] font-black text-lg">
-              ${{ (ot.monto_total || 0) | number:'1.2-2' }}
+          <!-- Información del Vehículo y Problema -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div class="sm:col-span-2 space-y-1">
+              <span class="text-gray-400 font-semibold block uppercase tracking-wider text-[10px]">Vehículo Registrado</span>
+              <div class="text-white font-bold text-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#FFCC00]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 01-1-1" />
+                </svg>
+                <span>Patente: <strong class="font-mono text-[#FFCC00] uppercase">{{ ot.vehiculo_patente || 'N/A' }}</strong></span>
+              </div>
+              <p class="text-gray-300 text-xs pt-1 leading-relaxed">
+                <strong class="text-gray-400">Motivo de consulta:</strong> {{ ot.descripcion_problema }}
+              </p>
             </div>
-            <span class="text-[10px] text-gray-500">Mano de obra e insumos</span>
+
+            <div class="sm:text-right bg-[#121212] border border-[#2A2A2A] rounded-xl p-3 flex flex-col justify-between">
+              <span class="text-gray-400 font-semibold block uppercase tracking-wider text-[10px]">Monto Estimado</span>
+              <div class="text-[#FFCC00] font-black text-lg">
+                ${{ (ot.monto_total || 0) | number:'1.2-2' }}
+              </div>
+              <span class="text-[10px] text-gray-500">Mano de obra e insumos</span>
+            </div>
+          </div>
+
+          <!-- Botón para ver el historial cronológico -->
+          <div class="pt-2 border-t border-[#2A2A2A] flex justify-end">
+            <button 
+              type="button" 
+              (click)="verHistorialOT(ot)"
+              class="bg-[#121212] hover:bg-[#2A2A2A] border border-[#FFCC00]/40 text-[#FFCC00] font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Ver Historial de Estados</span>
+            </button>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Botón para ver el historial cronológico -->
-        <div class="pt-2 border-t border-[#2A2A2A] flex justify-end">
-          <button 
-            type="button" 
-            (click)="verHistorialOT(ot)"
-            class="bg-[#121212] hover:bg-[#2A2A2A] border border-[#FFCC00]/40 text-[#FFCC00] font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Ver Historial de Estados</span>
-          </button>
+    <!-- SECCIÓN: MIS VEHÍCULOS Y MANTENIMIENTO -->
+    <div *ngIf="tabActivo() === 'vehiculos'" class="space-y-6">
+      <!-- Indicador de Carga Vehículos -->
+      <div *ngIf="cargandoVehiculos()" class="py-16 text-center space-y-3">
+        <div class="w-10 h-10 border-4 border-[#FFCC00] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p class="text-xs text-gray-400 font-medium">Cargando tus vehículos y mantenimientos...</p>
+      </div>
+
+      <!-- Estado Vacío Vehículos -->
+      <div *ngIf="!cargandoVehiculos() && listaVehiculos().length === 0" class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-10 text-center space-y-3 shadow-xl">
+        <div class="w-14 h-14 rounded-full bg-[#FFCC00]/10 border border-[#FFCC00]/20 flex items-center justify-center text-[#FFCC00] mx-auto">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1" />
+          </svg>
         </div>
+        <h3 class="text-lg font-bold text-white">No posees vehículos registrados</h3>
+        <p class="text-xs text-gray-400 max-w-sm mx-auto">
+          Actualmente no hay vehículos asociados a tu cuenta de cliente en el taller.
+        </p>
+      </div>
 
+      <!-- Listado de Vehículos -->
+      <div *ngIf="!cargandoVehiculos() && listaVehiculos().length > 0" class="space-y-6">
+        <div 
+          *ngFor="let vehiculo of listaVehiculos()" 
+          class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-6 shadow-xl space-y-6 animate-fadeIn"
+        >
+          <!-- Encabezado de Tarjeta Vehículo -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2A2A2A] pb-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-xl bg-[#121212] border border-[#FFCC00]/30 flex items-center justify-center text-[#FFCC00]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1" />
+                </svg>
+              </div>
+              <div>
+                <h3 class="text-lg font-black text-white uppercase tracking-tight">{{ vehiculo.marca }} {{ vehiculo.modelo }}</h3>
+                <span class="text-xs font-mono text-[#FFCC00] uppercase font-bold tracking-wider">Patente: {{ vehiculo.patente }}</span>
+              </div>
+            </div>
+            
+            <div class="bg-[#121212] border border-[#2A2A2A] rounded-xl px-4 py-2 flex flex-col items-start sm:items-end justify-center min-w-[120px]">
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Kilometraje Actual</span>
+              <span class="text-white font-extrabold text-sm font-mono">{{ vehiculo.kilometraje_actual || vehiculo.kilometraje || 0 | number:'1.0-0' }} km</span>
+            </div>
+          </div>
+
+          <!-- Mantenimientos Programados del Vehículo -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-extrabold uppercase tracking-wider text-gray-400">Planes de Mantenimiento Preventivo</h4>
+            
+            <div *ngIf="!vehiculo.mantenimientos_programados || vehiculo.mantenimientos_programados.length === 0" class="text-center py-6 border border-dashed border-[#2A2A2A] rounded-xl bg-[#121212] text-xs text-gray-500">
+              No hay servicios preventivos programados actualmente para este vehículo.
+            </div>
+
+            <!-- Lista de Mantenimientos -->
+            <div *ngIf="vehiculo.mantenimientos_programados && vehiculo.mantenimientos_programados.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div 
+                *ngFor="let maint of vehiculo.mantenimientos_programados" 
+                class="bg-[#121212] border border-[#2A2A2A] rounded-xl p-4 space-y-3 relative"
+              >
+                <!-- Info Mantenimiento -->
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-xs text-white uppercase">{{ maint.tipo_servicio }}</span>
+                  
+                  <!-- Badge de Alerta -->
+                  <span 
+                    class="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border" 
+                    [ngClass]="getAlertaClase(maint, vehiculo).text + ' ' + getAlertaClase(maint, vehiculo).bg"
+                  >
+                    <span *ngIf="maint.completado">Completado</span>
+                    <span *ngIf="!maint.completado && getKilometrosRestantes(maint, vehiculo) <= 0">Crítico</span>
+                    <span *ngIf="!maint.completado && getKilometrosRestantes(maint, vehiculo) > 0 && getKilometrosRestantes(maint, vehiculo) <= 2000">Service Próximo</span>
+                    <span *ngIf="!maint.completado && getKilometrosRestantes(maint, vehiculo) > 2000">Normal</span>
+                  </span>
+                </div>
+
+                <!-- Barra de Progreso Desgaste -->
+                <div class="space-y-1.5 pt-1">
+                  <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden border border-zinc-700/50">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500" 
+                      [ngClass]="getAlertaClase(maint, vehiculo).bar"
+                      [style.width.%]="getPorcentajeDesgaste(maint, vehiculo)"
+                    ></div>
+                  </div>
+                  
+                  <div class="flex items-center justify-between text-[10px] text-gray-400">
+                    <span>Desgaste: <strong>{{ getPorcentajeDesgaste(maint, vehiculo) | number:'1.0-0' }}%</strong></span>
+                    <span *ngIf="!maint.completado && getKilometrosRestantes(maint, vehiculo) > 0">
+                      Toca en: <strong class="text-white">{{ maint.kilometraje_objetivo | number:'1.0-0' }} km</strong> (Faltan {{ getKilometrosRestantes(maint, vehiculo) | number:'1.0-0' }} km)
+                    </span>
+                    <span *ngIf="!maint.completado && getKilometrosRestantes(maint, vehiculo) <= 0" class="text-rose-400 font-bold">
+                      ¡VENCIDO HACE {{ -getKilometrosRestantes(maint, vehiculo) | number:'1.0-0' }} KM!
+                    </span>
+                    <span *ngIf="maint.completado" class="text-emerald-400 font-bold">
+                      Realizado con éxito
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+        </div>
       </div>
     </div>
 
