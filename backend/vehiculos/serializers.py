@@ -46,6 +46,8 @@ class VehiculoSerializer(serializers.ModelSerializer):
             self.fields['patente'].read_only = True
             if 'numero_chasis' in self.fields:
                 self.fields['numero_chasis'].read_only = True
+        else:
+            self.fields['kilometraje'].required = True
 
     def validate_patente(self, value):
         patente_limpia = value.upper().strip()
@@ -65,4 +67,9 @@ class VehiculoSerializer(serializers.ModelSerializer):
         if self.instance is None and Vehiculo.objects.filter(numero_chasis=chasis_limpio).exists():
             raise ConflictException("Ya existe un vehículo registrado con este número de chasis.")
         return chasis_limpio
+
+    def validate_kilometraje(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El kilometraje no puede ser negativo.")
+        return value
 
