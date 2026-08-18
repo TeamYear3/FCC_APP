@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
-import { VehiculoService, VehiculoResponse, HistorialVehiculoResponse } from '../../../core/services/vehiculo.service';
+import { FormsModule } from '@angular/forms';
+import { VehiculoService, VehiculoResponse, HistorialVehiculoResponse, MantenimientoProgramadoResponse } from '../../../core/services/vehiculo.service';
 
 @Component({
   selector: 'app-vehiculo-historial',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './vehiculo-historial.component.html'
 })
 export class VehiculoHistorialComponent implements OnInit {
@@ -17,9 +18,18 @@ export class VehiculoHistorialComponent implements OnInit {
   readonly returnUrl = signal<string>('/ordenes');
   readonly vehiculo = signal<VehiculoResponse | null>(null);
   readonly ordenes = signal<any[]>([]);
+  readonly mantenimientos = signal<MantenimientoProgramadoResponse[]>([]);
   readonly cargando = signal<boolean>(true);
+  readonly cargandoMantenimientos = signal<boolean>(false);
   readonly descargandoPdf = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
+
+  // Formulario y modal de mantenimientos programados
+  readonly mostrarModalMantenimiento = signal<boolean>(false);
+  tipoServicioNuevo: string = '';
+  kilometrajeObjetivoNuevo: number | null = null;
+  fechaLimiteNueva: string = '';
+  readonly cargandoGuardadoMaint = signal<boolean>(false);
 
   // Metadata Paginación
   readonly paginaActual = signal<number>(1);
@@ -35,6 +45,7 @@ export class VehiculoHistorialComponent implements OnInit {
     if (this.vehiculoId) {
       this.cargarDetalleVehiculo();
       this.cargarHistorial(1);
+      this.cargarMantenimientosProgramados();
     }
   }
 
@@ -63,6 +74,111 @@ export class VehiculoHistorialComponent implements OnInit {
         this.cargando.set(false);
       }
     });
+  }
+
+  cargarMantenimientosProgramados(): void {
+    this.cargandoMantenimientos.set(true);
+    this.vehiculoService.obtenerMantenimientosProgramados(this.vehiculoId).subscribe({
+      next: (res) => {
+        this.mantenimientos.set(res || []);
+        this.cargandoMantenimientos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al obtener mantenimientos:', err);
+        this.cargandoMantenimientos.set(false);
+      }
+    });
+  }
+
+  abrirModalMantenimiento(): void {
+    this.tipoServicioNuevo = '';
+    this.kilometrajeObjetivoNuevo = null;
+    this.fechaLimiteNueva = '';
+    this.mostrarModalMantenimiento.set(true);
+  }
+
+  cerrarModalMantenimiento(): void {
+    this.mostrarModalMantenimiento.set(false);
+  }
+
+  guardarMantenimiento(): void {
+    if (!this.tipoServicioNuevo || !this.kilometrajeObjetivoNuevo) {
+      alert('Debe ingresar tipo de servicio y kilometraje objetivo.');
+      return;
+    }
+
+    this.cargandoGuardadoMaint.set(true);
+    const payload = {
+      tipo_servicio: this.tipoServicioNuevo,
+      kilometraje_objetivo: this.kilometrajeObjetivoNuevo,
+      fecha_limite: this.fechaLimiteNueva || null
+    };
+
+    this.vehiculoService.crearMantenimientoProgramado(this.vehiculoId, payload).subscribe({
+      next: () => {
+        this.cargandoGuardadoMaint.set(false);
+        this.cerrarModalMantenimiento();
+        this.cargarMantenimientosProgramados();
+      },
+      error: (err) => {
+        console.error('Error al guardar mantenimiento:', err);
+        alert('No se pudo guardar el mantenimiento programado.');
+        this.cargandoGuardadoMaint.set(false);
+      }
+    });
+  }
+
+  getPorcentajeDesgaste(maint: MantenimientoProgramadoResponse): number {
+    const veh = this.vehiculo();
+    if (!veh) return 0;
+    const actual = veh.kilometraje_actual || veh.kilometraje || 0;
+    const objetivo = maint.kilometraje_objetivo;
+    if (objetivo <= 0) return 0;
+    const pct = (actual / objetivo) * 100;
+    return Math.min(Math.max(pct, 0), 100);
+  }
+
+  getAlertaClase(maint: MantenimientoProgramadoResponse): { text: string, bg: string, bar: string } {
+    const veh = this.vehiculo();
+    if (!veh) return { text: '', bg: '', bar: '' };
+    const actual = veh.kilometraje_actual || veh.kilometraje || 0;
+    const objetivo = maint.kilometraje_objetivo;
+    const restante = objetivo - actual;
+
+    if (restante <= 500 || maint.completado) {
+      if (maint.completado) {
+        return {
+          text: 'text-green-400 border-green-500/30',
+          bg: 'bg-green-500/10',
+          bar: 'bg-green-500'
+        };
+      }
+      return {
+        text: 'text-red-400 border-red-500/30',
+        bg: 'bg-red-500/10',
+        bar: 'bg-red-500'
+      };
+    } else if (restante <= 2000) {
+      return {
+        text: 'text-yellow-400 border-yellow-500/30',
+        bg: 'bg-yellow-500/10',
+        bar: 'bg-yellow-500'
+      };
+    } else {
+      return {
+        text: 'text-green-400 border-green-500/30',
+        bg: 'bg-green-500/10',
+        bar: 'bg-green-500'
+      };
+    }
+  }
+
+  getKilometrosRestantes(maint: MantenimientoProgramadoResponse): number {
+    const veh = this.vehiculo();
+    if (!veh) return 0;
+    const actual = veh.kilometraje_actual || veh.kilometraje || 0;
+    const objetivo = maint.kilometraje_objetivo;
+    return Math.max(objetivo - actual, 0);
   }
 
   cambiarPagina(nuevaPagina: number): void {
