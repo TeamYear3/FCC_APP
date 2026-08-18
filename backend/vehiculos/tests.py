@@ -444,12 +444,41 @@ class VehiculoAPITestCase(APITestCase):
             "patente": "AA777BB",
             "marca": "Renault",
             "modelo": "Clio",
-            "anio": 2021
+            "anio": 2021,
+            "kilometraje": 12000
             # numero_chasis omitido
         }
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(response.data["numero_chasis"])
+
+    def test_crear_vehiculo_sin_kilometraje_falla(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA778BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021
+            # kilometraje omitido
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje", response.data)
+
+    def test_crear_vehiculo_kilometraje_negativo_falla(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA779BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021,
+            "kilometraje": -1
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje", response.data)
 
 
 from ordenes.models import OrdenTrabajo
