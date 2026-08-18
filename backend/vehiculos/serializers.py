@@ -1,7 +1,7 @@
 import re
 from rest_framework import serializers
 from clientes.models import Cliente
-from .models import Vehiculo
+from .models import Vehiculo, MantenimientoProgramado
 
 from rest_framework.exceptions import APIException
 from rest_framework import status
@@ -10,6 +10,22 @@ class ConflictException(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = 'Conflicto de unicidad en la base de datos.'
     default_code = 'conflict'
+
+class MantenimientoProgramadoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MantenimientoProgramado
+        fields = [
+            'id',
+            'vehiculo',
+            'tipo_servicio',
+            'kilometraje_objetivo',
+            'completado',
+            'fecha_limite',
+            'completado_en',
+            'creado_en'
+        ]
+        read_only_fields = ['id', 'vehiculo', 'completado_en', 'creado_en']
+
 
 class VehiculoSerializer(serializers.ModelSerializer):
     cliente_id = serializers.PrimaryKeyRelatedField(
@@ -20,6 +36,7 @@ class VehiculoSerializer(serializers.ModelSerializer):
         }
     )
     numero_chasis = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    mantenimientos_programados = MantenimientoProgramadoSerializer(many=True, read_only=True)
 
     class Meta:
         model = Vehiculo
@@ -32,6 +49,8 @@ class VehiculoSerializer(serializers.ModelSerializer):
             'modelo',
             'anio',
             'kilometraje',
+            'kilometraje_actual',
+            'mantenimientos_programados',
             'color',
             'foto_url',
             'activo',
@@ -39,6 +58,11 @@ class VehiculoSerializer(serializers.ModelSerializer):
             'actualizado_en'
         ]
         read_only_fields = ['id', 'activo', 'creado_en', 'actualizado_en']
+
+    def create(self, validated_data):
+        if 'kilometraje_actual' not in validated_data or not validated_data['kilometraje_actual']:
+            validated_data['kilometraje_actual'] = validated_data.get('kilometraje', 0)
+        return super().create(validated_data)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

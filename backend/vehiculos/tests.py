@@ -323,10 +323,10 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(len(response.data) >= 1)
 
-    def test_listar_vehiculos_cliente_prohibido(self):
+    def test_listar_vehiculos_cliente_permitido(self):
         self.client.force_authenticate(user=self.cliente_user)
         response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_listar_vehiculos_anonimo_no_autorizado(self):
         self.client.logout()
@@ -479,6 +479,91 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("kilometraje", response.data)
+
+    def test_crear_mantenimiento_exito_admin_y_tecnico(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "tipo_servicio": "Cambio de aceite",
+            "kilometraje_objetivo": 60000,
+            "fecha_limite": "2026-12-31"
+        }
+        response = self.client.post(url_maint, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo_servicio"], "Cambio de aceite")
+        self.assertEqual(response.data["kilometraje_objetivo"], 60000)
+
+        # Probar con Tecnico
+        self.client.force_authenticate(user=self.tecnico_user)
+        data["tipo_servicio"] = "Cambio de pastillas de freno"
+        response = self.client.post(url_maint, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_crear_mantenimiento_prohibido_cliente(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "tipo_servicio": "Distribución",
+            "kilometraje_objetivo": 80000
+        }
+        response = self.client.post(url_maint, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_listar_mantenimientos_propietario_exito(self):
+        # El cliente_user es dueño de cliente_actual y self.vehiculo pertenece a cliente_actual.
+        # Asociamos el usuario cliente_user al cliente_actual para la prueba
+        self.cliente_actual.usuario = self.cliente_user
+        self.cliente_actual.save()
+
+        from .models import MantenimientoProgramado
+        MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Frenos",
+            kilometraje_objetivo=55000
+        )
+
+        self.client.force_authenticate(user=self.cliente_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url_maint)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["tipo_servicio"], "Frenos")
+
+    def test_listar_mantenimientos_ajeno_prohibido(self):
+        from .models import MantenimientoProgramado
+        MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Distribución",
+            kilometraje_objetivo=90000
+        )
+        
+        # cliente_user NO es dueño de cliente_actual/vehiculo en esta prueba (no están asociados)
+        self.client.force_authenticate(user=self.cliente_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url_maint)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_listar_vehiculos_cliente_solo_propios(self):
+        # Asociamos cliente_user al cliente_actual
+        self.cliente_actual.usuario = self.cliente_user
+        self.cliente_actual.save()
+
+        # Creamos otro vehículo para cliente_nuevo (que no está asociado a cliente_user)
+        from .models import Vehiculo
+        Vehiculo.objects.create(
+            cliente=self.cliente_nuevo,
+            patente="AA888CC",
+            marca="Chevrolet",
+            modelo="Onix",
+            kilometraje=10000
+        )
+
+        self.client.force_authenticate(user=self.cliente_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Solo debe ver su vehículo (self.vehiculo), no el de cliente_nuevo
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
 
 
 from ordenes.models import OrdenTrabajo
