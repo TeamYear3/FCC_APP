@@ -296,10 +296,10 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.data["cliente_id"][0], "El cliente especificado no existe.")
 
     def test_actualizar_vehiculo_sin_permiso(self):
-        # Tecnico
+        # Tecnico (Ahora tiene permiso en TK071)
         self.client.force_authenticate(user=self.tecnico_user)
         response = self.client.patch(self.url_detalle, {"color": "Negro"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Cliente
         self.client.force_authenticate(user=self.cliente_user)
@@ -372,7 +372,7 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertIn("detail", response.data)
 
-    def test_actualizar_vehiculo_bloqueo_numero_chasis(self):
+    def test_actualizar_vehiculo_permitir_modificacion_numero_chasis(self):
         self.client.force_authenticate(user=self.admin_user)
         # Asignamos chasis inicial
         self.vehiculo.numero_chasis = "CHASISINIT123"
@@ -383,11 +383,11 @@ class VehiculoAPITestCase(APITestCase):
         }
         response = self.client.patch(self.url_detalle, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["numero_chasis"], "CHASISINIT123")
+        self.assertEqual(response.data["numero_chasis"], "NUEVOCHASIS999")
 
-        # Verificar en base de datos que no se haya modificado
+        # Verificar en base de datos que se haya modificado con éxito
         self.vehiculo.refresh_from_db()
-        self.assertEqual(self.vehiculo.numero_chasis, "CHASISINIT123")
+        self.assertEqual(self.vehiculo.numero_chasis, "NUEVOCHASIS999")
 
     def test_listar_vehiculos_filtrado_por_cliente(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -564,6 +564,54 @@ class VehiculoAPITestCase(APITestCase):
         # Solo debe ver su vehículo (self.vehiculo), no el de cliente_nuevo
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+
+    def test_actualizar_vehiculo_exito_admin_y_tecnico(self):
+        # Probar con Admin
+        self.client.force_authenticate(user=self.admin_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "marca": "Ford Editado",
+            "modelo": "Fiesta Editado",
+            "anio": 2019,
+            "numero_chasis": "NUEVOCHASIS999"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["marca"], "Ford Editado")
+        self.assertEqual(response.data["modelo"], "Fiesta Editado")
+        self.assertEqual(response.data["numero_chasis"], "NUEVOCHASIS999")
+
+        # Probar con Tecnico
+        self.client.force_authenticate(user=self.tecnico_user)
+        data = {
+            "marca": "Ford Editado Tecnico",
+            "numero_chasis": "VINEDITADOTECNICO"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["marca"], "Ford Editado Tecnico")
+        self.assertEqual(response.data["numero_chasis"], "VINEDITADOTECNICO")
+
+    def test_actualizar_vehiculo_prohibido_cliente(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "marca": "Toyota Cambiado"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_actualizar_vehiculo_patente_bloqueada(self):
+        self.client.force_authenticate(user=self.admin_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        original_patente = self.vehiculo.patente
+        data = {
+            "patente": "ZZ999ZZ"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # La patente no debió cambiar porque es read_only en edición
+        self.assertEqual(response.data["patente"], original_patente)
 
 
 from ordenes.models import OrdenTrabajo

@@ -29,7 +29,7 @@ class CrearVehiculoView(generics.ListCreateAPIView):
 
 class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = VehiculoSerializer
-    permission_classes = [IsAuthenticated, EsAdministrador]
+    permission_classes = [IsAuthenticated, (EsAdministrador | EsTecnico)]
 
     def get_queryset(self):
         return Vehiculo.objects.filter(activo=True)

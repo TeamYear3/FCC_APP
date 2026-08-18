@@ -68,8 +68,6 @@ class VehiculoSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         if self.instance is not None:
             self.fields['patente'].read_only = True
-            if 'numero_chasis' in self.fields:
-                self.fields['numero_chasis'].read_only = True
         else:
             self.fields['kilometraje'].required = True
 
@@ -88,7 +86,12 @@ class VehiculoSerializer(serializers.ModelSerializer):
         if not value:
             return value
         chasis_limpio = value.upper().strip()
-        if self.instance is None and Vehiculo.objects.filter(numero_chasis=chasis_limpio).exists():
+        
+        queryset = Vehiculo.objects.filter(numero_chasis=chasis_limpio)
+        if self.instance is not None:
+            queryset = queryset.exclude(id=self.instance.id)
+            
+        if queryset.exists():
             raise ConflictException("Ya existe un vehículo registrado con este número de chasis.")
         return chasis_limpio
 
