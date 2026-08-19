@@ -93,7 +93,8 @@ export class ClienteFormComponent implements OnInit {
     request$.subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        this.router.navigate(['/admin/clientes']);
+        const targetRoute = this.router.url.startsWith('/admin') ? '/admin/clientes' : '/clientes';
+        this.router.navigate([targetRoute]);
       },
       error: (err) => {
         this.isSubmitting.set(false);
