@@ -1,6 +1,6 @@
-<header class="bg-color-surface-container border-b border-white/10 px-6 py-4 flex items-center justify-between text-white shadow-md">
+<header class="bg-color-surface-container border-b border-white/10 px-6 py-4 flex items-center justify-between text-white shadow-md relative z-40">
   <!-- Izquierda: Buscador Universal -->
-  <div class="flex items-center gap-4 flex-1 max-w-md">
+  <div class="flex items-center gap-4 flex-1 max-w-md relative">
     <!-- Botón Hamburguesa Móvil -->
     <button 
       type="button"
@@ -14,16 +14,109 @@
     </button>
 
     <div class="relative w-full">
-      <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+        <svg *ngIf="!cargando()" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <svg *ngIf="cargando()" class="animate-spin h-5 w-5 text-color-primary-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
       </span>
       <input 
         type="text" 
+        [ngModel]="query()"
+        (ngModelChange)="onSearchInput($event)"
+        (focus)="query().trim().length >= 2 && desplegableAbierto.set(true)"
+        (blur)="cerrarDesplegable()"
         placeholder="Buscador universal (clientes, patentes, órdenes)..." 
         class="block w-full pl-10 pr-4 py-2 border border-white/10 rounded-pill bg-black/40 text-sm placeholder-gray-400 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
       />
+
+      <!-- Desplegable Flotante de Resultados (Figma Dark Theme) -->
+      <div 
+        *ngIf="desplegableAbierto() && query().trim().length >= 2"
+        class="absolute left-0 right-0 top-full mt-2 bg-zinc-900 border border-white/10 rounded-card shadow-2xl z-50 p-4 max-h-[75vh] overflow-y-auto backdrop-blur-xl"
+      >
+        <!-- Estado Cargando -->
+        <div *ngIf="cargando()" class="py-6 text-center text-zinc-400 text-xs tracking-wide">
+          <span>Buscando en clientes, vehículos y órdenes...</span>
+        </div>
+
+        <!-- Sin Resultados -->
+        <div *ngIf="!cargando() && !tieneResultados()" class="py-6 text-center text-zinc-400 text-xs">
+          <p class="font-semibold text-white">No se encontraron coincidencias</p>
+          <p class="mt-1 text-zinc-500">Prueba con un DNI, patente o número de OT diferente</p>
+        </div>
+
+        <!-- Resultados Encontrados -->
+        <div *ngIf="!cargando() && tieneResultados()" class="space-y-4 text-left">
+          
+          <!-- Sección CLIENTES -->
+          <div *ngIf="resultados().clientes.length > 0">
+            <h4 class="text-xs font-bold text-color-primary-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>👤</span> Clientes
+            </h4>
+            <div class="space-y-1">
+              <button
+                *ngFor="let item of resultados().clientes"
+                type="button"
+                (mousedown)="seleccionarItem(item.url)"
+                class="w-full p-2.5 rounded-lg bg-zinc-800/60 border border-white/5 hover:border-color-primary-accent/50 hover:bg-zinc-800 text-left transition-all duration-150 flex items-center justify-between group cursor-pointer"
+              >
+                <div>
+                  <p class="text-sm font-semibold text-white group-hover:text-color-primary-accent transition-colors">{{ item.titulo }}</p>
+                  <p class="text-xs text-zinc-400">{{ item.subtitulo }}</p>
+                </div>
+                <span class="text-xs text-color-primary-accent opacity-0 group-hover:opacity-100 transition-opacity font-bold">Ver →</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sección VEHÍCULOS -->
+          <div *ngIf="resultados().vehiculos.length > 0">
+            <h4 class="text-xs font-bold text-color-primary-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>🚗</span> Vehículos
+            </h4>
+            <div class="space-y-1">
+              <button
+                *ngFor="let item of resultados().vehiculos"
+                type="button"
+                (mousedown)="seleccionarItem(item.url)"
+                class="w-full p-2.5 rounded-lg bg-zinc-800/60 border border-white/5 hover:border-color-primary-accent/50 hover:bg-zinc-800 text-left transition-all duration-150 flex items-center justify-between group cursor-pointer"
+              >
+                <div>
+                  <p class="text-sm font-semibold text-white group-hover:text-color-primary-accent transition-colors">{{ item.titulo }}</p>
+                  <p class="text-xs text-zinc-400">{{ item.subtitulo }}</p>
+                </div>
+                <span class="text-xs text-color-primary-accent opacity-0 group-hover:opacity-100 transition-opacity font-bold">Historial →</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sección ÓRDENES -->
+          <div *ngIf="resultados().ordenes.length > 0">
+            <h4 class="text-xs font-bold text-color-primary-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>📋</span> Órdenes de Trabajo
+            </h4>
+            <div class="space-y-1">
+              <button
+                *ngFor="let item of resultados().ordenes"
+                type="button"
+                (mousedown)="seleccionarItem(item.url)"
+                class="w-full p-2.5 rounded-lg bg-zinc-800/60 border border-white/5 hover:border-color-primary-accent/50 hover:bg-zinc-800 text-left transition-all duration-150 flex items-center justify-between group cursor-pointer"
+              >
+                <div>
+                  <p class="text-sm font-semibold text-white group-hover:text-color-primary-accent transition-colors">{{ item.titulo }}</p>
+                  <p class="text-xs text-zinc-400">{{ item.subtitulo }}</p>
+                </div>
+                <span class="text-xs text-color-primary-accent opacity-0 group-hover:opacity-100 transition-opacity font-bold">Expediente →</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 
