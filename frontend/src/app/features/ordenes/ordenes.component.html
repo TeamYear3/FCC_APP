@@ -243,12 +243,12 @@
 
     <!-- Contenido Pestaña FOTOS Y DIAGNÓSTICO -->
     <div *ngIf="activeTab() === 'Fotos y Diagnóstico'" class="mb-lg">
-      <app-diagnostico-fotos ordenId="1"></app-diagnostico-fotos>
+      <app-diagnostico-fotos [ordenId]="ordenIdActiva"></app-diagnostico-fotos>
     </div>
 
     <!-- Contenido Pestaña PRESUPUESTO Y CHECKLIST -->
     <div *ngIf="activeTab() === 'Presupuesto y Checklist'" class="mb-lg">
-      <app-presupuesto-form ordenId="1"></app-presupuesto-form>
+      <app-presupuesto-form [ordenId]="ordenIdActiva"></app-presupuesto-form>
     </div>
 
     <!-- Contenido Pestañas Alternativas -->

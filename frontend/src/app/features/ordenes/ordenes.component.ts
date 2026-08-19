@@ -61,6 +61,10 @@ export class OrdenesComponent implements OnInit {
   readonly totalPaginas = signal<number>(1);
   readonly totalItems = signal<number>(0);
 
+  get ordenIdActiva(): string {
+    return this.listaOrdenes()[0]?.id || '1';
+  }
+
 
   ngOnInit(): void {
     const isAdmin = this.router.url.startsWith('/admin');
