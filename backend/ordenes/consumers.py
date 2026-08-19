@@ -29,7 +29,15 @@ class OrdenesConsumer(AsyncWebsocketConsumer):
             pass
 
     async def orden_actualizada(self, event):
+        payload = event.get('payload') or event.get('data', {})
         await self.send(text_data=json.dumps({
             'type': 'orden_actualizada',
-            'payload': event.get('payload', {})
+            'payload': payload
+        }))
+
+    async def notificacion_presupuesto(self, event):
+        payload = event.get('data') or event.get('payload', {})
+        await self.send(text_data=json.dumps({
+            'type': 'orden_actualizada',
+            'payload': payload
         }))

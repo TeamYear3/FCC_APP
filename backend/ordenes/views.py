@@ -179,6 +179,9 @@ class ActualizarEstadoOrdenView(APIView):
                 comentario=comentario
             )
 
+            from .services import notificar_presupuesto_websocket
+            notificar_presupuesto_websocket(orden)
+
         historial_serializer = HistorialEstadoOrdenSerializer(orden.historial_estados.all(), many=True)
         return Response({
             'orden_id': str(orden.id),
