@@ -8,10 +8,18 @@ import { vi } from 'vitest';
 describe('ClienteFormComponent', () => {
   let component: ClienteFormComponent;
   let fixture: ComponentFixture<ClienteFormComponent>;
-  let clienteServiceSpy: { crearCliente: ReturnType<typeof vi.fn> };
+  let clienteServiceSpy: {
+    crearCliente: ReturnType<typeof vi.fn>;
+    getClienteById: ReturnType<typeof vi.fn>;
+    actualizarCliente: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
-    clienteServiceSpy = { crearCliente: vi.fn() };
+    clienteServiceSpy = {
+      crearCliente: vi.fn(),
+      getClienteById: vi.fn(),
+      actualizarCliente: vi.fn()
+    };
 
     await TestBed.configureTestingModule({
       imports: [ClienteFormComponent],
@@ -109,4 +117,26 @@ describe('ClienteFormComponent', () => {
     expect(component.errorMessage()).toBeNull();
     expect(component.isSubmitting()).toBe(false);
   });
+
+  it('debe cargar los datos del cliente y deshabilitar DNI/CUIT en modo edición', () => {
+    const mockCliente = {
+      id: 'CLI-018',
+      tipo_documento: 'DNI' as const,
+      dni_cuit: '12345678',
+      nombre: 'Carlos',
+      apellido: 'Rodríguez',
+      condicion_iva: 'CF' as const,
+      telefono: '1155667788',
+      domicilio: 'Calle Falsa 123',
+      creado_en: '2026-08-01T10:00:00Z',
+      actualizado_en: '2026-08-01T10:00:00Z'
+    };
+
+    clienteServiceSpy.getClienteById.mockReturnValue(of(mockCliente));
+    component.cargarDatosCliente('CLI-018');
+
+    expect(component.clienteForm.get('nombre')?.value).toBe('Carlos');
+    expect(component.clienteForm.get('dni_cuit')?.disabled).toBe(true);
+  });
 });
+

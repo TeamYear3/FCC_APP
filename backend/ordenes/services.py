@@ -62,15 +62,16 @@ def notificar_presupuesto_websocket(orden: OrdenTrabajo) -> dict:
 
         channel_layer = get_channel_layer()
         if channel_layer:
-            group_name = f"orden_{orden.numero_ot}"
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    "type": "notificacion_presupuesto",
-                    "data": payload
-                }
-            )
-            logger.info(f"Notificación WebSocket enviada al grupo {group_name}: {payload}")
+            # Emitir a grupo dinámico por número de OT y a grupo global de actualizaciones
+            for group in [f"orden_{orden.numero_ot}", "ordenes_actualizaciones"]:
+                async_to_sync(channel_layer.group_send)(
+                    group,
+                    {
+                        "type": "notificacion_presupuesto",
+                        "data": payload
+                    }
+                )
+            logger.info(f"Notificación WebSocket enviada para OT {orden.numero_ot}: {payload}")
     except (ImportError, Exception) as e:
         logger.info(f"Notificación WebSocket registrada (fallback): {payload} - Info: {e}")
 

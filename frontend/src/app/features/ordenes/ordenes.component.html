@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
   
   <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
-  <div class="max-w-[1400px] mx-auto w-full relative z-10 flex-1">
+  <div class="max-w-[1650px] mx-auto w-full relative z-10 flex-1">
     
     <!-- Encabezado / Header -->
     <app-page-component
@@ -241,8 +241,18 @@
       </div>
     </div>
 
+    <!-- Contenido Pestaña FOTOS Y DIAGNÓSTICO -->
+    <div *ngIf="activeTab() === 'Fotos y Diagnóstico'" class="mb-lg">
+      <app-diagnostico-fotos [ordenId]="ordenIdActiva"></app-diagnostico-fotos>
+    </div>
+
+    <!-- Contenido Pestaña PRESUPUESTO Y CHECKLIST -->
+    <div *ngIf="activeTab() === 'Presupuesto y Checklist'" class="mb-lg">
+      <app-presupuesto-form [ordenId]="ordenIdActiva"></app-presupuesto-form>
+    </div>
+
     <!-- Contenido Pestañas Alternativas -->
-    <div *ngIf="activeTab() !== 'Servicios'" class="bg-color-surface-container border border-white/10 rounded-card p-lg mb-lg text-center py-16">
+    <div *ngIf="activeTab() !== 'Servicios' && activeTab() !== 'Fotos y Diagnóstico' && activeTab() !== 'Presupuesto y Checklist'" class="bg-color-surface-container border border-white/10 rounded-card p-lg mb-lg text-center py-16">
       <div class="w-12 h-12 rounded-full bg-white/5 mx-auto mb-3 flex items-center justify-center text-color-primary-accent">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
       </div>
@@ -266,7 +276,7 @@
   </div>
 
   <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
-  <div class="max-w-[1400px] mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption">
+  <div class="max-w-[1650px] mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption">
     <div class="flex items-center gap-4">
       <span class="flex items-center gap-1.5 text-color-status-review font-semibold">
         <span class="w-2 h-2 rounded-full bg-color-status-review animate-ping"></span>
