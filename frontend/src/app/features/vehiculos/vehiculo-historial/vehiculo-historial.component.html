@@ -67,6 +67,77 @@
       </div>
     }
 
+    <!-- Sección de Mantenimientos Programados (TK069) -->
+    <div class="bg-color-surface-container border border-white/5 rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-white/5 pb-3">
+        <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Mantenimiento Preventivo
+        </h3>
+        <button
+          (click)="abrirModalMantenimiento()"
+          class="px-3.5 py-1.5 bg-color-primary-accent text-black font-bold text-xs rounded-xl hover:bg-color-primary-accent/90 transition-all cursor-pointer border-0"
+        >
+          + Programar Service
+        </button>
+      </div>
+
+      <div *ngIf="cargandoMantenimientos()" class="text-center py-6 text-zinc-400 text-xs">
+        Cargando planes de mantenimiento...
+      </div>
+
+      <div *ngIf="!cargandoMantenimientos() && mantenimientos().length === 0" class="text-center py-8 border border-dashed border-white/5 rounded-xl bg-black/20 text-xs text-zinc-500">
+        No hay mantenimientos preventivos configurados para este vehículo.
+      </div>
+
+      <!-- Tarjetas de Mantenimientos -->
+      <div *ngIf="!cargandoMantenimientos() && mantenimientos().length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div 
+          *ngFor="let maint of mantenimientos()" 
+          class="bg-black/30 border border-white/5 rounded-xl p-4 space-y-3 relative"
+        >
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-white uppercase">{{ maint.tipo_servicio }}</span>
+            <span 
+              class="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border" 
+              [ngClass]="getAlertaClase(maint).text + ' ' + getAlertaClase(maint).bg"
+            >
+              <span *ngIf="maint.completado">Completado</span>
+              <span *ngIf="!maint.completado && getKilometrosRestantes(maint) <= 0">Crítico</span>
+              <span *ngIf="!maint.completado && getKilometrosRestantes(maint) > 0 && getKilometrosRestantes(maint) <= 2000">Service Próximo</span>
+              <span *ngIf="!maint.completado && getKilometrosRestantes(maint) > 2000">Normal</span>
+            </span>
+          </div>
+
+          <div class="space-y-1.5 pt-1">
+            <div class="w-full bg-zinc-800/80 h-2 rounded-full overflow-hidden border border-zinc-700/30">
+              <div 
+                class="h-full rounded-full transition-all duration-500" 
+                [ngClass]="getAlertaClase(maint).bar"
+                [style.width.%]="getPorcentajeDesgaste(maint)"
+              ></div>
+            </div>
+            
+            <div class="flex items-center justify-between text-[10px] text-zinc-400">
+              <span>Progreso de Desgaste: <strong>{{ getPorcentajeDesgaste(maint) | number:'1.0-0' }}%</strong></span>
+              <span *ngIf="!maint.completado && getKilometrosRestantes(maint) > 0">
+                Límite: <strong class="text-white">{{ maint.kilometraje_objetivo | number:'1.0-0' }} km</strong> (Faltan {{ getKilometrosRestantes(maint) | number:'1.0-0' }} km)
+              </span>
+              <span *ngIf="!maint.completado && getKilometrosRestantes(maint) <= 0" class="text-red-400 font-bold">
+                ¡VENCIDO HACE {{ -getKilometrosRestantes(maint) | number:'1.0-0' }} KM!
+              </span>
+              <span *ngIf="maint.completado" class="text-green-400 font-bold">
+                Realizado con éxito
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Línea de Tiempo de Evolución de Estados (TK048) -->
     <div class="bg-color-surface-container border border-white/5 rounded-2xl p-5 shadow-xl space-y-3">
       <div class="flex items-center justify-between border-b border-white/5 pb-3">
@@ -178,6 +249,76 @@
           </div>
         </div>
       }
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal para Programar Mantenimiento -->
+<div *ngIf="mostrarModalMantenimiento()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+  <div class="bg-[#1E1E1E] border border-color-primary-accent/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+    
+    <div class="flex items-center justify-between border-b border-white/10 pb-3">
+      <h3 class="text-base font-bold text-white uppercase tracking-tight flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Programar Mantenimiento
+      </h3>
+      <button (click)="cerrarModalMantenimiento()" class="text-zinc-400 hover:text-white transition-colors p-1 bg-transparent border-0 cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <div class="space-y-4 text-sm">
+      <div class="flex flex-col space-y-1">
+        <label class="text-zinc-400 font-semibold text-xs uppercase tracking-wider">Tipo de Servicio / Componente</label>
+        <input 
+          type="text" 
+          [(ngModel)]="tipoServicioNuevo"
+          placeholder="Ej: Cambio de aceite, Pastillas de freno, Correa..."
+          class="w-full bg-[#121212] border border-white/10 focus:border-color-primary-accent rounded-xl px-4 py-2.5 text-white outline-none transition-colors"
+        >
+      </div>
+
+      <div class="flex flex-col space-y-1">
+        <label class="text-zinc-400 font-semibold text-xs uppercase tracking-wider">Kilometraje Objetivo</label>
+        <input 
+          type="number" 
+          [(ngModel)]="kilometrajeObjetivoNuevo"
+          placeholder="Ej: 60000"
+          class="w-full bg-[#121212] border border-white/10 focus:border-color-primary-accent rounded-xl px-4 py-2.5 text-white outline-none transition-colors"
+        >
+      </div>
+
+      <div class="flex flex-col space-y-1">
+        <label class="text-zinc-400 font-semibold text-xs uppercase tracking-wider">Fecha Límite (Opcional)</label>
+        <input 
+          type="date" 
+          [(ngModel)]="fechaLimiteNueva"
+          class="w-full bg-[#121212] border border-white/10 focus:border-color-primary-accent rounded-xl px-4 py-2.5 text-white outline-none transition-colors"
+        >
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-3 pt-3 border-t border-white/10">
+      <button 
+        type="button" 
+        (click)="cerrarModalMantenimiento()"
+        class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer border-0"
+      >
+        Cancelar
+      </button>
+      <button 
+        type="button" 
+        [disabled]="cargandoGuardadoMaint()"
+        (click)="guardarMantenimiento()"
+        class="bg-color-primary-accent hover:bg-color-primary-accent/90 text-black font-bold py-2.5 px-4 rounded-xl text-xs transition-colors cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {{ cargandoGuardadoMaint() ? 'Guardando...' : 'Programar' }}
+      </button>
     </div>
 
   </div>

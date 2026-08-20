@@ -16,8 +16,24 @@ export interface VehiculoCreatePayload {
   foto_url?: string | null;
 }
 
+export interface MantenimientoProgramadoCreatePayload {
+  tipo_servicio: string;
+  kilometraje_objetivo: number;
+  fecha_limite?: string | null;
+  completado?: boolean;
+}
+
+export interface MantenimientoProgramadoResponse extends MantenimientoProgramadoCreatePayload {
+  id: string;
+  vehiculo: string;
+  completado_en?: string | null;
+  creado_en: string;
+}
+
 export interface VehiculoResponse extends VehiculoCreatePayload {
   id: string;
+  kilometraje_actual?: number;
+  mantenimientos_programados?: MantenimientoProgramadoResponse[];
   creado_en: string;
   actualizado_en: string;
 }
@@ -92,5 +108,19 @@ export class VehiculoService {
     return this.http.post<VehiculoResponse>(`${this.apiUrl}${vehiculoId}/reasignar/`, {
       nuevo_cliente_id: nuevoClienteId
     });
+  }
+
+  /**
+   * Obtiene los mantenimientos programados de un vehículo (GET /api/vehiculos/<id>/mantenimientos/)
+   */
+  obtenerMantenimientosProgramados(vehiculoId: string): Observable<MantenimientoProgramadoResponse[]> {
+    return this.http.get<MantenimientoProgramadoResponse[]>(`${this.apiUrl}${vehiculoId}/mantenimientos/`);
+  }
+
+  /**
+   * Crea un mantenimiento programado para un vehículo (POST /api/vehiculos/<id>/mantenimientos/)
+   */
+  crearMantenimientoProgramado(vehiculoId: string, payload: MantenimientoProgramadoCreatePayload): Observable<MantenimientoProgramadoResponse> {
+    return this.http.post<MantenimientoProgramadoResponse>(`${this.apiUrl}${vehiculoId}/mantenimientos/`, payload);
   }
 }

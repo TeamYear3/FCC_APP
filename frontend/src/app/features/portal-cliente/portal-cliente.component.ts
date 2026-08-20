@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/services/orden.service';
+import { VehiculoService, VehiculoResponse, MantenimientoProgramadoResponse } from '../../core/services/vehiculo.service';
 import { WebSocketService } from '../../core/services/websocket.service';
 
 @Component({
@@ -16,6 +17,7 @@ import { WebSocketService } from '../../core/services/websocket.service';
 export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   readonly ordenService = inject(OrdenService);
+  readonly vehiculoService = inject(VehiculoService);
   readonly webSocketService = inject(WebSocketService);
   private readonly router = inject(Router);
 
@@ -24,7 +26,10 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly estadoSocket = this.webSocketService.estadoConexion;
 
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
+  readonly listaVehiculos = signal<VehiculoResponse[]>([]);
+  readonly tabActivo = signal<'ordenes' | 'vehiculos'>('ordenes');
   readonly cargando = signal<boolean>(true);
+  readonly cargandoVehiculos = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
 
   // Modal para consultar historial de la OT seleccionada
@@ -42,6 +47,11 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
       this.userName.set(full || user.email || 'Cliente');
     }
     this.cargarOrdenesCliente();
+    this.cargarVehiculosCliente();
+  }
+
+  cambiarTab(tab: 'ordenes' | 'vehiculos'): void {
+    this.tabActivo.set(tab);
     this.iniciarWebSocket();
   }
 
@@ -82,6 +92,68 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
         this.cargando.set(false);
       }
     });
+  }
+
+  cargarVehiculosCliente(): void {
+    this.cargandoVehiculos.set(true);
+    this.vehiculoService.getVehiculos().subscribe({
+      next: (res) => {
+        this.listaVehiculos.set(res || []);
+        this.cargandoVehiculos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar vehículos en Portal del Cliente:', err);
+        this.cargandoVehiculos.set(false);
+      }
+    });
+  }
+
+  getPorcentajeDesgaste(maint: MantenimientoProgramadoResponse, vehiculo: VehiculoResponse): number {
+    const actual = vehiculo.kilometraje_actual || vehiculo.kilometraje || 0;
+    const objetivo = maint.kilometraje_objetivo;
+    if (objetivo <= 0) return 0;
+    const pct = (actual / objetivo) * 100;
+    return Math.min(Math.max(pct, 0), 100);
+  }
+
+  getAlertaClase(maint: MantenimientoProgramadoResponse, vehiculo: VehiculoResponse): { text: string, bg: string, bar: string } {
+    const actual = vehiculo.kilometraje_actual || vehiculo.kilometraje || 0;
+    const objetivo = maint.kilometraje_objetivo;
+    const restante = objetivo - actual;
+
+    if (restante <= 500 || maint.completado) {
+      // Completado o con menos de 500 km restantes (Crítico / Vencido)
+      if (maint.completado) {
+        return {
+          text: 'text-emerald-400 border-emerald-500/30',
+          bg: 'bg-emerald-500/10',
+          bar: 'bg-emerald-500'
+        };
+      }
+      return {
+        text: 'text-rose-400 border-rose-500/30',
+        bg: 'bg-rose-500/10',
+        bar: 'bg-rose-500'
+      };
+    } else if (restante <= 2000) {
+      return {
+        text: 'text-amber-400 border-amber-500/30',
+        bg: 'bg-amber-500/10',
+        bar: 'bg-amber-500'
+      };
+    } else {
+      return {
+        text: 'text-emerald-400 border-emerald-500/30',
+        bg: 'bg-emerald-500/10',
+        bar: 'bg-emerald-500'
+      };
+    }
+  }
+
+  getKilometrosRestantes(maint: MantenimientoProgramadoResponse, vehiculo: VehiculoResponse): number {
+    const actual = vehiculo.kilometraje_actual || vehiculo.kilometraje || 0;
+    const objetivo = maint.kilometraje_objetivo;
+    return Math.max(objetivo - actual, 0);
   }
 
   verHistorialOT(orden: OrdenResponse): void {

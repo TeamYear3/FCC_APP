@@ -114,8 +114,6 @@ export class VehiculoFormComponent implements OnInit {
           nro_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || ''
         });
         this.vehiculoForm.get('patente')?.disable(); // Bloqueamos patente por regla de negocio
-        this.vehiculoForm.get('numero_chasis')?.disable(); // Bloqueamos chasis por regla de negocio en modo edición (TK028)
-        this.vehiculoForm.get('nro_chasis')?.disable();
 
         // Preseleccionar el cliente asociado
         if (vehiculo.cliente_id) {

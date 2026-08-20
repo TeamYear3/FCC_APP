@@ -10,6 +10,10 @@ class CrearVehiculoView(generics.ListCreateAPIView):
     serializer_class = VehiculoSerializer
 
     def get_queryset(self):
+        user = self.request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            return Vehiculo.objects.filter(activo=True, cliente__usuario=user)
+
         queryset = Vehiculo.objects.filter(activo=True)
         cliente_id = self.request.query_params.get('cliente')
         if cliente_id:
@@ -18,14 +22,14 @@ class CrearVehiculoView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
         return [IsAuthenticated(), EsAdministrador()]
 
 
 
 class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = VehiculoSerializer
-    permission_classes = [IsAuthenticated, EsAdministrador]
+    permission_classes = [IsAuthenticated, (EsAdministrador | EsTecnico)]
 
     def get_queryset(self):
         return Vehiculo.objects.filter(activo=True)
@@ -272,6 +276,41 @@ class ReasignarVehiculoView(APIView):
 
         serializer = VehiculoSerializer(vehiculo)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+from .models import MantenimientoProgramado
+from .serializers import MantenimientoProgramadoSerializer
+
+class MantenimientoProgramadoView(generics.ListCreateAPIView):
+    serializer_class = MantenimientoProgramadoSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def get_queryset(self):
+        vehiculo_id = self.kwargs.get('pk')
+        try:
+            vehiculo = Vehiculo.objects.select_related('cliente__usuario').get(id=vehiculo_id)
+        except Vehiculo.DoesNotExist:
+            raise NotFound("El vehículo especificado no existe.")
+
+        user = self.request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            if not vehiculo.cliente or vehiculo.cliente.usuario_id != user.id:
+                raise PermissionDenied("No tiene autorización para consultar los mantenimientos de este vehículo.")
+
+        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).order_by('-creado_en')
+
+    def perform_create(self, serializer):
+        vehiculo_id = self.kwargs.get('pk')
+        try:
+            vehiculo = Vehiculo.objects.get(id=vehiculo_id)
+        except Vehiculo.DoesNotExist:
+            raise NotFound("El vehículo especificado no existe.")
+
+        serializer.save(vehiculo=vehiculo)
 
 
 
