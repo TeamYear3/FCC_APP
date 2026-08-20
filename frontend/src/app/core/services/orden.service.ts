@@ -60,6 +60,32 @@ export interface OrdenHistorialResponse {
   historial: HistorialEstadoItem[];
 }
 
+export interface ItemPresupuesto {
+  id?: string;
+  orden_trabajo?: string;
+  tipo: 'mano_de_obra' | 'repuesto';
+  descripcion: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal?: number;
+  completado?: boolean;
+  creado_en?: string;
+  actualizado_en?: string;
+}
+
+export interface AdjuntoDiagnostico {
+  id: string;
+  orden_trabajo: string;
+  url_secure: string;
+  public_id: string;
+  nombre_archivo: string;
+  tamanio: number;
+  mime_type: string;
+  creado_por?: string | null;
+  creado_por_nombre?: string;
+  creado_en: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -104,6 +130,66 @@ export class OrdenService {
    */
   actualizarEstado(ordenId: string, estado: string, comentario: string = ''): Observable<OrdenHistorialResponse> {
     return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, { estado, comentario });
+  }
+
+  /**
+   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053)
+   */
+  subirAdjuntoDiagnostico(ordenId: string, archivo: File): Observable<AdjuntoDiagnostico> {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return this.http.post<AdjuntoDiagnostico>(`${this.apiUrl}${ordenId}/adjuntos/`, formData);
+  }
+
+  /**
+   * Listar fotos de diagnóstico asociadas a una OT (GET /api/ordenes/<id>/adjuntos/) (TK053)
+   */
+  obtenerAdjuntosDiagnostico(ordenId: string): Observable<AdjuntoDiagnostico[]> {
+    return this.http.get<AdjuntoDiagnostico[]>(`${this.apiUrl}${ordenId}/adjuntos/`);
+  }
+
+  /**
+   * Eliminar una foto de diagnóstico (DELETE /api/diagnosticos/adjuntos/<id>/) (TK053)
+   */
+  eliminarAdjuntoDiagnostico(adjuntoId: string): Observable<void> {
+    const url = `${environment.apiUrl}/diagnosticos/adjuntos/${adjuntoId}/`;
+    return this.http.delete<void>(url);
+  }
+
+  /**
+   * Listar todos los ítems de presupuesto de una OT (GET /api/ordenes/<id>/items/) (TK043)
+   */
+  obtenerItemsPresupuesto(ordenId: string): Observable<ItemPresupuesto[]> {
+    return this.http.get<ItemPresupuesto[]>(`${this.apiUrl}${ordenId}/items/`);
+  }
+
+  /**
+   * Agregar ítem de Mano de Obra (POST /api/ordenes/<id>/items/mano-de-obra/) (TK043)
+   */
+  agregarManoDeObra(ordenId: string, payload: { descripcion: string; cantidad?: number; precio_unitario: number }): Observable<ItemPresupuesto> {
+    return this.http.post<ItemPresupuesto>(`${this.apiUrl}${ordenId}/items/mano-de-obra/`, payload);
+  }
+
+  /**
+   * Agregar ítem de Repuesto (POST /api/ordenes/<id>/items/repuestos/) (TK043)
+   */
+  agregarRepuesto(ordenId: string, payload: { descripcion: string; cantidad?: number; precio_unitario: number }): Observable<ItemPresupuesto> {
+    return this.http.post<ItemPresupuesto>(`${this.apiUrl}${ordenId}/items/repuestos/`, payload);
+  }
+
+  /**
+   * Marcar o desmarcar ítem completado durante la reparación (PATCH /api/ordenes/<id>/items/<item_id>/completado/) (TK043)
+   */
+  marcarItemCompletado(ordenId: string, itemId: string, completado?: boolean): Observable<ItemPresupuesto> {
+    const body = completado !== undefined ? { completado } : {};
+    return this.http.patch<ItemPresupuesto>(`${this.apiUrl}${ordenId}/items/${itemId}/completado/`, body);
+  }
+
+  /**
+   * Eliminar ítem de presupuesto (DELETE /api/ordenes/<id>/items/<item_id>/) (TK043)
+   */
+  eliminarItemPresupuesto(ordenId: string, itemId: string): Observable<{ message: string; monto_total: number }> {
+    return this.http.delete<{ message: string; monto_total: number }>(`${this.apiUrl}${ordenId}/items/${itemId}/`);
   }
 }
 

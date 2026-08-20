@@ -111,7 +111,11 @@ def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
             comentario="Orden de Trabajo registrada en el sistema."
         )
 
-        # Envío automático de email en segundo plano (asíncrono y no bloqueante)
+        # Envío automático de email en segundo plano (síncrono en tests, asíncrono en prod/dev)
+        if getattr(settings, "TESTING", False):
+            enviar_email_orden_background(instance.id)
+            return
+
         try:
             threading.Thread(
                 target=enviar_email_orden_background,

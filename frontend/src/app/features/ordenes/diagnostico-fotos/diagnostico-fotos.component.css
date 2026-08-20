@@ -1,0 +1,8 @@
+/* Estilos responsivos complementarios para la galería de fotos de diagnóstico */
+:host {
+  display: block;
+}
+
+img {
+  user-select: none;
+}

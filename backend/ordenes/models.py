@@ -78,6 +78,7 @@ class ItemPresupuesto(models.Model):
     cantidad = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)
     precio_unitario = models.DecimalField(max_digits=12, decimal_places=2)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
+    completado = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
@@ -124,6 +125,37 @@ class HistorialEstadoOrden(models.Model):
 
     def __str__(self):
         return f"{self.orden_trabajo.numero_ot}: {self.estado_anterior} -> {self.estado_nuevo}"
+
+
+class AdjuntoDiagnostico(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    orden_trabajo = models.ForeignKey(
+        OrdenTrabajo,
+        on_delete=models.CASCADE,
+        related_name="adjuntos_diagnostico"
+    )
+    url_secure = models.URLField(max_length=500)
+    public_id = models.CharField(max_length=255, blank=True, null=True)
+    nombre_archivo = models.CharField(max_length=255)
+    tamanio = models.IntegerField(default=0)
+    mime_type = models.CharField(max_length=100, default='image/jpeg')
+    creado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="adjuntos_diagnostico_creados"
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        verbose_name = 'Adjunto de Diagnóstico'
+        verbose_name_plural = 'Adjuntos de Diagnóstico'
+
+    def __str__(self):
+        return f"Adjunto {self.nombre_archivo} ({self.orden_trabajo.numero_ot})"
+
 
 
 

@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenFiltros } from '../../core/services/orden.service';
 import { OrdenEstadoModalComponent } from './orden-estado-modal/orden-estado-modal.component';
+import { DiagnosticoFotosComponent } from './diagnostico-fotos/diagnostico-fotos.component';
+import { PresupuestoFormComponent } from './presupuesto-form/presupuesto-form.component';
 import { PageComponent } from '../../shared/components/page-component/page-component';
 
 export interface ServiceTask {
@@ -15,12 +17,20 @@ export interface ServiceTask {
   tiempoEstimado: string;
 }
 
-export type OrderTab = 'Detalle' | 'Servicios' | 'Repuestos' | 'Pagos' | 'Notas';
+export type OrderTab = 'Detalle' | 'Servicios' | 'Fotos y Diagnóstico' | 'Presupuesto y Checklist' | 'Repuestos' | 'Pagos' | 'Notas';
 
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, OrdenEstadoModalComponent, PageComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    OrdenEstadoModalComponent,
+    DiagnosticoFotosComponent,
+    PresupuestoFormComponent,
+    PageComponent
+  ],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.css'
 })
@@ -50,6 +60,10 @@ export class OrdenesComponent implements OnInit {
   readonly paginaActual = signal<number>(1);
   readonly totalPaginas = signal<number>(1);
   readonly totalItems = signal<number>(0);
+
+  get ordenIdActiva(): string {
+    return this.listaOrdenes()[0]?.id || '1';
+  }
 
 
   ngOnInit(): void {
@@ -130,7 +144,7 @@ export class OrdenesComponent implements OnInit {
   }
 
   readonly activeTab = signal<OrderTab>('Servicios');
-  readonly tabs: OrderTab[] = ['Detalle', 'Servicios', 'Repuestos', 'Pagos', 'Notas'];
+  readonly tabs: OrderTab[] = ['Detalle', 'Servicios', 'Fotos y Diagnóstico', 'Presupuesto y Checklist', 'Repuestos', 'Pagos', 'Notas'];
 
   readonly tareasServicio = signal<ServiceTask[]>([
     {
