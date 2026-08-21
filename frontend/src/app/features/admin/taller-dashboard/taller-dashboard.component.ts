@@ -1,16 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
-
-export interface UserSummary {
-  id: string;
-  nombre: string;
-  email: string;
-  rol: 'admin' | 'tecnico' | 'cliente';
-  estado: 'Activo' | 'En revisión' | 'Pendiente';
-  ultimaConexion: string;
-}
+import { SidebarService, RolVistaPrevia } from '../../../core/services/sidebar.service';
+import { TallerService, MecanicoResumen, ClienteResumen } from '../../../core/services/taller.service';
 
 @Component({
   selector: 'app-taller-dashboard',
@@ -19,42 +12,45 @@ export interface UserSummary {
   templateUrl: './taller-dashboard.component.html',
   styleUrl: './taller-dashboard.component.css'
 })
-export class TallerDashboardComponent {
-  readonly authService = inject(AuthService);
-  readonly userRole = this.authService.userRoleSignal;
+export class TallerDashboardComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly tallerService = inject(TallerService);
+  readonly sidebarService = inject(SidebarService);
 
-  readonly usuariosRegistrados: UserSummary[] = [
-    {
-      id: 'USR-001',
-      nombre: 'Laura Zárate (Super Admin)',
-      email: 'admin@fcc-taller.com',
-      rol: 'admin',
-      estado: 'Activo',
-      ultimaConexion: 'Hace pocos segundos'
-    },
-    {
-      id: 'USR-002',
-      nombre: 'Martín Gómez (Mecánico Jefe)',
-      email: 'tecnico@fcc-taller.com',
-      rol: 'tecnico',
-      estado: 'Activo',
-      ultimaConexion: 'Hace 15 minutos'
-    },
-    {
-      id: 'USR-003',
-      nombre: 'Carlos Rodríguez (Cliente VIP)',
-      email: 'cliente@fcc-taller.com',
-      rol: 'cliente',
-      estado: 'Activo',
-      ultimaConexion: 'Hace 1 hora'
-    },
-    {
-      id: 'USR-004',
-      nombre: 'Sofía Álvarez (Técnica Diagnóstico)',
-      email: 'sofia.a@fcc-taller.com',
-      rol: 'tecnico',
-      estado: 'En revisión',
-      ultimaConexion: 'Ayer'
-    }
-  ];
+  readonly userRole = this.authService.userRoleSignal;
+  readonly mecanicos = signal<MecanicoResumen[]>([]);
+  readonly clientes = signal<ClienteResumen[]>([]);
+  readonly cargandoMecanicos = signal<boolean>(true);
+  readonly cargandoClientes = signal<boolean>(true);
+
+  ngOnInit(): void {
+    this.cargarResumenMecanicos();
+    this.cargarResumenClientes();
+  }
+
+  cargarResumenMecanicos(): void {
+    this.cargandoMecanicos.set(true);
+    this.tallerService.getResumenMecanicos().subscribe({
+      next: (data) => {
+        this.mecanicos.set(data);
+        this.cargandoMecanicos.set(false);
+      },
+      error: () => this.cargandoMecanicos.set(false)
+    });
+  }
+
+  cargarResumenClientes(): void {
+    this.cargandoClientes.set(true);
+    this.tallerService.getResumenClientes().subscribe({
+      next: (data) => {
+        this.clientes.set(data);
+        this.cargandoClientes.set(false);
+      },
+      error: () => this.cargandoClientes.set(false)
+    });
+  }
+
+  cambiarVistaPrevia(rol: RolVistaPrevia): void {
+    this.sidebarService.setVistaPreviaRol(rol);
+  }
 }
