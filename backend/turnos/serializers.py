@@ -74,4 +74,6 @@ class TurnoSerializer(serializers.ModelSerializer):
                     "detail": "El día seleccionado ya cuenta con 2 o más turnos activos. ¿Desea forzar la reserva?"
                 })
 
+        # Quitar force_booking para que no se pase al constructor del modelo Turno
+        attrs.pop("force_booking", None)
         return attrs
