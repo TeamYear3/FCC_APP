@@ -33,6 +33,24 @@ export interface GooglePromptNotification {
   getNotDisplayedReason: () => string;
 }
 
+export interface PerfilUsuarioResponse {
+  id: string;
+  email: string;
+  nombre: string;
+  apellido: string;
+  rol: string;
+  telefono?: string;
+}
+
+export interface ActualizarPerfilRequest {
+  nombre?: string;
+  apellido?: string;
+  email?: string;
+  telefono?: string;
+  password_actual?: string;
+  nueva_password?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -246,6 +264,20 @@ export class AuthService {
       token,
       new_password: newPassword
     });
+  }
+
+  /**
+   * Obtiene la información detallada del perfil del Administrador.
+   */
+  obtenerPerfil(): Observable<PerfilUsuarioResponse> {
+    return this.http.get<PerfilUsuarioResponse>(`${environment.apiUrl}/auth/perfil/`);
+  }
+
+  /**
+   * Actualiza los datos del perfil y/o contraseña del Administrador.
+   */
+  actualizarPerfil(datos: ActualizarPerfilRequest): Observable<PerfilUsuarioResponse> {
+    return this.http.patch<PerfilUsuarioResponse>(`${environment.apiUrl}/auth/perfil/`, datos);
   }
 
   /**
