@@ -13,6 +13,24 @@
   
   <!-- Contenedor principal para Navbar y Contenido -->
   <div class="flex flex-col flex-1 overflow-hidden">
+    <!-- Banner Flotante de Advertencia del Modo Vista Previa de Rol -->
+    <div 
+      *ngIf="sidebarService.vistaPreviaRolSignal()" 
+      class="bg-yellow-500/20 border-b border-yellow-500/40 text-yellow-300 px-6 py-2.5 flex items-center justify-between z-30 shadow-inner backdrop-blur-md"
+    >
+      <div class="flex items-center gap-2 text-xs font-semibold">
+        <span class="text-base">⚠️</span>
+        <span>Estás navegando en modo <strong>Vista Previa de Rol ({{ sidebarService.vistaPreviaRolSignal() | uppercase }})</strong>. Tu sesión de Administrador sigue activa.</span>
+      </div>
+      <button 
+        type="button" 
+        (click)="sidebarService.salirVistaPrevia()" 
+        class="px-3 py-1 rounded-full bg-yellow-500 text-black font-bold text-xs hover:bg-yellow-400 active:scale-95 transition-all shadow cursor-pointer"
+      >
+        ✕ Salir de vista previa
+      </button>
+    </div>
+
     <!-- Barra superior (Navbar) -->
     <app-navbar></app-navbar>
     

@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "clientes",
     "vehiculos",
     "ordenes",
+    "taller",
 ]
 
 ASGI_APPLICATION = "config.asgi.application"

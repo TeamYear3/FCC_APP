@@ -1,0 +1,4 @@
+/* Estilos complementarios para el módulo de configuración de perfil */
+:host {
+  display: block;
+}

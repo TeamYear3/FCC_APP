@@ -11,4 +11,5 @@ import { SidebarService } from '../../core/services/sidebar.service';
 })
 export class SidebarComponent {
   readonly sidebarService = inject(SidebarService);
+  readonly vistaPreviaRol = this.sidebarService.vistaPreviaRolSignal;
 }

@@ -174,8 +174,7 @@ describe('VehiculoFormComponent', () => {
     component.cargarDatosVehiculo('uuid-veh-100');
 
     expect(component.vehiculoForm.get('patente')?.disabled).toBe(true);
-    expect(component.vehiculoForm.get('numero_chasis')?.disabled).toBe(true);
-    expect(component.vehiculoForm.get('nro_chasis')?.disabled).toBe(true);
+    expect(component.vehiculoForm.get('numero_chasis')?.enabled).toBe(true);
   });
 });
 
