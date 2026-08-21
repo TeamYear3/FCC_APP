@@ -97,3 +97,81 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.save()
         return user
 
+
+class PerfilUsuarioSerializer(serializers.ModelSerializer):
+    telefono = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Usuario
+        fields = ("id", "email", "nombre", "apellido", "rol", "telefono")
+        read_only_fields = ("id", "rol")
+
+    def get_telefono(self, obj):
+        if hasattr(obj, "cliente_perfil") and obj.cliente_perfil:
+            return obj.cliente_perfil.telefono
+        return getattr(obj, "telefono", "")
+
+
+class ActualizarPerfilSerializer(serializers.Serializer):
+    nombre = serializers.CharField(max_length=150, required=False)
+    apellido = serializers.CharField(max_length=150, required=False)
+    email = serializers.EmailField(required=False)
+    telefono = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    password_actual = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    nueva_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+        email = attrs.get("email")
+        password_actual = attrs.get("password_actual")
+        nueva_password = attrs.get("nueva_password")
+
+        # Si se desea cambiar la contraseña o el email, se requiere la contraseña actual
+        if (nueva_password or (email and email.lower() != user.email.lower())):
+            if not password_actual:
+                raise serializers.ValidationError({
+                    "password_actual": "Debes ingresar tu contraseña actual para confirmar cambios de email o clave."
+                })
+            if not user.check_password(password_actual):
+                raise serializers.ValidationError({
+                    "password_actual": "La contraseña actual ingresada es incorrecta."
+                })
+
+        # Validar nuevo email único
+        if email and email.lower() != user.email.lower():
+            if Usuario.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+                raise serializers.ValidationError({
+                    "email": "Ya existe otro usuario registrado con este correo electrónico."
+                })
+
+        # Validar fortaleza de la nueva contraseña si se provee
+        if nueva_password:
+            validate_password(nueva_password, user=user)
+
+        return attrs
+
+    def update(self, user, validated_data):
+        nombre = validated_data.get("nombre")
+        apellido = validated_data.get("apellido")
+        email = validated_data.get("email")
+        telefono = validated_data.get("telefono")
+        nueva_password = validated_data.get("nueva_password")
+
+        if nombre:
+            user.nombre = nombre
+        if apellido:
+            user.apellido = apellido
+        if email:
+            user.email = email.lower()
+        if nueva_password:
+            user.set_password(nueva_password)
+
+        user.save()
+
+        if telefono is not None and hasattr(user, "cliente_perfil") and user.cliente_perfil:
+            user.cliente_perfil.telefono = telefono
+            user.cliente_perfil.save()
+
+        return user
+
+

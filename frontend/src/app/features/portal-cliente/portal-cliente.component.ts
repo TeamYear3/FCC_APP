@@ -48,6 +48,7 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     }
     this.cargarOrdenesCliente();
     this.cargarVehiculosCliente();
+    this.iniciarWebSocket();
   }
 
   cambiarTab(tab: 'ordenes' | 'vehiculos'): void {

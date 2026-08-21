@@ -41,6 +41,7 @@ describe('VehiculoHistorialComponent', () => {
     mockVehiculoService = {
       obtenerVehiculoPorId: vi.fn().mockReturnValue(of(mockVehiculo)),
       obtenerHistorialVehiculo: vi.fn().mockReturnValue(of(mockHistorialResponse)),
+      obtenerMantenimientosProgramados: vi.fn().mockReturnValue(of([])),
       descargarHistorialPDF: vi.fn().mockReturnValue(of(new Blob(['pdf content'], { type: 'application/pdf' })))
     };
 
