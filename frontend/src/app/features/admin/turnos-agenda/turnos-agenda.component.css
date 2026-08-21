@@ -82,3 +82,45 @@
 :host ::ng-deep .fc-event:hover {
   transform: scale(1.02);
 }
+
+/* Clases de eventos de turnos personalizadas para evitar estilos hardcodeados en el componente */
+:host ::ng-deep .evento-turno-pendiente {
+  background-color: #fbbf24 !important;
+  border-color: #f59e0b !important;
+  color: #1f2937 !important;
+}
+
+:host ::ng-deep .evento-turno-completado {
+  background-color: #22c55e !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+}
+
+:host ::ng-deep .evento-turno-cancelado {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+:host ::ng-deep .evento-turno-default {
+  background-color: #9ca3af !important;
+  border-color: #7b8089 !important;
+  color: #ffffff !important;
+}
+
+/* Permitir envoltura y salto de línea en el texto del evento para leerlo completo */
+:host ::ng-deep .fc-event-title {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow: visible !important;
+}
+
+:host ::ng-deep .fc-daygrid-event {
+  white-space: normal !important;
+  align-items: flex-start !important;
+}
+
+/* Ocultar el punto circular de evento por defecto de FullCalendar */
+:host ::ng-deep .fc-daygrid-event-dot {
+  display: none !important;
+}

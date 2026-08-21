@@ -10,6 +10,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 // @ts-ignore
 import esLocale from '@fullcalendar/core/locales/es.js';
+import { forkJoin } from 'rxjs';
 
 import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
@@ -60,6 +61,7 @@ export class TurnosAgendaComponent implements OnInit {
     },
     locales: [esLocale],
     locale: 'es',
+    displayEventTime: false,
     events: [],
     dateClick: this.handleDateClick.bind(this),
     eventClick: this.handleEventClick.bind(this)
@@ -85,53 +87,79 @@ export class TurnosAgendaComponent implements OnInit {
 
   cargarDatos(): void {
     this.cargando.set(true);
-    // Cargar clientes
-    this.clienteService.obtenerClientes().subscribe({
-      next: (data) => this.clientes.set(data),
-      error: (err) => console.error('Error al obtener clientes:', err)
-    });
 
-    // Cargar vehículos
-    this.vehiculoService.getVehiculos().subscribe({
-      next: (data) => this.vehiculos.set(data),
-      error: (err) => console.error('Error al obtener vehículos:', err)
-    });
+    // Cargar en paralelo para garantizar mapeos inmediatos
+    forkJoin({
+      clientes: this.clienteService.obtenerClientes(),
+      vehiculos: this.vehiculoService.getVehiculos(),
+      turnos: this.turnoService.obtenerTurnos()
+    }).subscribe({
+      next: (res) => {
+        this.clientes.set(res.clientes);
+        this.vehiculos.set(res.vehiculos);
+        this.turnos.set(res.turnos);
 
-    // Cargar turnos en calendario
-    this.cargarTurnosEnCalendario();
+        this.mapearYRenderizarEventos(res.turnos);
+        this.cargando.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar datos de la agenda:', err);
+        this.cargando.set(false);
+      }
+    });
   }
 
   cargarTurnosEnCalendario(): void {
     this.turnoService.obtenerTurnos().subscribe({
       next: (data) => {
         this.turnos.set(data);
-        // Mapear solo los turnos que no están cancelados, o pintarlos distintos
-        // Si están cancelados, podemos excluirlos del calendario para que quede limpio,
-        // o mostrarlos tachados/rojos. Excluyamos los cancelados o pintémoslos rojo.
-        // La especificación dice: "Renderizar los turnos reservados como eventos en color gris en el calendario".
-        // Excluiremos los cancelados para que no ocupen lugar visual en la agenda.
-        const turnosFiltrados = data.filter(t => t.estado !== 'cancelado');
-
-        const eventos = turnosFiltrados.map((t) => ({
-          id: t.id,
-          title: `${t.motivo}`,
-          start: t.fecha_hora,
-          backgroundColor: '#9ca3af', // Color gris para turnos reservados
-          borderColor: '#9ca3af',
-          textColor: '#1f2937', // Texto oscuro para contraste
-          extendedProps: { ...t }
-        }));
-        this.calendarOptions.update((options) => ({
-          ...options,
-          events: eventos
-        }));
-        this.cargando.set(false);
+        this.mapearYRenderizarEventos(data);
       },
       error: (err) => {
         console.error('Error al obtener turnos:', err);
-        this.cargando.set(false);
       }
     });
+  }
+
+  mapearYRenderizarEventos(data: TurnoResponse[]): void {
+    const eventos = data.map((t) => {
+      // Obtener datos legibles
+      const nombreCliente = this.getNombreCliente(t.cliente);
+      const datosVehiculo = this.getDatosVehiculo(t.vehiculo);
+      
+      // Formatear hora de inicio a partir de fecha_hora
+      const dateObj = new Date(t.fecha_hora);
+      const hh = String(dateObj.getHours()).padStart(2, '0');
+      const mm = String(dateObj.getMinutes()).padStart(2, '0');
+      const horaStr = `${hh}:${mm} hs`;
+
+      // Formatear título descriptivo premium
+      const eventTitle = `${horaStr} | ${nombreCliente} - ${datosVehiculo} - M: ${t.motivo}`;
+
+      // Configurar clase de estilos CSS según estado del turno
+      let estadoClass = 'evento-turno-default';
+
+      if (t.estado === 'pendiente') {
+        estadoClass = 'evento-turno-pendiente';
+      } else if (t.estado === 'completado') {
+        estadoClass = 'evento-turno-completado';
+      } else if (t.estado === 'cancelado') {
+        estadoClass = 'evento-turno-cancelado';
+      }
+
+      return {
+        id: t.id,
+        title: eventTitle,
+        start: t.fecha_hora,
+        className: estadoClass,
+        extendedProps: { ...t }
+      };
+    });
+
+    this.calendarOptions.update((options) => ({
+      ...options,
+      events: eventos
+    }));
   }
 
   onClienteChange(clienteId: string): void {
@@ -183,7 +211,7 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoService.crearTurno(payload).subscribe({
       next: (res) => {
         this.cerrarModalCrear();
-        this.cargarTurnosEnCalendario();
+        this.cargarDatos(); // Recargar todo para refrescar eventos mapeados
       },
       error: (err) => {
         this.cargando.set(false);
@@ -217,7 +245,7 @@ export class TurnosAgendaComponent implements OnInit {
       next: (res) => {
         this.datosPendientesCrear.set(null);
         this.cerrarModalCrear();
-        this.cargarTurnosEnCalendario();
+        this.cargarDatos(); // Recargar todo
       },
       error: (err) => {
         this.cargando.set(false);
@@ -239,7 +267,7 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoService.actualizarTurno(turno.id, { estado: 'cancelado' }).subscribe({
       next: () => {
         this.cerrarModalDetalle();
-        this.cargarTurnosEnCalendario();
+        this.cargarDatos(); // Recargar todo
       },
       error: (err) => {
         this.cargando.set(false);
