@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from core.permissions import EsAdministrador
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import TokenError
@@ -18,6 +19,8 @@ from .serializers import (
     RegistroUsuarioSerializer,
     PasswordResetSerializer,
     PasswordResetConfirmSerializer,
+    PerfilUsuarioSerializer,
+    ActualizarPerfilSerializer,
 )
 
 Usuario = get_user_model()
@@ -306,5 +309,23 @@ class BusquedaUniversalView(APIView):
             'vehiculos': vehiculos,
             'ordenes': ordenes
         }, status=status.HTTP_200_OK)
+
+
+class PerfilUsuarioView(APIView):
+    permission_classes = [IsAuthenticated, EsAdministrador]
+
+    def get(self, request, *args, **kwargs):
+        serializer = PerfilUsuarioSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, *args, **kwargs):
+        serializer = ActualizarPerfilSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        updated_user = serializer.update(request.user, serializer.validated_data)
+        res_serializer = PerfilUsuarioSerializer(updated_user)
+        return Response(res_serializer.data, status=status.HTTP_200_OK)
+
 
 
