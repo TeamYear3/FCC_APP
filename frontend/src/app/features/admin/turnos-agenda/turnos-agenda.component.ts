@@ -31,9 +31,14 @@ export class TurnosAgendaComponent implements OnInit {
   vehiculos = signal<VehiculoResponse[]>([]);
   vehiculosFiltrados = signal<VehiculoResponse[]>([]);
 
-  // Estados de Modales
+  // Estados de Modales e Alertas
   mostrarModalCrear = signal(false);
+  mostrarAlertaSobrecupo = signal(false);
   fechaSeleccionada = signal<string>('');
+  mensajeError = signal<string>('');
+  
+  // Datos temporales para la operación de forzado (bypass)
+  datosPendientesCrear = signal<any>(null);
 
   // Formulario
   turnoForm!: FormGroup;
@@ -143,6 +148,7 @@ export class TurnosAgendaComponent implements OnInit {
       estado: 'pendiente'
     });
     this.vehiculosFiltrados.set([]);
+    this.mensajeError.set('');
     this.mostrarModalCrear.set(true);
   }
 
@@ -152,8 +158,69 @@ export class TurnosAgendaComponent implements OnInit {
     // La edición y detalle se desarrollará en el Commit 5
   }
 
+  guardarTurno(): void {
+    if (this.turnoForm.invalid) return;
+
+    this.cargando.set(true);
+    this.mensajeError.set('');
+    const payload = this.turnoForm.value;
+
+    this.turnoService.crearTurno(payload).subscribe({
+      next: (res) => {
+        this.cerrarModalCrear();
+        this.cargarTurnosEnCalendario();
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        const errorData = err.error;
+        
+        // Si el backend advierte sobre-cupo diario (>2 turnos)
+        if (errorData && errorData.warning_overbooking) {
+          this.datosPendientesCrear.set(payload);
+          this.mostrarAlertaSobrecupo.set(true);
+        } else {
+          // Errores de validación estándar (ej. vehículo inválido, DNI duplicado, etc.)
+          const msg = errorData?.detail || errorData?.vehiculo || 'Ocurrió un error al agendar el turno.';
+          this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+      }
+    });
+  }
+
+  guardarTurnoForzado(): void {
+    const payload = this.datosPendientesCrear();
+    if (!payload) return;
+
+    this.cargando.set(true);
+    this.mostrarAlertaSobrecupo.set(false);
+    this.mensajeError.set('');
+
+    // Inyectamos la bandera de bypass force_booking
+    const payloadForzado = { ...payload, force_booking: true };
+
+    this.turnoService.crearTurno(payloadForzado).subscribe({
+      next: (res) => {
+        this.datosPendientesCrear.set(null);
+        this.cerrarModalCrear();
+        this.cargarTurnosEnCalendario();
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        const errorData = err.error;
+        const msg = errorData?.detail || 'Ocurrió un error al forzar la reserva del turno.';
+        this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+    });
+  }
+
+  cerrarAlertaSobrecupo(): void {
+    this.mostrarAlertaSobrecupo.set(false);
+    this.datosPendientesCrear.set(null);
+  }
+
   cerrarModalCrear(): void {
     this.mostrarModalCrear.set(false);
     this.turnoForm.reset();
+    this.mensajeError.set('');
   }
 }
