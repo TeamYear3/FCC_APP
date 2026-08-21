@@ -104,6 +104,81 @@
     </div>
   </div>
 
+  <!-- MODAL DE DETALLE DEL TURNO SELECCIONADO -->
+  <div *ngIf="mostrarModalDetalle()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+    <div class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden">
+      
+      <div class="p-6 border-b border-white/5 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-color-primary-accent uppercase">Detalle del Turno</h3>
+          <p class="text-xs text-color-text-secondary">Información del turno agendado.</p>
+        </div>
+        <span class="px-2.5 py-1 text-[10px] font-bold rounded uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          {{ turnoSeleccionado()?.estado }}
+        </span>
+      </div>
+
+      <div class="p-6 pb-0" *ngIf="mensajeError()">
+        <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3">
+          {{ mensajeError() }}
+        </div>
+      </div>
+
+      <div class="p-6 space-y-4">
+        
+        <!-- Cliente -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Cliente</span>
+          <span class="text-sm font-semibold text-color-text-primary">
+            {{ getNombreCliente(turnoSeleccionado()!.cliente) }}
+          </span>
+        </div>
+
+        <!-- Vehículo -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Vehículo</span>
+          <span class="text-sm font-semibold text-color-text-primary">
+            {{ getDatosVehiculo(turnoSeleccionado()!.vehiculo) }}
+          </span>
+        </div>
+
+        <!-- Fecha y Hora -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Fecha y Hora</span>
+          <span class="text-sm font-semibold text-color-text-primary">
+            {{ turnoSeleccionado()!.fecha_hora | date:'dd/MM/yyyy HH:mm' }}
+          </span>
+        </div>
+
+        <!-- Motivo -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Motivo / Síntomas</span>
+          <p class="text-sm text-color-text-primary bg-black/20 border border-white/5 rounded p-3 mt-1 italic">
+            "{{ turnoSeleccionado()!.motivo }}"
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center justify-between p-6 border-t border-white/5">
+        <button 
+          type="button" 
+          (click)="cancelarTurno()"
+          class="px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 border border-red-500/20 rounded uppercase tracking-wider transition-all duration-200">
+          Cancelar Turno
+        </button>
+        <button 
+          type="button" 
+          (click)="cerrarModalDetalle()"
+          class="px-5 py-2 text-xs font-bold bg-white/5 border border-white/10 hover:bg-white/10 text-color-text-primary rounded uppercase tracking-wider transition-all duration-200">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- MODAL DE ADVERTENCIA DE SOBRE-CUPO (BYPASS) -->
   <div *ngIf="mostrarAlertaSobrecupo()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
     <div class="bg-color-surface-container border border-yellow-500/30 rounded-card shadow-2xl max-w-sm w-full overflow-hidden">

@@ -33,10 +33,14 @@ export class TurnosAgendaComponent implements OnInit {
 
   // Estados de Modales e Alertas
   mostrarModalCrear = signal(false);
+  mostrarModalDetalle = signal(false);
   mostrarAlertaSobrecupo = signal(false);
   fechaSeleccionada = signal<string>('');
   mensajeError = signal<string>('');
   
+  // Turno seleccionado para ver detalle
+  turnoSeleccionado = signal<TurnoResponse | null>(null);
+
   // Datos temporales para la operación de forzado (bypass)
   datosPendientesCrear = signal<any>(null);
 
@@ -98,7 +102,14 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoService.obtenerTurnos().subscribe({
       next: (data) => {
         this.turnos.set(data);
-        const eventos = data.map((t) => ({
+        // Mapear solo los turnos que no están cancelados, o pintarlos distintos
+        // Si están cancelados, podemos excluirlos del calendario para que quede limpio,
+        // o mostrarlos tachados/rojos. Excluyamos los cancelados o pintémoslos rojo.
+        // La especificación dice: "Renderizar los turnos reservados como eventos en color gris en el calendario".
+        // Excluiremos los cancelados para que no ocupen lugar visual en la agenda.
+        const turnosFiltrados = data.filter(t => t.estado !== 'cancelado');
+
+        const eventos = turnosFiltrados.map((t) => ({
           id: t.id,
           title: `${t.motivo}`,
           start: t.fecha_hora,
@@ -153,9 +164,10 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   handleEventClick(arg: any): void {
-    const turnoId = arg.event.id;
-    console.log('Detalle del turno ID:', turnoId);
-    // La edición y detalle se desarrollará en el Commit 5
+    const turno = arg.event.extendedProps as TurnoResponse;
+    this.turnoSeleccionado.set(turno);
+    this.mensajeError.set('');
+    this.mostrarModalDetalle.set(true);
   }
 
   guardarTurno(): void {
@@ -179,7 +191,7 @@ export class TurnosAgendaComponent implements OnInit {
           this.datosPendientesCrear.set(payload);
           this.mostrarAlertaSobrecupo.set(true);
         } else {
-          // Errores de validación estándar (ej. vehículo inválido, DNI duplicado, etc.)
+          // Errores de validación estándar (ej. vehículo inválido, etc.)
           const msg = errorData?.detail || errorData?.vehiculo || 'Ocurrió un error al agendar el turno.';
           this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
         }
@@ -213,6 +225,39 @@ export class TurnosAgendaComponent implements OnInit {
     });
   }
 
+  cancelarTurno(): void {
+    const turno = this.turnoSeleccionado();
+    if (!turno) return;
+
+    this.cargando.set(true);
+    this.mensajeError.set('');
+
+    // Cambiar estado a 'cancelado' para liberar el cupo diario
+    this.turnoService.actualizarTurno(turno.id, { estado: 'cancelado' }).subscribe({
+      next: () => {
+        this.cerrarModalDetalle();
+        this.cargarTurnosEnCalendario();
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        const errorData = err.error;
+        const msg = errorData?.detail || 'Ocurrió un error al cancelar el turno.';
+        this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+    });
+  }
+
+  // Resolvedores dinámicos legibles para la UI
+  getNombreCliente(clienteId: string): string {
+    const cliente = this.clientes().find(c => c.id === clienteId);
+    return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Cargando cliente...';
+  }
+
+  getDatosVehiculo(vehiculoId: string): string {
+    const vehiculo = this.vehiculos().find(v => v.id === vehiculoId);
+    return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.patente})` : 'Cargando vehículo...';
+  }
+
   cerrarAlertaSobrecupo(): void {
     this.mostrarAlertaSobrecupo.set(false);
     this.datosPendientesCrear.set(null);
@@ -221,6 +266,12 @@ export class TurnosAgendaComponent implements OnInit {
   cerrarModalCrear(): void {
     this.mostrarModalCrear.set(false);
     this.turnoForm.reset();
+    this.mensajeError.set('');
+  }
+
+  cerrarModalDetalle(): void {
+    this.mostrarModalDetalle.set(false);
+    this.turnoSeleccionado.set(null);
     this.mensajeError.set('');
   }
 }
