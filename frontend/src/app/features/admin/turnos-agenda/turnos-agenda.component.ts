@@ -2,11 +2,14 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { FullCalendarModule } from '@fullcalendar/angular';
-import { CalendarOptions } from '@fullcalendar/core';
+// @ts-ignore
 import dayGridPlugin from '@fullcalendar/daygrid';
+// @ts-ignore
 import timeGridPlugin from '@fullcalendar/timegrid';
+// @ts-ignore
 import interactionPlugin from '@fullcalendar/interaction';
-import esLocale from '@fullcalendar/core/locales/es';
+// @ts-ignore
+import esLocale from '@fullcalendar/core/locales/es.js';
 
 import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
@@ -47,7 +50,7 @@ export class TurnosAgendaComponent implements OnInit {
   // Formulario
   turnoForm!: FormGroup;
 
-  calendarOptions = signal<CalendarOptions>({
+  calendarOptions = signal<any>({
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
     headerToolbar: {
