@@ -84,7 +84,7 @@ export const routes: Routes = [
       {
         path: 'turnos',
         loadComponent: () =>
-          import('./features/turnos/turnos-agenda.component').then(
+          import('./features/admin/turnos-agenda/turnos-agenda.component').then(
             (m) => m.TurnosAgendaComponent
           )
       },

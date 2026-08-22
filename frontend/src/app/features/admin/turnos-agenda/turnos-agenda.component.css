@@ -1,0 +1,126 @@
+/* Sobrescribir estilos de FullCalendar para adaptarlo al diseño oscuro y premium del taller */
+:host ::ng-deep .fc {
+  --fc-border-color: rgba(255, 255, 255, 0.08);
+  --fc-daygrid-event-dot-width: 8px;
+  --fc-event-bg-color: #9ca3af;
+  --fc-event-border-color: #9ca3af;
+  --fc-event-text-color: #111827;
+  color: #f3f4f6;
+  font-family: inherit;
+}
+
+:host ::ng-deep .fc .fc-toolbar-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-transform: capitalize;
+}
+
+:host ::ng-deep .fc .fc-button-primary {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  text-transform: capitalize;
+  transition: all 0.2s ease;
+}
+
+:host ::ng-deep .fc .fc-button-primary:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+:host ::ng-deep .fc .fc-button-primary:disabled {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #6b7280;
+}
+
+:host ::ng-deep .fc .fc-button-active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+:host ::ng-deep .fc-theme-standard td, 
+:host ::ng-deep .fc-theme-standard th {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+:host ::ng-deep .fc-col-header-cell-cushion {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 8px 0;
+  text-transform: uppercase;
+}
+
+:host ::ng-deep .fc-daygrid-day-number {
+  color: #cbd5e1;
+  font-size: 0.875rem;
+  padding: 6px;
+}
+
+:host ::ng-deep .fc .fc-day-other {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+:host ::ng-deep .fc .fc-day-today {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+:host ::ng-deep .fc-event {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: transform 0.1s ease;
+}
+
+:host ::ng-deep .fc-event:hover {
+  transform: scale(1.02);
+}
+
+/* Clases de eventos de turnos personalizadas para evitar estilos hardcodeados en el componente */
+:host ::ng-deep .evento-turno-pendiente {
+  background-color: #fbbf24 !important;
+  border-color: #f59e0b !important;
+  color: #1f2937 !important;
+}
+
+:host ::ng-deep .evento-turno-completado {
+  background-color: #22c55e !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+}
+
+:host ::ng-deep .evento-turno-cancelado {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+:host ::ng-deep .evento-turno-default {
+  background-color: #9ca3af !important;
+  border-color: #7b8089 !important;
+  color: #ffffff !important;
+}
+
+/* Permitir envoltura y salto de línea en el texto del evento para leerlo completo */
+:host ::ng-deep .fc-event-title {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow: visible !important;
+}
+
+:host ::ng-deep .fc-daygrid-event {
+  white-space: normal !important;
+  align-items: flex-start !important;
+}
+
+/* Ocultar el punto circular de evento por defecto de FullCalendar */
+:host ::ng-deep .fc-daygrid-event-dot {
+  display: none !important;
+}
