@@ -44,3 +44,7 @@ docs/
 media/
 diagnosticos/
 
+# Carpeta temporal del asistente AI
+scratch/
+
+
