@@ -848,20 +848,20 @@ class HistorialEstadoOrdenAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.user_admin)
         url = reverse('actualizar-estado-orden', kwargs={'orden_id': self.orden.id})
         payload = {
-            "estado": "en_proceso",
-            "comentario": "Iniciando trabajos de reparación."
+            "estado": "en_presupuesto",
+            "comentario": "Presupuestando orden de trabajo."
         }
         response = self.client.patch(url, payload, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['estado_actual'], 'en_proceso')
+        self.assertEqual(response.data['estado_actual'], 'en_presupuesto')
 
         self.orden.refresh_from_db()
-        self.assertEqual(self.orden.estado, 'en_proceso')
+        self.assertEqual(self.orden.estado, 'en_presupuesto')
 
         ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden).first()
         self.assertEqual(ultimo_registro.estado_anterior, 'ingresado')
-        self.assertEqual(ultimo_registro.estado_nuevo, 'en_proceso')
-        self.assertEqual(ultimo_registro.comentario, 'Iniciando trabajos de reparación.')
+        self.assertEqual(ultimo_registro.estado_nuevo, 'en_presupuesto')
+        self.assertEqual(ultimo_registro.comentario, 'Presupuestando orden de trabajo.')
 
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1016,6 +1016,113 @@ class ItemsPresupuestoAPITest(APITestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(ItemPresupuesto.objects.filter(id=self.item.id).count(), 0)
+
+
+from turnos.models import Turno
+from django.utils import timezone
+
+class OrdenTrabajoMaquinaEstadosTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Laura",
+            apellido="Prueba",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA123BB",
+            marca="Chevrolet",
+            modelo="Onix",
+            anio=2018
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Fallo eléctrico"
+        )
+        self.turno = Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=timezone.now() + timezone.timedelta(days=1),
+            motivo="Service de 10k",
+            estado="pendiente"
+        )
+
+    def test_transicion_valida_ingresado_a_presupuesto(self):
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+    def test_transicion_invalida_lanza_validation_error(self):
+        with self.assertRaises(ValidationError):
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+
+    @patch('ordenes.services.notificar_cambio_estado_websocket')
+    def test_precondiciones_en_proceso(self, mock_ws):
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+
+        # 1. Intentar pasar a EN_PROCESO sin turno, sin aprobacion, sin items (debe fallar)
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("debe tener un turno asociado", str(ctx.exception))
+
+        # Asociar turno
+        self.orden.turno = self.turno
+        self.orden.save()
+
+        # 2. Intentar pasar a EN_PROCESO sin aprobacion del cliente y sin items (debe fallar)
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("aprobación explícita del cliente", str(ctx.exception))
+
+        # Aprobar
+        self.orden.aprobado_por_cliente = True
+        self.orden.save()
+
+        # 3. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("sin ítems en el presupuesto", str(ctx.exception))
+
+        # Agregar item presupuesto
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Bujía",
+            cantidad=Decimal("4.00"),
+            precio_unitario=Decimal("800.00")
+        )
+        self.orden.refresh_from_db()
+
+        # 4. Transicionar con éxito cumpliendo todas las precondiciones
+        self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
+
+        # Verificar que se llamó al WebSocket
+        self.assertTrue(mock_ws.called)
+
+    def test_transicion_con_turno_cancelado_falla(self):
+        self.turno.estado = "cancelado"
+        self.turno.save()
+
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.turno = self.turno
+        self.orden.aprobado_por_cliente = True
+        self.orden.save()
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Mano de obra",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("5000.00")
+        )
+        self.orden.refresh_from_db()
+
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("está cancelado", str(ctx.exception))
 
 
 

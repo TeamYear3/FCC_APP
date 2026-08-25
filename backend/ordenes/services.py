@@ -26,15 +26,8 @@ def evaluar_transicion_presupuesto(orden: OrdenTrabajo) -> bool:
     si se encuentra en estado 'INGRESADO' y posee ítems de presupuesto asociados.
     """
     if orden.estado == EstadoOrden.INGRESADO and orden.items_presupuesto.exists():
-        estado_anterior = orden.estado
-        orden.estado = EstadoOrden.EN_PRESUPUESTO
-        orden.save(update_fields=['estado', 'actualizado_en'])
-
-        from .models import HistorialEstadoOrden
-        HistorialEstadoOrden.objects.create(
-            orden_trabajo=orden,
-            estado_anterior=estado_anterior,
-            estado_nuevo=EstadoOrden.EN_PRESUPUESTO,
+        orden.transicionar_a(
+            EstadoOrden.EN_PRESUPUESTO,
             comentario="Transición automática al cargar ítems de presupuesto."
         )
         return True
@@ -72,6 +65,44 @@ def notificar_presupuesto_websocket(orden: OrdenTrabajo) -> dict:
                     }
                 )
             logger.info(f"Notificación WebSocket enviada para OT {orden.numero_ot}: {payload}")
+    except (ImportError, Exception) as e:
+        logger.info(f"Notificación WebSocket registrada (fallback): {payload} - Info: {e}")
+
+    return payload
+
+
+def notificar_cambio_estado_websocket(orden: OrdenTrabajo, estado_anterior: str) -> dict:
+    """
+    Emite una notificación WebSocket en cada cambio de estado de la OrdenTrabajo.
+    Publica el evento en el grupo de la orden específica y en el grupo global.
+    """
+    payload = {
+        "event": "cambio_estado_orden",
+        "orden_id": str(orden.id),
+        "numero_ot": orden.numero_ot,
+        "patente": orden.vehiculo.patente if orden.vehiculo else None,
+        "estado_anterior": estado_anterior,
+        "estado_nuevo": orden.estado,
+        "estado_nuevo_display": orden.get_estado_display(),
+        "monto_total": str(orden.monto_total)
+    }
+
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            # Grupos: canal de la OT específica y global de actualizaciones
+            for group in [f"orden_{orden.numero_ot}", "ordenes_actualizaciones"]:
+                async_to_sync(channel_layer.group_send)(
+                    group,
+                    {
+                        "type": "orden_actualizada",
+                        "data": payload
+                    }
+                )
+            logger.info(f"Notificación WebSocket de cambio de estado enviada para OT {orden.numero_ot}: {payload}")
     except (ImportError, Exception) as e:
         logger.info(f"Notificación WebSocket registrada (fallback): {payload} - Info: {e}")
 
