@@ -13,6 +13,7 @@ class EstadoOrden(models.TextChoices):
     RECHAZADO = 'rechazado', 'Rechazado'
     EN_PROCESO = 'en_proceso', 'En Proceso'
     FINALIZADO = 'finalizado', 'Finalizado'
+    ENTREGADO = 'entregado', 'Entregado'
 
 class OrdenTrabajo(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -25,6 +26,13 @@ class OrdenTrabajo(models.Model):
         limit_choices_to={'rol': 'tecnico'},
         related_name="ordenes_asignadas"
     )
+    turno = models.ForeignKey(
+        'turnos.Turno',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ordenes_trabajo"
+    )
     numero_ot = models.CharField(max_length=50, unique=True, blank=True)
     estado = models.CharField(
         max_length=20,
@@ -36,6 +44,7 @@ class OrdenTrabajo(models.Model):
     fecha_entrega = models.DateField(null=True, blank=True)
     comentario_rechazo = models.TextField(null=True, blank=True)
     monto_total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    aprobado_por_cliente = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
