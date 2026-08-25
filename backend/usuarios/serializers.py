@@ -20,3 +20,19 @@ class GoogleAuthSerializer(serializers.Serializer):
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField(required=True)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
+    password = serializers.CharField(min_length=8, required=True, write_only=True)
+    password_confirm = serializers.CharField(min_length=8, required=True, write_only=True)
+
+    def validate(self, attrs):
+        if attrs.get("password") != attrs.get("password_confirm"):
+            raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
+        return attrs
+
