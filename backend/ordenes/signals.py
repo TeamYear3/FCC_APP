@@ -35,18 +35,22 @@ def enviar_email_orden_background(orden_id):
     informativo de creación de Orden de Trabajo al cliente.
     """
     try:
-        orden = OrdenTrabajo.objects.select_related("vehiculo__cliente__usuario").get(id=orden_id)
-        cliente = orden.vehiculo.cliente
+        orden = OrdenTrabajo.objects.select_related("vehiculo__cliente__usuario").filter(id=orden_id).first()
+        if not orden:
+            return
 
-        if not cliente.usuario or not cliente.usuario.email:
+        cliente = getattr(orden.vehiculo, "cliente", None)
+        usuario = getattr(cliente, "usuario", None) if cliente else None
+
+        if not usuario or not usuario.email:
             logger.warning(
                 f"No se pudo enviar el correo de la OT {orden.numero_ot} porque el cliente "
-                f"'{cliente.nombre} {cliente.apellido}' no tiene un usuario o email asociado."
+                f"'{getattr(cliente, 'nombre', '')} {getattr(cliente, 'apellido', '')}' no tiene un usuario o email asociado."
             )
             return
 
-        email_cliente = cliente.usuario.email
-        nombre_cliente = f"{cliente.nombre} {cliente.apellido}"
+        email_cliente = usuario.email
+        nombre_cliente = f"{cliente.nombre} {cliente.apellido}".strip()
         
         # Enlace único al portal
         portal_base_url = getattr(settings, "CLIENT_PORTAL_URL", "https://fccapp.com").rstrip("/")
@@ -78,7 +82,10 @@ def enviar_email_orden_background(orden_id):
             "descripcion_problema": orden.descripcion_problema,
             "enlace_portal": enlace_portal,
         }
-        html_message = render_to_string("ordenes/email_nueva_orden.html", context)
+        try:
+            html_message = render_to_string("ordenes/email_nueva_orden.html", context)
+        except Exception:
+            html_message = None
 
         send_email_service(
             subject=subject,
@@ -91,10 +98,6 @@ def enviar_email_orden_background(orden_id):
             f"Error al enviar el correo en segundo plano para la OT ID {orden_id}: {str(e)}",
             exc_info=True
         )
-    finally:
-        if threading.current_thread() is not threading.main_thread():
-            from django.db import connection
-            connection.close()
 
 
 @receiver(post_save, sender=OrdenTrabajo)
@@ -104,7 +107,6 @@ def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
     cuando se crea exitosamente una Orden de Trabajo.
     """
     if created:
-        # Envío automático de email en segundo plano (asíncrono y no bloqueante)
         try:
             threading.Thread(
                 target=enviar_email_orden_background,
@@ -112,9 +114,10 @@ def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
                 daemon=True
             ).start()
         except Exception as e:
-            # Fallback: registrar error en los logs pero no fallar la transacción de creación
             logger.error(
                 f"Error al iniciar el hilo de envío de correo para la orden {instance.id}: {str(e)}",
                 exc_info=True
             )
+
+
 
