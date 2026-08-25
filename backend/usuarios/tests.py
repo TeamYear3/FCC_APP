@@ -309,3 +309,48 @@ class DevLoginViewTest(APITestCase):
         response = self.client.post(self.url, {"rol": "superhero"})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Rol inválido", response.data["error"])
+
+
+class EmailBienvenidaTest(TestCase):
+    def setUp(self):
+        from django.core import mail
+        mail.outbox = []
+
+    def test_enviar_email_bienvenida_background_directo(self):
+        from django.core import mail
+        from usuarios.signals import enviar_email_bienvenida_background
+
+        mail.outbox.clear()
+
+        # Ejecutar función síncronamente para validar armado y renderizado del email
+        enviar_email_bienvenida_background(
+            email="nuevo_cliente@taller.com",
+            nombre="Lucas",
+            apellido="Gómez",
+            rol="cliente"
+        )
+
+        self.assertEqual(len(mail.outbox), 1)
+        email_enviado = mail.outbox[0]
+        self.assertIn("¡Bienvenido a FCC App", email_enviado.subject)
+        self.assertIn("Lucas Gómez", email_enviado.subject)
+        self.assertEqual(email_enviado.to, ["nuevo_cliente@taller.com"])
+        self.assertIn("Lucas Gómez", email_enviado.body)
+        self.assertIn("Cliente", email_enviado.body)
+        
+        # Verificar alternative HTML
+        self.assertEqual(len(email_enviado.alternatives), 1)
+        html_content, mimetype = email_enviado.alternatives[0]
+        self.assertEqual(mimetype, "text/html")
+        self.assertIn("¡Hola Lucas Gómez!", html_content)
+        self.assertIn("nuevo_cliente@taller.com", html_content)
+
+    def test_email_bienvenida_sin_email_no_genera_error_ni_envio(self):
+        from django.core import mail
+        from usuarios.signals import enviar_email_bienvenida_background
+        
+        mail.outbox = []
+        enviar_email_bienvenida_background(email="", nombre="Sin", apellido="Email")
+        self.assertEqual(len(mail.outbox), 0)
+
+
