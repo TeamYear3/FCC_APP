@@ -62,3 +62,41 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     @is_active.setter
     def is_active(self, value):
         self.active = value
+
+
+class PasswordResetToken(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token = models.CharField(max_length=128, unique=True, db_index=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    expira_en = models.DateTimeField()
+    usado = models.BooleanField(default=False)
+    usado_en = models.DateTimeField(null=True, blank=True)
+
+    @classmethod
+    def generar_token(cls, usuario, duracion_horas=1):
+        import secrets
+        from datetime import timedelta
+        from django.utils import timezone
+        
+        token_str = secrets.token_urlsafe(32)
+        expira_en = timezone.now() + timedelta(hours=duracion_horas)
+        return cls.objects.create(
+            usuario=usuario,
+            token=token_str,
+            expira_en=expira_en
+        )
+
+    def is_valid(self):
+        from django.utils import timezone
+        return not self.usado and timezone.now() <= self.expira_en
+
+    def consumir(self):
+        from django.utils import timezone
+        self.usado = True
+        self.usado_en = timezone.now()
+        self.save()
+
+    def __str__(self):
+        return f"Token reset para {self.usuario.email} (válido={self.is_valid()})"
+
