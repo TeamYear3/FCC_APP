@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "clientes",
     "vehiculos",
     "ordenes",
+    "facturacion",
 ]
 
 PASSWORD_HASHERS = [
