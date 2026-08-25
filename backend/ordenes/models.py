@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 from vehiculos.models import Vehiculo
 
 
@@ -64,6 +65,52 @@ class OrdenTrabajo(models.Model):
 
     def __str__(self):
         return f"{self.numero_ot} - {self.vehiculo.patente} ({self.get_estado_display()})"
+
+    def transicionar_a(self, nuevo_estado, usuario=None, comentario=""):
+        estado_anterior = self.estado
+        if estado_anterior == nuevo_estado:
+            return
+
+        # Validaciones de transiciones permitidas
+        transiciones_validas = {
+            EstadoOrden.INGRESADO: [EstadoOrden.EN_PRESUPUESTO],
+            EstadoOrden.EN_PRESUPUESTO: [EstadoOrden.APROBADO, EstadoOrden.RECHAZADO],
+            EstadoOrden.APROBADO: [EstadoOrden.EN_PROCESO],
+            EstadoOrden.RECHAZADO: [EstadoOrden.EN_PRESUPUESTO],
+            EstadoOrden.EN_PROCESO: [EstadoOrden.FINALIZADO],
+            EstadoOrden.FINALIZADO: [EstadoOrden.ENTREGADO],
+            EstadoOrden.ENTREGADO: []
+        }
+
+        permitidos = transiciones_validas.get(estado_anterior, [])
+        if nuevo_estado not in permitidos:
+            raise ValidationError(
+                f"No se permite transicionar del estado '{self.get_estado_display()}' al estado '{nuevo_estado}'."
+            )
+
+        # Validaciones adicionales para transicionar a EN_PROCESO
+        if nuevo_estado == EstadoOrden.EN_PROCESO:
+            if not self.turno:
+                raise ValidationError("La orden de trabajo debe tener un turno asociado para iniciar el proceso.")
+            if self.turno.estado == "cancelado":
+                raise ValidationError("El turno asociado a la orden de trabajo está cancelado.")
+            if not self.aprobado_por_cliente:
+                raise ValidationError("Se requiere la aprobación explícita del cliente para iniciar el proceso.")
+            if not self.items_presupuesto.exists():
+                raise ValidationError("No se puede iniciar el proceso sin ítems en el presupuesto.")
+
+        # Guardar cambio de estado
+        self.estado = nuevo_estado
+        self.save(update_fields=['estado', 'actualizado_en'])
+
+        # Registrar historial
+        HistorialEstadoOrden.objects.create(
+            orden_trabajo=self,
+            estado_anterior=estado_anterior,
+            estado_nuevo=nuevo_estado,
+            usuario=usuario,
+            comentario=comentario
+        )
 
 
 class TipoItem(models.TextChoices):
