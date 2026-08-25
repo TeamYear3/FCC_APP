@@ -848,20 +848,20 @@ class HistorialEstadoOrdenAPITestCase(APITestCase):
         self.client.force_authenticate(user=self.user_admin)
         url = reverse('actualizar-estado-orden', kwargs={'orden_id': self.orden.id})
         payload = {
-            "estado": "en_proceso",
-            "comentario": "Iniciando trabajos de reparación."
+            "estado": "en_presupuesto",
+            "comentario": "Presupuestando orden de trabajo."
         }
         response = self.client.patch(url, payload, format='json')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['estado_actual'], 'en_proceso')
+        self.assertEqual(response.data['estado_actual'], 'en_presupuesto')
 
         self.orden.refresh_from_db()
-        self.assertEqual(self.orden.estado, 'en_proceso')
+        self.assertEqual(self.orden.estado, 'en_presupuesto')
 
         ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden).first()
         self.assertEqual(ultimo_registro.estado_anterior, 'ingresado')
-        self.assertEqual(ultimo_registro.estado_nuevo, 'en_proceso')
-        self.assertEqual(ultimo_registro.comentario, 'Iniciando trabajos de reparación.')
+        self.assertEqual(ultimo_registro.estado_nuevo, 'en_presupuesto')
+        self.assertEqual(ultimo_registro.comentario, 'Presupuestando orden de trabajo.')
 
 
 from django.core.files.uploadedfile import SimpleUploadedFile
