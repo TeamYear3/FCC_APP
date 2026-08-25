@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics
@@ -168,16 +169,13 @@ class ActualizarEstadoOrdenView(APIView):
         estado_anterior = orden.estado
 
         if estado_anterior != nuevo_estado:
-            orden.estado = nuevo_estado
-            orden.save(update_fields=['estado', 'actualizado_en'])
-
-            HistorialEstadoOrden.objects.create(
-                orden_trabajo=orden,
-                estado_anterior=estado_anterior,
-                estado_nuevo=nuevo_estado,
-                usuario=request.user,
-                comentario=comentario
-            )
+            try:
+                orden.transicionar_a(nuevo_estado, usuario=request.user, comentario=comentario)
+            except ValidationError as e:
+                error_msg = e.messages[0] if hasattr(e, 'messages') and e.messages else str(e)
+                if error_msg.startswith("['") and error_msg.endswith("']"):
+                    error_msg = error_msg[2:-2]
+                return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
             from .services import notificar_presupuesto_websocket
             notificar_presupuesto_websocket(orden)
