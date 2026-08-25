@@ -112,6 +112,10 @@ class OrdenTrabajo(models.Model):
             comentario=comentario
         )
 
+        # Enviar notificación WebSocket
+        from .services import notificar_cambio_estado_websocket
+        notificar_cambio_estado_websocket(self, estado_anterior)
+
 
 class TipoItem(models.TextChoices):
     MANO_DE_OBRA = 'mano_de_obra', 'Mano de Obra'
