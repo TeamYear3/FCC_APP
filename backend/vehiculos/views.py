@@ -88,10 +88,6 @@ class HistorialVehiculoView(generics.ListAPIView):
 import io
 from django.http import HttpResponse
 from rest_framework.views import APIView
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 
 
 class ExportarHistorialPDFView(APIView):
@@ -99,6 +95,14 @@ class ExportarHistorialPDFView(APIView):
         return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get(self, request, pk):
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+        except ImportError:
+            return HttpResponse("Biblioteca reportlab no disponible en este entorno.", status=501)
+
         try:
             vehiculo = Vehiculo.objects.select_related('cliente__usuario').get(id=pk, activo=True)
         except Vehiculo.DoesNotExist:
@@ -119,6 +123,7 @@ class ExportarHistorialPDFView(APIView):
             topMargin=36,
             bottomMargin=36
         )
+
 
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
