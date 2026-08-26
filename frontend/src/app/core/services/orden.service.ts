@@ -1,0 +1,195 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+
+export interface OrdenPayload {
+  vehiculo_id: string;
+  descripcion_problema: string;
+  fecha_ingreso: string; // YYYY-MM-DD
+  estado?: string;
+}
+
+export interface OrdenResponse {
+  id: string;
+  numero_ot: string;
+  vehiculo_id: string;
+  descripcion_problema: string;
+  fecha_ingreso: string;
+  estado: string;
+  tecnico?: string | null;
+  fecha_entrega?: string | null;
+  comentario_rechazo?: string | null;
+  creado_en: string;
+  actualizado_en: string;
+  vehiculo_patente?: string;
+  cliente_nombre?: string;
+  monto_total?: number;
+}
+
+export interface OrdenFiltros {
+  patente?: string;
+  cliente?: string;
+  estado?: string;
+  tecnico?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+}
+
+export interface OrdenesPaginadasResponse {
+  total_items: number;
+  total_pages: number;
+  current_page: number;
+  results: OrdenResponse[];
+}
+
+export interface HistorialEstadoItem {
+  id: string;
+  estado_anterior: string | null;
+  estado_nuevo: string;
+  usuario_nombre: string;
+  comentario?: string | null;
+  creado_en: string;
+}
+
+export interface OrdenHistorialResponse {
+  orden_id: string;
+  numero_ot: string;
+  estado_actual: string;
+  estado_actual_display: string;
+  historial: HistorialEstadoItem[];
+}
+
+export interface ItemPresupuesto {
+  id?: string;
+  orden_trabajo?: string;
+  tipo: 'mano_de_obra' | 'repuesto';
+  descripcion: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal?: number;
+  completado?: boolean;
+  creado_en?: string;
+  actualizado_en?: string;
+}
+
+export interface AdjuntoDiagnostico {
+  id: string;
+  orden_trabajo: string;
+  url_secure: string;
+  public_id: string;
+  nombre_archivo: string;
+  tamanio: number;
+  mime_type: string;
+  creado_por?: string | null;
+  creado_por_nombre?: string;
+  creado_en: string;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class OrdenService {
+  private readonly http = inject(HttpClient);
+  private readonly apiUrl = `${environment.apiUrl}/ordenes/`;
+
+  /**
+   * Crea una nueva orden de trabajo (POST /api/ordenes/)
+   */
+  crearOrden(payload: OrdenPayload): Observable<OrdenResponse> {
+    return this.http.post<OrdenResponse>(this.apiUrl, payload);
+  }
+
+  /**
+   * Obtiene la lista paginada de Órdenes de Trabajo aplicando filtros acumulativos (GET /api/ordenes/)
+   */
+  obtenerOrdenes(filtros: OrdenFiltros = {}, page: number = 1, limit: number = 10): Observable<OrdenesPaginadasResponse> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('limit', limit.toString());
+
+    if (filtros.patente?.trim()) params = params.set('patente', filtros.patente.trim());
+    if (filtros.cliente?.trim()) params = params.set('cliente', filtros.cliente.trim());
+    if (filtros.estado?.trim() && filtros.estado.toLowerCase() !== 'todos') params = params.set('estado', filtros.estado.trim());
+    if (filtros.tecnico?.trim()) params = params.set('tecnico', filtros.tecnico.trim());
+    if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
+    if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
+
+    return this.http.get<OrdenesPaginadasResponse>(this.apiUrl, { params });
+  }
+
+  /**
+   * Consultar estado actual e historial cronológico de la OT (GET /api/ordenes/<id>/historial/) (TK046)
+   */
+  obtenerEstadoHistorial(ordenId: string): Observable<OrdenHistorialResponse> {
+    return this.http.get<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/historial/`);
+  }
+
+  /**
+   * Actualizar el estado de la OT (PATCH /api/ordenes/<id>/estado/) (TK033 & TK035)
+   */
+  actualizarEstado(ordenId: string, estado: string, comentario: string = ''): Observable<OrdenHistorialResponse> {
+    return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, { estado, comentario });
+  }
+
+  /**
+   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053)
+   */
+  subirAdjuntoDiagnostico(ordenId: string, archivo: File): Observable<AdjuntoDiagnostico> {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    return this.http.post<AdjuntoDiagnostico>(`${this.apiUrl}${ordenId}/adjuntos/`, formData);
+  }
+
+  /**
+   * Listar fotos de diagnóstico asociadas a una OT (GET /api/ordenes/<id>/adjuntos/) (TK053)
+   */
+  obtenerAdjuntosDiagnostico(ordenId: string): Observable<AdjuntoDiagnostico[]> {
+    return this.http.get<AdjuntoDiagnostico[]>(`${this.apiUrl}${ordenId}/adjuntos/`);
+  }
+
+  /**
+   * Eliminar una foto de diagnóstico (DELETE /api/diagnosticos/adjuntos/<id>/) (TK053)
+   */
+  eliminarAdjuntoDiagnostico(adjuntoId: string): Observable<void> {
+    const url = `${environment.apiUrl}/diagnosticos/adjuntos/${adjuntoId}/`;
+    return this.http.delete<void>(url);
+  }
+
+  /**
+   * Listar todos los ítems de presupuesto de una OT (GET /api/ordenes/<id>/items/) (TK043)
+   */
+  obtenerItemsPresupuesto(ordenId: string): Observable<ItemPresupuesto[]> {
+    return this.http.get<ItemPresupuesto[]>(`${this.apiUrl}${ordenId}/items/`);
+  }
+
+  /**
+   * Agregar ítem de Mano de Obra (POST /api/ordenes/<id>/items/mano-de-obra/) (TK043)
+   */
+  agregarManoDeObra(ordenId: string, payload: { descripcion: string; cantidad?: number; precio_unitario: number }): Observable<ItemPresupuesto> {
+    return this.http.post<ItemPresupuesto>(`${this.apiUrl}${ordenId}/items/mano-de-obra/`, payload);
+  }
+
+  /**
+   * Agregar ítem de Repuesto (POST /api/ordenes/<id>/items/repuestos/) (TK043)
+   */
+  agregarRepuesto(ordenId: string, payload: { descripcion: string; cantidad?: number; precio_unitario: number }): Observable<ItemPresupuesto> {
+    return this.http.post<ItemPresupuesto>(`${this.apiUrl}${ordenId}/items/repuestos/`, payload);
+  }
+
+  /**
+   * Marcar o desmarcar ítem completado durante la reparación (PATCH /api/ordenes/<id>/items/<item_id>/completado/) (TK043)
+   */
+  marcarItemCompletado(ordenId: string, itemId: string, completado?: boolean): Observable<ItemPresupuesto> {
+    const body = completado !== undefined ? { completado } : {};
+    return this.http.patch<ItemPresupuesto>(`${this.apiUrl}${ordenId}/items/${itemId}/completado/`, body);
+  }
+
+  /**
+   * Eliminar ítem de presupuesto (DELETE /api/ordenes/<id>/items/<item_id>/) (TK043)
+   */
+  eliminarItemPresupuesto(ordenId: string, itemId: string): Observable<{ message: string; monto_total: number }> {
+    return this.http.delete<{ message: string; monto_total: number }>(`${this.apiUrl}${ordenId}/items/${itemId}/`);
+  }
+}
+

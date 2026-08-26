@@ -34,13 +34,13 @@ export class RoleGuard implements CanActivate {
     const userRole = this.authService.getUserRole();
     if (!userRole) {
       console.warn('RoleGuard: No se encontró un rol válido (admin, tecnico, cliente) en el JWT.');
-      return this.router.createUrlTree(['/no-autorizado']);
+      return this.router.createUrlTree(['/acceso-denegado']);
     }
 
     // 3. Obtener roles permitidos en la configuración de la ruta data: { roles: [...] }
     const expectedRoles = (route.data?.['roles'] as Array<'admin' | 'tecnico' | 'cliente'>) || [];
 
-    // 4. Criterio estricto: El rol "Cliente" solo puede navegar hacia el portal de transparencia, nunca hacia vistas administrativas
+    // 4. Criterio estricto: El rol "Cliente" solo puede navegar hacia el Portal del Cliente, nunca hacia vistas administrativas
     if (userRole === 'cliente') {
       const pathSegments = route.url ? route.url.map(s => s.path.toLowerCase()) : [];
       const isAdministrative = pathSegments.some(path =>
@@ -49,14 +49,14 @@ export class RoleGuard implements CanActivate {
 
       if (isAdministrative || (expectedRoles.length > 0 && !expectedRoles.includes('cliente'))) {
         console.warn('RoleGuard: Bloqueo de seguridad. El rol Cliente no puede acceder a vistas administrativas.');
-        return this.router.createUrlTree(['/no-autorizado']);
+        return this.router.createUrlTree(['/acceso-denegado']);
       }
     }
 
     // 5. Verificación general de coincidencia del rol actual con los permitidos
     if (expectedRoles.length > 0 && !expectedRoles.includes(userRole)) {
       console.warn(`RoleGuard: Acceso denegado. Rol "${userRole}" no autorizado en esta ruta. Permitidos:`, expectedRoles);
-      return this.router.createUrlTree(['/no-autorizado']);
+      return this.router.createUrlTree(['/acceso-denegado']);
     }
 
     return true;

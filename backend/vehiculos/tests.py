@@ -12,8 +12,8 @@ class VehiculoModelTest(TestCase):
             tipo_documento="DNI",
             dni_cuit="12345678",
             condicion_iva="CF",
-            telefono="11223344",
-            domicilio="Calle Falsa 123"
+            telefono="1122334455",
+            domicilio="Av. Siempre Viva 123"
         )
 
     def test_creacion_vehiculo_exito(self):
@@ -21,41 +21,39 @@ class VehiculoModelTest(TestCase):
             cliente=self.cliente,
             patente="AB123CD",
             marca="Toyota",
-            modelo="Corolla",
-            anio=2020,
+            modelo="Hilux",
+            anio=2021,
             kilometraje=45000,
-            color="Blanco",
-            foto_url="https://ejemplo.com/fotos/corolla.jpg"
+            color="Blanco"
         )
-        self.assertEqual(vehiculo.cliente, self.cliente)
         self.assertEqual(vehiculo.patente, "AB123CD")
         self.assertEqual(vehiculo.marca, "Toyota")
-        self.assertEqual(vehiculo.modelo, "Corolla")
-        self.assertEqual(vehiculo.anio, 2020)
+        self.assertEqual(vehiculo.modelo, "Hilux")
+        self.assertEqual(vehiculo.anio, 2021)
         self.assertEqual(vehiculo.kilometraje, 45000)
         self.assertEqual(vehiculo.color, "Blanco")
-        self.assertEqual(vehiculo.foto_url, "https://ejemplo.com/fotos/corolla.jpg")
-        self.assertEqual(str(vehiculo), "Toyota Corolla (AB123CD)")
+        self.assertEqual(vehiculo.cliente, self.cliente)
+        self.assertEqual(str(vehiculo), "Toyota Hilux (AB123CD)")
 
     def test_vehiculo_campos_opcionales_y_defaults(self):
         vehiculo = Vehiculo.objects.create(
             cliente=self.cliente,
-            patente="ZZ999ZZ",
-            marca="Honda",
-            modelo="Civic"
+            patente="AC999XX",
+            marca="Volkswagen",
+            modelo="Gol"
         )
-        self.assertEqual(vehiculo.kilometraje, 0)
+        self.assertIsNone(vehiculo.anio)
+        self.assertEqual(vehiculo.kilometraje, 0) # Default
         self.assertEqual(vehiculo.color, "")
         self.assertIsNone(vehiculo.foto_url)
 
     def test_patente_unica(self):
-        # Crear primer vehiculo
         Vehiculo.objects.create(
             cliente=self.cliente,
             patente="AB123CD",
             marca="Toyota",
-            modelo="Corolla",
-            anio=2020
+            modelo="Hilux",
+            anio=2021
         )
         
         # Intentar crear segundo vehiculo con la misma patente
@@ -89,30 +87,34 @@ User = get_user_model()
 
 class VehiculoAPITestCase(APITestCase):
     def setUp(self):
-        # Crear usuarios de prueba con diferentes roles
         self.admin_user = User.objects.create_user(
-            email="admin@example.com",
-            nombre="Carlos",
-            apellido="Admin",
+            email="admin_vehiculo@example.com",
+            nombre="Admin",
+            apellido="Vehiculo",
             rol="admin",
             password="adminpassword123"
         )
         self.tecnico_user = User.objects.create_user(
-            email="tecnico@example.com",
-            nombre="Juan",
-            apellido="Tecnico",
+            email="tecnico_vehiculo@example.com",
+            nombre="Tecnico",
+            apellido="Vehiculo",
             rol="tecnico",
             password="tecnicopassword123"
         )
         self.cliente_user = User.objects.create_user(
-            email="cliente@example.com",
+            email="cliente_vehiculo@example.com",
             nombre="Lucas",
             apellido="Cliente",
             rol="cliente",
             password="clientepassword123"
         )
-        
-        # Crear clientes en la base de datos
+        self.cliente = Cliente.objects.create(
+            nombre="Test",
+            apellido="Cliente",
+            tipo_documento="DNI",
+            dni_cuit="30111222",
+            condicion_iva="CF"
+        )
         self.cliente_actual = Cliente.objects.create(
             nombre="Cliente",
             apellido="Uno",
@@ -122,7 +124,6 @@ class VehiculoAPITestCase(APITestCase):
             telefono="11223344",
             domicilio="Direccion 1"
         )
-        
         self.cliente_nuevo = Cliente.objects.create(
             nombre="Cliente",
             apellido="Dos",
@@ -132,8 +133,6 @@ class VehiculoAPITestCase(APITestCase):
             telefono="55667788",
             domicilio="Direccion 2"
         )
-        
-        # Crear vehículo de prueba
         self.vehiculo = Vehiculo.objects.create(
             cliente=self.cliente_actual,
             patente="AB123CD",
@@ -144,9 +143,95 @@ class VehiculoAPITestCase(APITestCase):
             color="Rojo",
             foto_url="https://ejemplo.com/fotos/rojo.jpg"
         )
-        
+        self.url = reverse('crear-vehiculo')
         self.url_detalle = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
 
+    # Pruebas para CrearVehiculoView (POST)
+    def test_crear_vehiculo_patente_valida_mercosur(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AG123XY",
+            "marca": "Ford",
+            "modelo": "Ranger",
+            "anio": 2023,
+            "kilometraje": 15000,
+            "color": "Gris"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "AG123XY")
+        self.assertEqual(response.data["cliente_id"], self.cliente.id)
+
+    def test_crear_vehiculo_patente_valida_tradicional(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "abc123", # debe normalizar a mayúsculas
+            "marca": "Chevrolet",
+            "modelo": "Corsa",
+            "anio": 2012,
+            "kilometraje": 120000
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "ABC123")
+
+    def test_crear_vehiculo_patente_invalida(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "123ABCD", # inválida
+            "marca": "Fiat",
+            "modelo": "Cronos"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("patente", response.data)
+
+    def test_crear_vehiculo_patente_duplicada(self):
+        Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ZZ999ZZ",
+            marca="Renault",
+            modelo="Clio"
+        )
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "zz999zz",
+            "marca": "Peugeot",
+            "modelo": "208"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("detail", response.data)
+
+    def test_crear_vehiculo_cliente_inexistente(self):
+        import uuid
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(uuid.uuid4()),
+            "patente": "AF555ZZ",
+            "marca": "Volkswagen",
+            "modelo": "Golf"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cliente_id", response.data)
+
+    def test_crear_vehiculo_sin_permiso_admin(self):
+        self.client.force_authenticate(user=self.tecnico_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AG777WW",
+            "marca": "Nissan",
+            "modelo": "Frontier"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # Pruebas para DetalleVehiculoView (PUT/PATCH)
     def test_actualizar_vehiculo_campos_validos(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {
@@ -211,10 +296,10 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.data["cliente_id"][0], "El cliente especificado no existe.")
 
     def test_actualizar_vehiculo_sin_permiso(self):
-        # Tecnico
+        # Tecnico (Ahora tiene permiso en TK071)
         self.client.force_authenticate(user=self.tecnico_user)
         response = self.client.patch(self.url_detalle, {"color": "Negro"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Cliente
         self.client.force_authenticate(user=self.cliente_user)
@@ -225,4 +310,408 @@ class VehiculoAPITestCase(APITestCase):
         self.client.logout()
         response = self.client.patch(self.url_detalle, {"color": "Negro"}, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_listar_vehiculos_admin(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) >= 1)
+
+    def test_listar_vehiculos_tecnico(self):
+        self.client.force_authenticate(user=self.tecnico_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) >= 1)
+
+    def test_listar_vehiculos_cliente_permitido(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_listar_vehiculos_anonimo_no_autorizado(self):
+        self.client.logout()
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    def test_crear_vehiculo_patente_duplicada_retorna_409(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear un vehículo con patente específica
+        Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA222BB",
+            marca="Renault",
+            modelo="Clio"
+        )
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "aa222bb", # duplicada (debe ser insensible a mayúsculas/minúsculas)
+            "marca": "Peugeot",
+            "modelo": "208"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("detail", response.data)
+
+    def test_crear_vehiculo_chasis_duplicado_retorna_409(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear un vehículo con chasis específico
+        Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA333BB",
+            numero_chasis="CHASIS12345678901",
+            marca="Renault",
+            modelo="Clio"
+        )
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA444BB",
+            "numero_chasis": "chasis12345678901", # duplicado
+            "marca": "Peugeot",
+            "modelo": "208"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertIn("detail", response.data)
+
+    def test_actualizar_vehiculo_permitir_modificacion_numero_chasis(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Asignamos chasis inicial
+        self.vehiculo.numero_chasis = "CHASISINIT123"
+        self.vehiculo.save()
+
+        data = {
+            "numero_chasis": "NUEVOCHASIS999"
+        }
+        response = self.client.patch(self.url_detalle, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["numero_chasis"], "NUEVOCHASIS999")
+
+        # Verificar en base de datos que se haya modificado con éxito
+        self.vehiculo.refresh_from_db()
+        self.assertEqual(self.vehiculo.numero_chasis, "NUEVOCHASIS999")
+
+    def test_listar_vehiculos_filtrado_por_cliente(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear otro vehículo para el cliente_nuevo
+        Vehiculo.objects.create(
+            cliente=self.cliente_nuevo,
+            patente="AA888BB",
+            marca="Ford",
+            modelo="Fiesta"
+        )
+        # Listar filtrando por cliente_actual (que tiene self.vehiculo)
+        response = self.client.get(f"{self.url}?cliente={self.cliente_actual.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+
+    def test_eliminar_vehiculo_sin_ordenes_hace_hard_delete(self):
+        self.client.force_authenticate(user=self.admin_user)
+        vehiculo_libre = Vehiculo.objects.create(
+            cliente=self.cliente_actual,
+            patente="AA999BB",
+            marca="Fiat",
+            modelo="Cronos"
+        )
+        url_del = reverse('detalle-vehiculo', kwargs={'pk': vehiculo_libre.id})
+        response = self.client.delete(url_del)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Verificar que ya no existe en la BD
+        self.assertFalse(Vehiculo.objects.filter(id=vehiculo_libre.id).exists())
+
+    def test_eliminar_vehiculo_con_ordenes_hace_soft_delete(self):
+        from ordenes.models import OrdenTrabajo
+        self.client.force_authenticate(user=self.admin_user)
+        # Crear una orden vinculada a self.vehiculo
+        OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Falla en alternador y batería"
+        )
+        response = self.client.delete(self.url_detalle)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        
+        # Debe seguir existiendo en la base de datos pero inactivo
+        self.vehiculo.refresh_from_db()
+        self.assertFalse(self.vehiculo.activo)
+
+        # No debe figurar en el queryset de detalle ni de listado de activos
+        response_get = self.client.get(self.url_detalle)
+        self.assertEqual(response_get.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_crear_vehiculo_sin_chasis_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA777BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021,
+            "kilometraje": 12000
+            # numero_chasis omitido
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(response.data["numero_chasis"])
+
+    def test_crear_vehiculo_sin_kilometraje_falla(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA778BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021
+            # kilometraje omitido
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje", response.data)
+
+    def test_crear_vehiculo_kilometraje_negativo_falla(self):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA779BB",
+            "marca": "Renault",
+            "modelo": "Clio",
+            "anio": 2021,
+            "kilometraje": -1
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje", response.data)
+
+    def test_crear_mantenimiento_exito_admin_y_tecnico(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "tipo_servicio": "Cambio de aceite",
+            "kilometraje_objetivo": 60000,
+            "fecha_limite": "2026-12-31"
+        }
+        response = self.client.post(url_maint, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo_servicio"], "Cambio de aceite")
+        self.assertEqual(response.data["kilometraje_objetivo"], 60000)
+
+        # Probar con Tecnico
+        self.client.force_authenticate(user=self.tecnico_user)
+        data["tipo_servicio"] = "Cambio de pastillas de freno"
+        response = self.client.post(url_maint, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_crear_mantenimiento_prohibido_cliente(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "tipo_servicio": "Distribución",
+            "kilometraje_objetivo": 80000
+        }
+        response = self.client.post(url_maint, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_listar_mantenimientos_propietario_exito(self):
+        # El cliente_user es dueño de cliente_actual y self.vehiculo pertenece a cliente_actual.
+        # Asociamos el usuario cliente_user al cliente_actual para la prueba
+        self.cliente_actual.usuario = self.cliente_user
+        self.cliente_actual.save()
+
+        from .models import MantenimientoProgramado
+        MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Frenos",
+            kilometraje_objetivo=55000
+        )
+
+        self.client.force_authenticate(user=self.cliente_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url_maint)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["tipo_servicio"], "Frenos")
+
+    def test_listar_mantenimientos_ajeno_prohibido(self):
+        from .models import MantenimientoProgramado
+        MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Distribución",
+            kilometraje_objetivo=90000
+        )
+        
+        # cliente_user NO es dueño de cliente_actual/vehiculo en esta prueba (no están asociados)
+        self.client.force_authenticate(user=self.cliente_user)
+        url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url_maint)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_listar_vehiculos_cliente_solo_propios(self):
+        # Asociamos cliente_user al cliente_actual
+        self.cliente_actual.usuario = self.cliente_user
+        self.cliente_actual.save()
+
+        # Creamos otro vehículo para cliente_nuevo (que no está asociado a cliente_user)
+        from .models import Vehiculo
+        Vehiculo.objects.create(
+            cliente=self.cliente_nuevo,
+            patente="AA888CC",
+            marca="Chevrolet",
+            modelo="Onix",
+            kilometraje=10000
+        )
+
+        self.client.force_authenticate(user=self.cliente_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Solo debe ver su vehículo (self.vehiculo), no el de cliente_nuevo
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+
+    def test_actualizar_vehiculo_exito_admin_y_tecnico(self):
+        # Probar con Admin
+        self.client.force_authenticate(user=self.admin_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "marca": "Ford Editado",
+            "modelo": "Fiesta Editado",
+            "anio": 2019,
+            "numero_chasis": "NUEVOCHASIS999"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["marca"], "Ford Editado")
+        self.assertEqual(response.data["modelo"], "Fiesta Editado")
+        self.assertEqual(response.data["numero_chasis"], "NUEVOCHASIS999")
+
+        # Probar con Tecnico
+        self.client.force_authenticate(user=self.tecnico_user)
+        data = {
+            "marca": "Ford Editado Tecnico",
+            "numero_chasis": "VINEDITADOTECNICO"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["marca"], "Ford Editado Tecnico")
+        self.assertEqual(response.data["numero_chasis"], "VINEDITADOTECNICO")
+
+    def test_actualizar_vehiculo_prohibido_cliente(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {
+            "marca": "Toyota Cambiado"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_actualizar_vehiculo_patente_bloqueada(self):
+        self.client.force_authenticate(user=self.admin_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        original_patente = self.vehiculo.patente
+        data = {
+            "patente": "ZZ999ZZ"
+        }
+        response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # La patente no debió cambiar porque es read_only en edición
+        self.assertEqual(response.data["patente"], original_patente)
+
+
+from ordenes.models import OrdenTrabajo
+
+class HistorialVehiculoAPITestCase(APITestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(
+            email="admin_historial@example.com",
+            nombre="Admin",
+            apellido="Historial",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Propietario",
+            apellido="Test",
+            tipo_documento="DNI",
+            dni_cuit="44332211",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="HH111HH",
+            marca="Honda",
+            modelo="Civic",
+            anio=2021
+        )
+        # Crear 15 Órdenes de Trabajo para probar la paginación de 10 por página
+        for i in range(15):
+            OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema=f"Mantenimiento programado {i+1}",
+                fecha_ingreso="2026-01-01"
+            )
+
+    def test_obtener_historial_vehiculo_paginado_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse('historial-vehiculo', kwargs={'pk': self.vehiculo.id})
+        
+        # Pagina 1 (limit=10 por defecto)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['total_items'], 15)
+        self.assertEqual(response.data['total_pages'], 2)
+        self.assertEqual(response.data['current_page'], 1)
+        self.assertEqual(len(response.data['results']), 10)
+
+        # Pagina 2
+        response_p2 = self.client.get(f"{url}?page=2")
+        self.assertEqual(response_p2.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_p2.data['current_page'], 2)
+        self.assertEqual(len(response_p2.data['results']), 5)
+
+    def test_obtener_historial_vehiculo_inexistente_retorna_404(self):
+        import uuid
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse('historial-vehiculo', kwargs={'pk': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_exportar_historial_pdf_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        url = reverse('exportar-historial-pdf', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('attachment; filename=', response['Content-Disposition'])
+        self.assertTrue(len(response.content) > 0)
+
+    def test_reasignar_vehiculo_exito(self):
+        self.client.force_authenticate(user=self.admin_user)
+        nuevo_cliente = Cliente.objects.create(
+            nombre="Nuevo",
+            apellido="Titular",
+            tipo_documento="DNI",
+            dni_cuit="99887766",
+            condicion_iva="CF"
+        )
+        url = reverse('reasignar-vehiculo', kwargs={'pk': self.vehiculo.id})
+        data = {'nuevo_cliente_id': str(nuevo_cliente.id)}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        self.vehiculo.refresh_from_db()
+        self.assertEqual(self.vehiculo.cliente.id, nuevo_cliente.id)
+        self.assertTrue(self.vehiculo.activo)
+
+    def test_historial_cliente_acceso_prohibido_vehiculo_ajeno(self):
+        usuario_cliente = User.objects.create_user(
+            email="cliente_ajeno@example.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="clientepassword123"
+        )
+        self.client.force_authenticate(user=usuario_cliente)
+        url = reverse('historial-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+
 

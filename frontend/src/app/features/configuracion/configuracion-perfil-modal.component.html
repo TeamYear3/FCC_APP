@@ -1,0 +1,216 @@
+<div class="max-w-4xl mx-auto space-y-6">
+  <!-- Encabezado de Configuración de Perfil -->
+  <div class="bg-zinc-900/90 border border-white/10 p-6 rounded-card shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-extrabold text-color-primary-accent uppercase tracking-tight flex items-center gap-2">
+        <span>⚙️</span> Mi Perfil de Administrador
+      </h2>
+      <p class="text-xs text-zinc-400 mt-1">Gestión segura de credenciales de acceso, datos personales y de contacto.</p>
+    </div>
+
+    <!-- Pestañas (Tabs) Personales / Seguridad -->
+    <div class="flex items-center gap-2 bg-black/40 border border-white/10 p-1.5 rounded-pill">
+      <button 
+        type="button" 
+        (click)="cambiarTab('personales')"
+        [class.bg-color-primary-accent]="tabActivo() === 'personales'"
+        [class.text-black]="tabActivo() === 'personales'"
+        [class.text-zinc-400]="tabActivo() !== 'personales'"
+        class="px-4 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+      >
+        👤 Datos Personales
+      </button>
+
+      <button 
+        type="button" 
+        (click)="cambiarTab('seguridad')"
+        [class.bg-color-primary-accent]="tabActivo() === 'seguridad'"
+        [class.text-black]="tabActivo() === 'seguridad'"
+        [class.text-zinc-400]="tabActivo() !== 'seguridad'"
+        class="px-4 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+      >
+        🔒 Seguridad & Clave
+      </button>
+    </div>
+  </div>
+
+  <!-- Spinner de Carga Inicial -->
+  <div *ngIf="cargando()" class="p-12 text-center bg-zinc-900 border border-white/5 rounded-card shadow-lg">
+    <div class="animate-spin w-8 h-8 border-2 border-color-primary-accent border-t-transparent rounded-full mx-auto mb-3"></div>
+    <span class="text-xs text-zinc-400">Cargando información del perfil...</span>
+  </div>
+
+  <!-- Contenedor Principal del Formulario -->
+  <form *ngIf="!cargando()" [formGroup]="perfilForm" (ngSubmit)="guardarCambios()" class="space-y-6">
+
+    <!-- Mensajes de Alerta Flotantes -->
+    <div *ngIf="mensajeExito()" class="p-4 rounded-card bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-between shadow">
+      <div class="flex items-center gap-2">
+        <span>✅</span>
+        <span>{{ mensajeExito() }}</span>
+      </div>
+      <button type="button" (click)="mensajeExito.set(null)" class="text-emerald-300 hover:text-white font-bold">✕</button>
+    </div>
+
+    <div *ngIf="mensajeError()" class="p-4 rounded-card bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-between shadow">
+      <div class="flex items-center gap-2">
+        <span>⚠️</span>
+        <span>{{ mensajeError() }}</span>
+      </div>
+      <button type="button" (click)="mensajeError.set(null)" class="text-rose-300 hover:text-white font-bold">✕</button>
+    </div>
+
+    <!-- TAB 1: DATOS PERSONALES -->
+    <div *ngIf="tabActivo() === 'personales'" class="bg-zinc-900 border border-white/10 p-6 rounded-card shadow-xl space-y-6">
+      <div class="border-b border-white/10 pb-3">
+        <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
+          <span>📋</span> Información de Contacto y Personal
+        </h3>
+        <p class="text-xs text-zinc-400">Mantén actualizados tus datos principales de la cuenta de administrador.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Campo: Nombre -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-zinc-300">Nombre <span class="text-rose-400">*</span></label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-zinc-400 text-sm">👤</span>
+            <input 
+              type="text" 
+              formControlName="nombre" 
+              placeholder="Ingresa tu nombre"
+              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+            />
+          </div>
+          <span *ngIf="perfilForm.get('nombre')?.touched && perfilForm.get('nombre')?.invalid" class="text-[10px] text-rose-400">
+            El nombre es requerido.
+          </span>
+        </div>
+
+        <!-- Campo: Apellido -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-zinc-300">Apellido <span class="text-rose-400">*</span></label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-zinc-400 text-sm">👤</span>
+            <input 
+              type="text" 
+              formControlName="apellido" 
+              placeholder="Ingresa tu apellido"
+              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+            />
+          </div>
+          <span *ngIf="perfilForm.get('apellido')?.touched && perfilForm.get('apellido')?.invalid" class="text-[10px] text-rose-400">
+            El apellido es requerido.
+          </span>
+        </div>
+
+        <!-- Campo: Correo Electrónico -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-zinc-300">Correo Electrónico <span class="text-rose-400">*</span></label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-zinc-400 text-sm">✉️</span>
+            <input 
+              type="email" 
+              formControlName="email" 
+              placeholder="correo@ejemplo.com"
+              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+            />
+          </div>
+          <span *ngIf="perfilForm.get('email')?.touched && perfilForm.get('email')?.invalid" class="text-[10px] text-rose-400">
+            Ingresa un correo electrónico válido.
+          </span>
+        </div>
+
+        <!-- Campo: Teléfono de Contacto -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-zinc-300">Teléfono de Contacto</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-zinc-400 text-sm">📞</span>
+            <input 
+              type="text" 
+              formControlName="telefono" 
+              placeholder="+54 9 351 1234567"
+              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: SEGURIDAD Y CAMBIO DE CONTRASEÑA -->
+    <div *ngIf="tabActivo() === 'seguridad'" class="bg-zinc-900 border border-white/10 p-6 rounded-card shadow-xl space-y-6">
+      <div class="border-b border-white/10 pb-3">
+        <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
+          <span>🔑</span> Seguridad de la Cuenta
+        </h3>
+        <p class="text-xs text-zinc-400">Para actualizar tu correo o cambiar tu contraseña, ingresa tu contraseña actual por seguridad.</p>
+      </div>
+
+      <div class="space-y-4 max-w-lg">
+        <!-- Campo: Contraseña Actual -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-zinc-300">Contraseña Actual</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 text-zinc-400 text-sm">🔐</span>
+            <input 
+              type="password" 
+              formControlName="password_actual" 
+              placeholder="••••••••••••"
+              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+            />
+          </div>
+          <span class="text-[10px] text-zinc-400">Requerida sólo para confirmar cambios de correo o contraseña.</span>
+        </div>
+
+        <div class="border-t border-white/5 pt-4 space-y-4">
+          <!-- Campo: Nueva Contraseña -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-zinc-300">Nueva Contraseña</label>
+            <div class="relative flex items-center">
+              <span class="absolute left-3 text-zinc-400 text-sm">🔑</span>
+              <input 
+                type="password" 
+                formControlName="nueva_password" 
+                placeholder="Mínimo 8 caracteres"
+                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+              />
+            </div>
+            <span *ngIf="perfilForm.get('nueva_password')?.touched && perfilForm.get('nueva_password')?.invalid" class="text-[10px] text-rose-400">
+              La nueva contraseña debe tener al menos 8 caracteres.
+            </span>
+          </div>
+
+          <!-- Campo: Confirmar Nueva Contraseña -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-zinc-300">Confirmar Nueva Contraseña</label>
+            <div class="relative flex items-center">
+              <span class="absolute left-3 text-zinc-400 text-sm">🔑</span>
+              <input 
+                type="password" 
+                formControlName="confirmar_password" 
+                placeholder="Repite la nueva contraseña"
+                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+              />
+            </div>
+            <span *ngIf="perfilForm.errors?.['passwordsNoCoinciden'] && perfilForm.get('confirmar_password')?.touched" class="text-[10px] text-rose-400">
+              Las contraseñas no coinciden.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botón de Guardar Cambios -->
+    <div class="flex justify-end pt-2">
+      <button 
+        type="submit" 
+        [disabled]="guardando()"
+        class="px-6 py-3 rounded-pill bg-color-primary-accent text-black font-extrabold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
+      >
+        <span *ngIf="guardando()" class="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full"></span>
+        <span>{{ guardando() ? 'Guardando Cambios...' : '💾 Guardar Perfil' }}</span>
+      </button>
+    </div>
+
+  </form>
+</div>

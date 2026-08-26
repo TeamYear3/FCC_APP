@@ -36,3 +36,11 @@ yarn-error.log*
 # Docker
 .docker/
 docker-compose.override.yml
+
+# Documentación local
+docs/
+
+# Archivos multimedia temporales
+media/
+diagnosticos/
+

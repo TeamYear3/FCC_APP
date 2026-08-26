@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { PageComponent } from '../../shared/components/page-component/page-component';
 
 export interface ClienteSummary {
   id: string;
@@ -16,19 +17,24 @@ export interface ClienteSummary {
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink, PageComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css'
 })
-export class ClientesComponent {
+export class ClientesComponent implements OnInit {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
+  readonly isAdminView = signal<boolean>(false);
+
+  ngOnInit(): void {
+    this.isAdminView.set(this.router.url.startsWith('/admin'));
+  }
 
   readonly listaClientes: ClienteSummary[] = [
     {
-      id: 'CLI-019',
+      id: 'CLI-018',
       nombre: 'Carlos Rodríguez',
       telefono: '+54 9 11 5566-7788',
       email: 'crodriguez@empresa.com',

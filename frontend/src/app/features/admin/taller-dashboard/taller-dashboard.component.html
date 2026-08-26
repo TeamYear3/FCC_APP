@@ -1,0 +1,162 @@
+<div class="space-y-6">
+  <!-- Header del Dashboard y Conmutador de Vista Previa de Rol -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/90 border border-white/10 p-6 rounded-card shadow-xl backdrop-blur-md">
+    <div>
+      <h2 class="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+        <span>⚡</span> Panel de Control del Taller
+      </h2>
+      <p class="text-xs text-zinc-400 mt-1">Monitoreo operativo de carga de trabajo de mecánicos y legajos de clientes en tiempo real.</p>
+    </div>
+
+    <!-- Conmutador de Vista Previa de Rol -->
+    <div class="flex items-center gap-2 bg-black/40 border border-white/10 p-1.5 rounded-pill">
+      <span class="text-xs font-bold text-zinc-400 px-3 hidden sm:inline">Vista Previa:</span>
+      
+      <button 
+        type="button"
+        (click)="cambiarVistaPrevia('admin')"
+        [class.bg-color-primary-accent]="!sidebarService.vistaPreviaRolSignal()"
+        [class.text-black]="!sidebarService.vistaPreviaRolSignal()"
+        [class.text-zinc-400]="sidebarService.vistaPreviaRolSignal()"
+        class="px-3 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+      >
+        Admin
+      </button>
+
+      <button 
+        type="button"
+        (click)="cambiarVistaPrevia('tecnico')"
+        [class.bg-color-primary-accent]="sidebarService.vistaPreviaRolSignal() === 'tecnico'"
+        [class.text-black]="sidebarService.vistaPreviaRolSignal() === 'tecnico'"
+        [class.text-zinc-400]="sidebarService.vistaPreviaRolSignal() !== 'tecnico'"
+        class="px-3 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+      >
+        Mecánico
+      </button>
+
+      <button 
+        type="button"
+        (click)="cambiarVistaPrevia('cliente')"
+        [class.bg-color-primary-accent]="sidebarService.vistaPreviaRolSignal() === 'cliente'"
+        [class.text-black]="sidebarService.vistaPreviaRolSignal() === 'cliente'"
+        [class.text-zinc-400]="sidebarService.vistaPreviaRolSignal() !== 'cliente'"
+        class="px-3 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+      >
+        Cliente
+      </button>
+    </div>
+  </div>
+
+  <!-- Sección 1: Tarjetas Operativas de Mecánicos (Carga de Trabajo) -->
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
+        <span>👨‍🔧</span> Mecánicos Activos y Carga de Trabajo
+      </h3>
+      <span class="text-xs text-zinc-400">Capacidad máxima: 5 OTs activas por mecánico</span>
+    </div>
+
+    <!-- Spinner Cargando -->
+    <div *ngIf="cargandoMecanicos()" class="p-8 text-center bg-zinc-900 border border-white/5 rounded-card">
+      <span class="text-xs text-zinc-400">Cargando estado de mecánicos...</span>
+    </div>
+
+    <!-- Grilla de Mecánicos -->
+    <div *ngIf="!cargandoMecanicos()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div 
+        *ngFor="let m of mecanicos()" 
+        class="bg-zinc-900 border border-white/10 p-5 rounded-card shadow-lg hover:border-color-primary-accent/40 transition-all space-y-4"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-zinc-800 border border-color-primary-accent/30 flex items-center justify-center font-bold text-color-primary-accent text-sm">
+              {{ m.nombre.charAt(0) }}
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-white leading-none">{{ m.nombre }}</h4>
+              <span class="text-xs text-zinc-400">{{ m.email }}</span>
+            </div>
+          </div>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            {{ m.estado }}
+          </span>
+        </div>
+
+        <!-- Métricas de Carga -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between text-xs font-semibold">
+            <span class="text-zinc-400">Carga Operativa:</span>
+            <span [class.text-emerald-400]="m.porcentaje_carga < 70" [class.text-amber-400]="m.porcentaje_carga >= 70 && m.porcentaje_carga < 90" [class.text-rose-400]="m.porcentaje_carga >= 90">
+              {{ m.porcentaje_carga }}%
+            </span>
+          </div>
+
+          <div class="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden border border-white/5">
+            <div 
+              class="h-full transition-all duration-500 rounded-full"
+              [style.width.%]="m.porcentaje_carga"
+              [class.bg-emerald-500]="m.porcentaje_carga < 70"
+              [class.bg-amber-500]="m.porcentaje_carga >= 70 && m.porcentaje_carga < 90"
+              [class.bg-rose-500]="m.porcentaje_carga >= 90"
+            ></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-zinc-400">
+          <span>OTs Activas: <strong class="text-white">{{ m.ots_activas }}</strong></span>
+          <span>Totales Asignadas: <strong class="text-white">{{ m.ots_asignadas }}</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección 2: Tarjetas Operativas de Clientes (Resumen de Legajos) -->
+  <div class="space-y-4 pt-4">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
+        <span>👤</span> Legajo de Clientes y Estado Operativo
+      </h3>
+      <a routerLink="/admin/clientes" class="text-xs font-bold text-color-primary-accent hover:underline">Ver Directorio Completo →</a>
+    </div>
+
+    <!-- Spinner Cargando -->
+    <div *ngIf="cargandoClientes()" class="p-8 text-center bg-zinc-900 border border-white/5 rounded-card">
+      <span class="text-xs text-zinc-400">Cargando legajos de clientes...</span>
+    </div>
+
+    <!-- Grilla de Clientes -->
+    <div *ngIf="!cargandoClientes()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div 
+        *ngFor="let c of clientes()" 
+        class="bg-zinc-900 border border-white/10 p-5 rounded-card shadow-lg hover:border-color-primary-accent/40 transition-all space-y-3"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-sm font-bold text-white leading-none">{{ c.nombre }} {{ c.apellido }}</h4>
+            <span class="text-xs text-zinc-400">{{ c.tipo_documento }}: {{ c.dni_cuit }}</span>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-zinc-800 border border-white/10 text-[10px] font-mono text-color-primary-accent font-bold">
+            {{ c.codigo_cliente }}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs pt-2">
+          <div class="bg-black/30 p-2.5 rounded-lg border border-white/5">
+            <span class="text-zinc-500 block text-[10px] uppercase font-bold">Vehículos Titulares</span>
+            <span class="text-sm font-bold text-white">{{ c.vehiculos_count }}</span>
+          </div>
+
+          <div class="bg-black/30 p-2.5 rounded-lg border border-white/5">
+            <span class="text-zinc-500 block text-[10px] uppercase font-bold">OTs Activas</span>
+            <span class="text-sm font-bold text-color-primary-accent">{{ c.ots_activas }}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+          <span class="text-zinc-400">Monto Facturado:</span>
+          <span class="font-extrabold text-emerald-400">${{ c.monto_total_facturado | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

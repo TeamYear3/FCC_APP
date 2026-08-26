@@ -182,15 +182,24 @@ class OrdenTrabajoAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["estado"], "ingresado")
 
-    def test_crear_orden_rechazado_como_cliente(self):
+    def test_crear_orden_como_cliente_prohibido(self):
         self.client.force_authenticate(user=self.cliente_user)
         data = {
             "vehiculo_id": str(self.vehiculo.id),
-            "descripcion_problema": "Fallo en embrague",
+            "descripcion_problema": "Intento de alta cliente",
             "fecha_ingreso": "2026-07-16"
         }
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_filtrar_ordenes_multi_criterio_tk056(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('crear-orden-trabajo')
+        response = self.client.get(f"{url}?patente=AB123CD&estado=ingresado")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("results", response.data)
+        self.assertIn("total_items", response.data)
+
 
     def test_crear_orden_rechazado_sin_autenticacion(self):
         data = {
@@ -765,6 +774,358 @@ class OrdenTrabajoEmailTest(TestCase):
             descripcion_problema="Revisión general"
         )
         self.assertIsNotNone(orden.id)
+
+
+from rest_framework.test import APITestCase
+from django.urls import reverse
+from .models import HistorialEstadoOrden
+
+
+class HistorialEstadoOrdenAPITestCase(APITestCase):
+    def setUp(self):
+        self.user_admin = User.objects.create_user(
+            email="admin_historial@taller.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="password123"
+        )
+        self.user_cliente = User.objects.create_user(
+            email="cliente_historial@taller.com",
+            nombre="Cliente",
+            apellido="Duenio",
+            rol="cliente",
+            password="password123"
+        )
+        self.user_ajeno = User.objects.create_user(
+            email="ajeno@taller.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Cliente",
+            apellido="Duenio",
+            tipo_documento="DNI",
+            dni_cuit="33444555",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AB123CD",
+            marca="Toyota",
+            modelo="Corolla"
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido en el motor"
+        )
+
+    def test_consultar_historial_orden_exito_admin(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('consultar-historial-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['orden_id'], str(self.orden.id))
+        self.assertEqual(response.data['estado_actual'], 'ingresado')
+        self.assertTrue(len(response.data['historial']) >= 1)
+
+    def test_consultar_historial_orden_exito_propietario(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('consultar-historial-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_consultar_historial_orden_bloqueado_cliente_ajeno(self):
+        self.client.force_authenticate(user=self.user_ajeno)
+        url = reverse('consultar-historial-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_actualizar_estado_orden_y_registro_historial(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('actualizar-estado-orden', kwargs={'orden_id': self.orden.id})
+        payload = {
+            "estado": "en_presupuesto",
+            "comentario": "Presupuestando orden de trabajo."
+        }
+        response = self.client.patch(url, payload, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['estado_actual'], 'en_presupuesto')
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, 'en_presupuesto')
+
+        ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden).first()
+        self.assertEqual(ultimo_registro.estado_anterior, 'ingresado')
+        self.assertEqual(ultimo_registro.estado_nuevo, 'en_presupuesto')
+        self.assertEqual(ultimo_registro.comentario, 'Presupuestando orden de trabajo.')
+
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import AdjuntoDiagnostico
+
+
+class AdjuntoDiagnosticoAPITest(APITestCase):
+    def setUp(self):
+        self.user_tecnico = User.objects.create_user(
+            email="tecnico_foto@fcc.com",
+            password="Password123!",
+            rol="tecnico",
+            nombre="Técnico",
+            apellido="Pruebas"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Cliente",
+            apellido="Diagnostico",
+            tipo_documento="DNI",
+            dni_cuit="77889900",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="FOTO123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Diagnóstico con fotos"
+        )
+
+    def test_subir_adjunto_diagnostico_exito(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        
+        foto_mock = SimpleUploadedFile("motor.jpg", b"contenido_de_imagen_falsa", content_type="image/jpeg")
+        response = self.client.post(url, {'archivo': foto_mock}, format='multipart')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data['nombre_archivo'], 'motor.jpg')
+        self.assertTrue('url_secure' in response.data)
+
+        self.assertEqual(AdjuntoDiagnostico.objects.filter(orden_trabajo=self.orden).count(), 1)
+
+    def test_listar_adjuntos_diagnostico(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="rueda.png",
+            tamanio=1024,
+            creado_por=self.user_tecnico
+        )
+
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['nombre_archivo'], 'rueda.png')
+
+    def test_eliminar_adjunto_diagnostico(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="a_borrar.jpg",
+            tamanio=2048,
+            creado_por=self.user_tecnico
+        )
+
+        url = reverse('eliminar-adjunto-diagnostico', kwargs={'adjunto_id': adjunto.id})
+        response = self.client.delete(url)
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(AdjuntoDiagnostico.objects.filter(id=adjunto.id).count(), 0)
+
+
+class ItemsPresupuestoAPITest(APITestCase):
+    """
+    TK043: Pruebas unitarias para gestión de ítems de presupuesto (Listar, Completado, Eliminar).
+    """
+
+    def setUp(self):
+        self.cliente_user = User.objects.create_user(
+            email="cliente_items@taller.com",
+            password="Password123!",
+            nombre="Cliente",
+            apellido="Items",
+            rol="cliente"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_items@taller.com",
+            password="Password123!",
+            nombre="Tecnico",
+            apellido="Items",
+            rol="tecnico"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            dni_cuit="20445566778",
+            telefono="1122334455"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ITM123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general e ítems"
+        )
+        self.item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo="repuesto",
+            descripcion="Filtro de aire Bosch",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("5000.00")
+        )
+
+    def test_listar_items_presupuesto(self):
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse('listar-items-presupuesto', kwargs={'orden_id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['descripcion'], "Filtro de aire Bosch")
+        self.assertFalse(response.data[0]['completado'])
+
+    def test_marcar_item_completado(self):
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse('marcar-item-completado', kwargs={'orden_id': self.orden.id, 'item_id': self.item.id})
+        response = self.client.patch(url, {'completado': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['completado'])
+
+        # Alternar sin enviar valor explícito
+        response = self.client.patch(url, {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['completado'])
+
+    def test_eliminar_item_presupuesto(self):
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse('eliminar-item-presupuesto', kwargs={'orden_id': self.orden.id, 'item_id': self.item.id})
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ItemPresupuesto.objects.filter(id=self.item.id).count(), 0)
+
+
+from turnos.models import Turno
+from django.utils import timezone
+
+class OrdenTrabajoMaquinaEstadosTest(TestCase):
+    def setUp(self):
+        self.cliente = Cliente.objects.create(
+            nombre="Laura",
+            apellido="Prueba",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA123BB",
+            marca="Chevrolet",
+            modelo="Onix",
+            anio=2018
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Fallo eléctrico"
+        )
+        self.turno = Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=timezone.now() + timezone.timedelta(days=1),
+            motivo="Service de 10k",
+            estado="pendiente"
+        )
+
+    def test_transicion_valida_ingresado_a_presupuesto(self):
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PRESUPUESTO)
+
+    def test_transicion_invalida_lanza_validation_error(self):
+        with self.assertRaises(ValidationError):
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+
+    @patch('ordenes.services.notificar_cambio_estado_websocket')
+    def test_precondiciones_en_proceso(self, mock_ws):
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+
+        # 1. Intentar pasar a EN_PROCESO sin turno, sin aprobacion, sin items (debe fallar)
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("debe tener un turno asociado", str(ctx.exception))
+
+        # Asociar turno
+        self.orden.turno = self.turno
+        self.orden.save()
+
+        # 2. Intentar pasar a EN_PROCESO sin aprobacion del cliente y sin items (debe fallar)
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("aprobación explícita del cliente", str(ctx.exception))
+
+        # Aprobar
+        self.orden.aprobado_por_cliente = True
+        self.orden.save()
+
+        # 3. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("sin ítems en el presupuesto", str(ctx.exception))
+
+        # Agregar item presupuesto
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Bujía",
+            cantidad=Decimal("4.00"),
+            precio_unitario=Decimal("800.00")
+        )
+        self.orden.refresh_from_db()
+
+        # 4. Transicionar con éxito cumpliendo todas las precondiciones
+        self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
+
+        # Verificar que se llamó al WebSocket
+        self.assertTrue(mock_ws.called)
+
+    def test_transicion_con_turno_cancelado_falla(self):
+        self.turno.estado = "cancelado"
+        self.turno.save()
+
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.turno = self.turno
+        self.orden.aprobado_por_cliente = True
+        self.orden.save()
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Mano de obra",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("5000.00")
+        )
+        self.orden.refresh_from_db()
+
+        with self.assertRaises(ValidationError) as ctx:
+            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertIn("está cancelado", str(ctx.exception))
+
+
+
 
 
 

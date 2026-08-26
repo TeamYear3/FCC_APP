@@ -1,0 +1,220 @@
+<div class="p-6 bg-color-surface-container rounded-card border border-white/5 shadow relative">
+  
+  <!-- Loader indicador de carga -->
+  <div *ngIf="cargando()" class="absolute inset-0 bg-black/50 z-50 flex items-center justify-center rounded-card">
+    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-color-primary-accent"></div>
+  </div>
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-xl font-bold text-color-primary-accent uppercase tracking-wider">Agenda / Turnos</h2>
+      <p class="text-sm text-color-text-secondary">Visualizá y gestioná la programación de turnos de servicio en el taller.</p>
+    </div>
+  </div>
+
+  <div class="calendar-container bg-black/40 rounded-lg p-4 border border-white/5">
+    <full-calendar [options]="calendarOptions()"></full-calendar>
+  </div>
+
+  <!-- MODAL DE ALTA DE TURNO -->
+  <div *ngIf="mostrarModalCrear()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+    <div class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden transition-all duration-300 transform scale-100">
+      
+      <div class="p-6 border-b border-white/5">
+        <h3 class="text-lg font-bold text-color-primary-accent uppercase">Agendar Nuevo Turno</h3>
+        <p class="text-xs text-color-text-secondary">Completá los datos para asignar un turno de revisión.</p>
+      </div>
+
+      <div class="p-6 pb-0">
+        <!-- Contenedor para mensajes de error del Backend -->
+        <div *ngIf="mensajeError()" class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3 mb-2">
+          {{ mensajeError() }}
+        </div>
+      </div>
+
+      <form [formGroup]="turnoForm" class="p-6 space-y-4" (ngSubmit)="guardarTurno()">
+        
+        <!-- Cliente -->
+        <div>
+          <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">Cliente</label>
+          <select 
+            formControlName="cliente" 
+            (change)="onClienteChange(turnoForm.get('cliente')?.value)"
+            class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent">
+            <option value="">Seleccione un cliente...</option>
+            <option *ngFor="let cliente of clientes()" [value]="cliente.id">
+              {{ cliente.nombre }} {{ cliente.apellido }} ({{ cliente.dni_cuit }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Vehículo -->
+        <div>
+          <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">Vehículo</label>
+          <select 
+            formControlName="vehiculo"
+            [disabled]="!turnoForm.get('cliente')?.value"
+            class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent disabled:opacity-50 disabled:cursor-not-allowed">
+            <option value="">Seleccione un vehículo...</option>
+            <option *ngFor="let vehiculo of vehiculosFiltrados()" [value]="vehiculo.id">
+              {{ vehiculo.marca }} {{ vehiculo.modelo }} ({{ vehiculo.patente }})
+            </option>
+          </select>
+          <p *ngIf="!turnoForm.get('cliente')?.value" class="text-[10px] text-yellow-500/80 mt-1">
+            * Debe seleccionar un cliente primero para cargar sus vehículos.
+          </p>
+        </div>
+
+        <!-- Fecha y Hora -->
+        <div>
+          <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">Fecha y Hora</label>
+          <input 
+            type="datetime-local" 
+            formControlName="fecha_hora"
+            class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent" />
+        </div>
+
+        <!-- Motivo de Ingreso -->
+        <div>
+          <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">Motivo / Síntomas</label>
+          <textarea 
+            formControlName="motivo" 
+            rows="2"
+            placeholder="Describa el motivo del turno (ej. Service 10k, ruido en frenos...)"
+            class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent"></textarea>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="flex items-center justify-end space-x-3 pt-4 border-t border-white/5">
+          <button 
+            type="button" 
+            (click)="cerrarModalCrear()"
+            class="px-4 py-2 text-xs font-semibold text-color-text-secondary hover:text-color-text-primary uppercase tracking-wider transition-colors duration-200">
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            [disabled]="turnoForm.invalid"
+            class="px-5 py-2 text-xs font-bold bg-color-primary-accent text-black rounded uppercase tracking-wider hover:bg-opacity-80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+            Guardar Reserva
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE DETALLE DEL TURNO SELECCIONADO -->
+  <div *ngIf="mostrarModalDetalle()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+    <div class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden">
+      
+      <div class="p-6 border-b border-white/5 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-color-primary-accent uppercase">Detalle del Turno</h3>
+          <p class="text-xs text-color-text-secondary">Información del turno agendado.</p>
+        </div>
+        <span class="px-2.5 py-1 text-[10px] font-bold rounded uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          {{ turnoSeleccionado()?.estado }}
+        </span>
+      </div>
+
+      <div class="p-6 pb-0" *ngIf="mensajeError()">
+        <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3">
+          {{ mensajeError() }}
+        </div>
+      </div>
+
+      <div class="p-6 space-y-4">
+        
+        <!-- Cliente -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Cliente</span>
+          <span class="text-sm font-semibold text-color-text-primary">
+            {{ getNombreCliente(turnoSeleccionado()!.cliente) }}
+          </span>
+        </div>
+
+        <!-- Vehículo -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Vehículo</span>
+          <span class="text-sm font-semibold text-color-text-primary">
+            {{ getDatosVehiculo(turnoSeleccionado()!.vehiculo) }}
+          </span>
+        </div>
+
+        <!-- Fecha y Hora -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Fecha y Hora</span>
+          <span class="text-sm font-semibold text-color-text-primary">
+            {{ turnoSeleccionado()!.fecha_hora | date:'dd/MM/yyyy HH:mm' }}
+          </span>
+        </div>
+
+        <!-- Motivo -->
+        <div>
+          <span class="block text-[10px] font-bold text-color-text-secondary uppercase tracking-wider">Motivo / Síntomas</span>
+          <p class="text-sm text-color-text-primary bg-black/20 border border-white/5 rounded p-3 mt-1 italic">
+            "{{ turnoSeleccionado()!.motivo }}"
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center justify-between p-6 border-t border-white/5">
+        <button 
+          type="button" 
+          (click)="cancelarTurno()"
+          class="px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 border border-red-500/20 rounded uppercase tracking-wider transition-all duration-200">
+          Cancelar Turno
+        </button>
+        <button 
+          type="button" 
+          (click)="cerrarModalDetalle()"
+          class="px-5 py-2 text-xs font-bold bg-white/5 border border-white/10 hover:bg-white/10 text-color-text-primary rounded uppercase tracking-wider transition-all duration-200">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL DE ADVERTENCIA DE SOBRE-CUPO (BYPASS) -->
+  <div *ngIf="mostrarAlertaSobrecupo()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-color-surface-container border border-yellow-500/30 rounded-card shadow-2xl max-w-sm w-full overflow-hidden">
+      
+      <div class="p-6 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center space-x-3">
+        <svg class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <h3 class="text-base font-bold text-yellow-500 uppercase tracking-wider">Límite de Cupo Diario</h3>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <p class="text-sm text-color-text-primary leading-relaxed">
+          El día seleccionado ya cuenta con <strong>2 o más turnos activos</strong> reservados en el taller.
+        </p>
+        <p class="text-xs text-color-text-secondary leading-relaxed">
+          ¿Desea forzar y confirmar el agendamiento de este turno excediendo el límite establecido?
+        </p>
+      </div>
+
+      <div class="flex items-center justify-end space-x-3 p-6 pt-0">
+        <button 
+          type="button" 
+          (click)="cerrarAlertaSobrecupo()"
+          class="px-4 py-2 text-xs font-semibold text-color-text-secondary hover:text-color-text-primary uppercase tracking-wider transition-colors duration-200">
+          Cancelar
+        </button>
+        <button 
+          type="button"
+          (click)="guardarTurnoForzado()"
+          class="px-5 py-2 text-xs font-bold bg-yellow-500 text-black rounded uppercase tracking-wider hover:bg-opacity-80 transition-all duration-200">
+          Forzar Reserva
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>

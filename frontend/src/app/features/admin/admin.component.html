@@ -1,10 +1,44 @@
-<div class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none">
+<div class="flex h-screen bg-color-bg-main overflow-hidden text-white font-sans">
+  <!-- Fondo translúcido móvil para cerrar al hacer clic fuera (Drawer Overlay) -->
+  @if (sidebarService.isSidebarOpen()) {
+    <div (click)="sidebarService.closeSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"></div>
+  }
+
+  <!-- Barra lateral (Sidebar) -->
+  <app-sidebar 
+    [class.translate-x-0]="sidebarService.isSidebarOpen()"
+    [class.-translate-x-full]="!sidebarService.isSidebarOpen()"
+    class="fixed inset-y-0 left-0 w-64 z-50 md:relative md:translate-x-0 transition-transform duration-300 ease-in-out block flex-shrink-0"
+  ></app-sidebar>
   
-  <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
-  <div class="max-w-6xl mx-auto w-full relative z-10 flex-1">
+  <!-- Contenedor principal para Navbar y Contenido -->
+  <div class="flex flex-col flex-1 overflow-hidden">
+    <!-- Banner Flotante de Advertencia del Modo Vista Previa de Rol -->
+    <div 
+      *ngIf="sidebarService.vistaPreviaRolSignal()" 
+      class="bg-yellow-500/20 border-b border-yellow-500/40 text-yellow-300 px-6 py-2.5 flex items-center justify-between z-30 shadow-inner backdrop-blur-md"
+    >
+      <div class="flex items-center gap-2 text-xs font-semibold">
+        <span class="text-base">⚠️</span>
+        <span>Estás navegando en modo <strong>Vista Previa de Rol ({{ sidebarService.vistaPreviaRolSignal() | uppercase }})</strong>. Tu sesión de Administrador sigue activa.</span>
+      </div>
+      <button 
+        type="button" 
+        (click)="sidebarService.salirVistaPrevia()" 
+        class="px-3 py-1 rounded-full bg-yellow-500 text-black font-bold text-xs hover:bg-yellow-400 active:scale-95 transition-all shadow cursor-pointer"
+      >
+        ✕ Salir de vista previa
+      </button>
+    </div>
+
+    <!-- Barra superior (Navbar) -->
+    <app-navbar></app-navbar>
     
-    <!-- Encabezado / Header -->
-    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+    <!-- Contenedor scrollable -->
+    <main class="flex-1 overflow-y-auto p-6 bg-color-bg-main">
+      <!-- Encabezado / Header -->
+      <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-md border-b border-white/10 gap-md mb-lg">
+
       <div class="flex items-center gap-md">
         <!-- Logo mini del taller -->
         <div class="w-12 h-12 rounded-card bg-color-surface-container border border-color-primary-accent/40 flex items-center justify-center shadow">
@@ -190,16 +224,22 @@
     </div>
   </div>
 
-  <!-- Barra de Navegación Inferior -->
-  <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
-    <div class="flex items-center gap-4">
-      <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
-        <span class="w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>
-        Administrador Global
-      </span>
-      <span>|</span>
-      <span>Módulos de Facturación ARCA y Calendario Financiero</span>
-    </div>
-    <span>Material Design 3 · Dark Mode Optimizado</span>
+      <!-- Barra de Navegación Inferior -->
+      <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
+        <div class="flex items-center gap-4">
+          <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
+            <span class="w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>
+            Administrador Global
+          </span>
+          <span>|</span>
+          <span>Módulos de Facturación ARCA y Calendario Financiero</span>
+        </div>
+        <span>Material Design 3 · Dark Mode Optimizado</span>
+      </div>
+
+      <!-- Router outlet para subrutas -->
+      <router-outlet></router-outlet>
+    </main>
   </div>
 </div>
+

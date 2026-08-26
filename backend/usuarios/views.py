@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from core.permissions import EsAdministrador
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.exceptions import TokenError
@@ -11,15 +12,25 @@ import threading
 import logging
 from core.utils.email_service import send_email_service
 from .models import PasswordResetToken
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import (
     GoogleAuthSerializer,
     LogoutSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
+    CustomTokenObtainPairSerializer,
+    RegistroUsuarioSerializer,
+    PasswordResetSerializer,
+    PerfilUsuarioSerializer,
+    ActualizarPerfilSerializer,
 )
 
 logger = logging.getLogger(__name__)
 Usuario = get_user_model()
+
 
 
 def enviar_email_recuperacion_background(email, nombre, enlace_reset):
@@ -232,4 +243,144 @@ class DevLoginView(APIView):
             "access": str(refresh.access_token),
             "refresh": str(refresh)
         }, status=status.HTTP_200_OK)
+
+
+class LoginView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+    permission_classes = [AllowAny]
+
+
+class RegistroView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = RegistroUsuarioSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = serializer.save()
+        return Response(
+            {
+                "detail": "Usuario registrado exitosamente.",
+                "usuario": {
+                    "email": user.email,
+                    "nombre": user.nombre,
+                    "apellido": user.apellido,
+                    "rol": user.rol
+                }
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+# Alias para compatibilidad
+PasswordResetView = PasswordResetRequestView
+
+
+
+from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated
+
+class BusquedaUniversalView(APIView):
+    """
+    TK065: Endpoint GET /api/busqueda-universal/?q={query}
+    Realiza una búsqueda transversal multi-entidad en tiempo real cruzando Clientes, Vehículos y Órdenes.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        query = request.query_params.get('q', '').strip()
+        if not query or len(query) < 2:
+            return Response({
+                'clientes': [],
+                'vehiculos': [],
+                'ordenes': []
+            }, status=status.HTTP_200_OK)
+
+        from clientes.models import Cliente
+        from vehiculos.models import Vehiculo
+        from ordenes.models import OrdenTrabajo
+
+        es_admin = getattr(request.user, 'es_administrador', True)
+
+        # 1. Búsqueda de Clientes
+        clientes_qs = Cliente.objects.filter(
+            Q(nombre__icontains=query) |
+            Q(apellido__icontains=query) |
+            Q(dni_cuit__icontains=query) |
+            Q(usuario__email__icontains=query)
+        ).distinct()[:5]
+
+        clientes = [
+            {
+                'id': str(c.id),
+                'titulo': f"{c.nombre} {c.apellido}".strip(),
+                'subtitulo': f"{c.tipo_documento}: {c.dni_cuit}",
+                'tipo': 'cliente',
+                'url': f"/admin/clientes/editar/{c.id}" if es_admin else f"/clientes/editar/{c.id}"
+            }
+            for c in clientes_qs
+        ]
+
+        # 2. Búsqueda de Vehículos
+        vehiculos_qs = Vehiculo.objects.filter(
+            Q(patente__icontains=query) |
+            Q(numero_chasis__icontains=query) |
+            Q(marca__icontains=query) |
+            Q(modelo__icontains=query)
+        ).distinct()[:5]
+
+        vehiculos = [
+            {
+                'id': str(v.id),
+                'titulo': f"{v.marca} {v.modelo} ({v.patente})",
+                'subtitulo': f"Chasis: {v.numero_chasis or 'N/A'}",
+                'tipo': 'vehiculo',
+                'url': f"/vehiculos/historial/{v.id}"
+            }
+            for v in vehiculos_qs
+        ]
+
+        # 3. Búsqueda de Órdenes de Trabajo
+        ordenes_qs = OrdenTrabajo.objects.filter(
+            Q(numero_ot__icontains=query) |
+            Q(vehiculo__patente__icontains=query) |
+            Q(vehiculo__cliente__nombre__icontains=query) |
+            Q(vehiculo__cliente__apellido__icontains=query)
+        ).distinct()[:5]
+
+        ordenes = [
+            {
+                'id': str(o.id),
+                'titulo': f"Orden {o.numero_ot}",
+                'subtitulo': f"Estado: {o.get_estado_display()} - Patente: {o.vehiculo.patente if o.vehiculo else 'N/A'}",
+                'tipo': 'orden',
+                'url': f"/ordenes"
+            }
+            for o in ordenes_qs
+        ]
+
+        return Response({
+            'clientes': clientes,
+            'vehiculos': vehiculos,
+            'ordenes': ordenes
+        }, status=status.HTTP_200_OK)
+
+
+class PerfilUsuarioView(APIView):
+    permission_classes = [IsAuthenticated, EsAdministrador]
+
+    def get(self, request, *args, **kwargs):
+        serializer = PerfilUsuarioSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, *args, **kwargs):
+        serializer = ActualizarPerfilSerializer(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        updated_user = serializer.update(request.user, serializer.validated_data)
+        res_serializer = PerfilUsuarioSerializer(updated_user)
+        return Response(res_serializer.data, status=status.HTTP_200_OK)
+
+
 

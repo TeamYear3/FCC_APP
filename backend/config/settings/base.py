@@ -8,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-fcc-app-default-key-2026-change-me")
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -18,13 +19,25 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "channels",
     # Local apps
     "usuarios",
     "clientes",
     "vehiculos",
     "ordenes",
     "facturacion",
+    "turnos",
+    "taller",
 ]
+
+ASGI_APPLICATION = "config.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
 
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
@@ -132,3 +145,7 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "FCC App <noreply@fccapp.co
 
 # Client Portal Configuration (Frontend URL)
 CLIENT_PORTAL_URL = os.getenv("CLIENT_PORTAL_URL", "https://fccapp.com")
+
+# Password Reset Token Timeout (1 hour in seconds)
+PASSWORD_RESET_TIMEOUT = 3600
+

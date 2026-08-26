@@ -481,4 +481,143 @@ class PasswordResetConfirmViewTest(APITestCase):
         self.assertIn("password_confirm", response.data)
 
 
+class AuthTradicionalTest(APITestCase):
+    def setUp(self):
+        self.login_url = reverse("login")
+        self.registro_url = reverse("registro")
+        self.reset_url = reverse("password-reset")
+        self.confirm_url = reverse("password-reset-confirm")
+
+        self.user_password = "securePassword123!"
+        self.user = User.objects.create_user(
+            email="test_auth@ejemplo.com",
+            nombre="Juan",
+            apellido="Pérez",
+            password=self.user_password,
+            rol="cliente"
+        )
+
+    def test_login_exitoso(self):
+        response = self.client.post(
+            self.login_url,
+            {"email": "test_auth@ejemplo.com", "password": self.user_password}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertEqual(response.data["rol"], "cliente")
+        self.assertEqual(response.data["email"], "test_auth@ejemplo.com")
+
+    def test_login_fallido_credenciales_invalidas(self):
+        response = self.client.post(
+            self.login_url,
+            {"email": "test_auth@ejemplo.com", "password": "wrongpassword"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_registro_exitoso(self):
+        data = {
+            "email": "nuevo_usuario@ejemplo.com",
+            "nombre": "Esteban",
+            "apellido": "Quito",
+            "password": "anotherSecurePass123!"
+        }
+        response = self.client.post(self.registro_url, data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("detail", response.data)
+        self.assertEqual(response.data["usuario"]["email"], "nuevo_usuario@ejemplo.com")
+        self.assertEqual(response.data["usuario"]["rol"], "cliente")
+
+        # Verificar existencia en BD
+        user_exists = User.objects.filter(email="nuevo_usuario@ejemplo.com").exists()
+        self.assertTrue(user_exists)
+
+    def test_registro_email_duplicado_falla(self):
+        data = {
+            "email": "test_auth@ejemplo.com", # Ya existe
+            "nombre": "Juanito",
+            "apellido": "Pérez",
+            "password": "somePassword123!"
+        }
+        response = self.client.post(self.registro_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+
+class PerfilUsuarioAPITest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_perfil@taller.com",
+            nombre="Laura",
+            apellido="Zárate",
+            password="AdminPass123!",
+            rol="admin"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_perfil@taller.com",
+            nombre="Carlos",
+            apellido="Cliente",
+            password="ClientePass123!",
+            rol="cliente"
+        )
+        self.perfil_url = reverse("perfil-usuario")
+
+    def test_obtener_perfil_admin_exitoso(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.perfil_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "admin_perfil@taller.com")
+        self.assertEqual(response.data["nombre"], "Laura")
+        self.assertEqual(response.data["apellido"], "Zárate")
+        self.assertEqual(response.data["rol"], "admin")
+
+    def test_obtener_perfil_no_admin_denegado(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        response = self.client.get(self.perfil_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_actualizar_perfil_nombre_apellido_exitoso(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "nombre": "Laura María",
+            "apellido": "Zárate Pérez"
+        }
+        response = self.client.patch(self.perfil_url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["nombre"], "Laura María")
+        self.assertEqual(response.data["apellido"], "Zárate Pérez")
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.nombre, "Laura María")
+
+    def test_actualizar_perfil_password_requiere_actual(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "nueva_password": "NewAdminPass456!"
+        }
+        response = self.client.patch(self.perfil_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password_actual", response.data)
+
+    def test_actualizar_perfil_password_actual_incorrecta(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "password_actual": "WrongPass123!",
+            "nueva_password": "NewAdminPass456!"
+        }
+        response = self.client.patch(self.perfil_url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password_actual", response.data)
+
+    def test_actualizar_perfil_password_exitoso(self):
+        self.client.force_authenticate(user=self.admin)
+        data = {
+            "password_actual": "AdminPass123!",
+            "nueva_password": "NewAdminPass456!"
+        }
+        response = self.client.patch(self.perfil_url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.check_password("NewAdminPass456!"))
+
+
 

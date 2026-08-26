@@ -7,6 +7,11 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
     vehiculo_id = serializers.UUIDField(required=True)
     descripcion_problema = serializers.CharField(required=True, allow_blank=False)
     fecha_ingreso = serializers.DateField(required=True)
+    estado = serializers.ChoiceField(
+        choices=EstadoOrden.choices,
+        default=EstadoOrden.INGRESADO,
+        required=False
+    )
 
     class Meta:
         model = OrdenTrabajo
@@ -29,7 +34,6 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'id',
             'numero_ot',
             'vehiculo',
-            'estado',
             'tecnico',
             'fecha_entrega',
             'comentario_rechazo',
@@ -48,10 +52,10 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
         vehiculo = Vehiculo.objects.get(id=vehiculo_id)
         orden = OrdenTrabajo.objects.create(
             vehiculo=vehiculo,
-            estado=EstadoOrden.INGRESADO,
             **validated_data
         )
         return orden
+
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
@@ -80,6 +84,7 @@ class ItemManoDeObraSerializer(serializers.ModelSerializer):
             'cantidad',
             'precio_unitario',
             'subtotal',
+            'completado',
             'creado_en',
             'actualizado_en'
         ]
@@ -115,6 +120,7 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
             'cantidad',
             'precio_unitario',
             'subtotal',
+            'completado',
             'creado_en',
             'actualizado_en'
         ]
@@ -133,5 +139,93 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['tipo'] = TipoItem.REPUESTO
         return super().create(validated_data)
+
+
+class ItemPresupuestoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ItemPresupuesto
+        fields = [
+            'id',
+            'orden_trabajo',
+            'tipo',
+            'descripcion',
+            'cantidad',
+            'precio_unitario',
+            'subtotal',
+            'completado',
+            'creado_en',
+            'actualizado_en'
+        ]
+        read_only_fields = ['id', 'orden_trabajo', 'subtotal', 'creado_en', 'actualizado_en']
+
+
+from .models import HistorialEstadoOrden, AdjuntoDiagnostico
+
+
+class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
+    usuario_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HistorialEstadoOrden
+        fields = [
+            'id',
+            'estado_anterior',
+            'estado_nuevo',
+            'usuario',
+            'usuario_nombre',
+            'comentario',
+            'creado_en'
+        ]
+        read_only_fields = fields
+
+    def get_usuario_nombre(self, obj):
+        if obj.usuario:
+            nombre_completo = f"{getattr(obj.usuario, 'nombre', '')} {getattr(obj.usuario, 'apellido', '')}".strip()
+            return nombre_completo or obj.usuario.email
+        return "Sistema"
+
+
+
+class ActualizarEstadoOrdenSerializer(serializers.Serializer):
+    estado = serializers.ChoiceField(choices=EstadoOrden.choices, required=True)
+    comentario = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AdjuntoDiagnosticoSerializer(serializers.ModelSerializer):
+    creado_por_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AdjuntoDiagnostico
+        fields = [
+            'id',
+            'orden_trabajo',
+            'url_secure',
+            'public_id',
+            'nombre_archivo',
+            'tamanio',
+            'mime_type',
+            'creado_por',
+            'creado_por_nombre',
+            'creado_en'
+        ]
+        read_only_fields = [
+            'id',
+            'url_secure',
+            'public_id',
+            'nombre_archivo',
+            'tamanio',
+            'mime_type',
+            'creado_por',
+            'creado_por_nombre',
+            'creado_en'
+        ]
+
+    def get_creado_por_nombre(self, obj):
+        if obj.creado_por:
+            full = f"{getattr(obj.creado_por, 'nombre', '')} {getattr(obj.creado_por, 'apellido', '')}".strip()
+            return full or obj.creado_por.email
+        return "Técnico"
+
+
 
 

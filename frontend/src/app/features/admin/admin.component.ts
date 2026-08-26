@@ -1,9 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { FacturacionComponent } from './facturacion/facturacion.component';
 import { FacturacionCalendarioComponent } from './facturacion-calendario/facturacion-calendario.component';
+import { NavbarComponent } from '../../layout/navbar/navbar.component';
+import { SidebarComponent } from '../../layout/sidebar/sidebar.component';
+import { SidebarService } from '../../core/services/sidebar.service';
 
 export interface UserSummary {
   id: string;
@@ -19,12 +22,20 @@ export type AdminTab = 'usuarios' | 'facturacion' | 'calendario';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FacturacionComponent, FacturacionCalendarioComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    NavbarComponent,
+    SidebarComponent,
+    FacturacionComponent,
+    FacturacionCalendarioComponent
+  ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css'
 })
 export class AdminComponent {
   readonly authService = inject(AuthService);
+  readonly sidebarService = inject(SidebarService);
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
@@ -74,3 +85,5 @@ export class AdminComponent {
     this.router.navigate(['/autenticacion']);
   }
 }
+
+
