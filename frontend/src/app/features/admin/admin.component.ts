@@ -1,7 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { FacturacionComponent } from './facturacion/facturacion.component';
+import { FacturacionCalendarioComponent } from './facturacion-calendario/facturacion-calendario.component';
 
 export interface UserSummary {
   id: string;
@@ -12,10 +14,12 @@ export interface UserSummary {
   ultimaConexion: string;
 }
 
+export type AdminTab = 'usuarios' | 'facturacion' | 'calendario';
+
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FacturacionComponent, FacturacionCalendarioComponent],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css'
 })
@@ -24,6 +28,7 @@ export class AdminComponent {
   private readonly router = inject(Router);
 
   readonly userRole = this.authService.userRoleSignal;
+  readonly activeTab = signal<AdminTab>('facturacion');
 
   readonly usuariosRegistrados: UserSummary[] = [
     {
@@ -59,6 +64,10 @@ export class AdminComponent {
       ultimaConexion: 'Ayer'
     }
   ];
+
+  setTab(tab: AdminTab): void {
+    this.activeTab.set(tab);
+  }
 
   logout(): void {
     this.authService.logout();

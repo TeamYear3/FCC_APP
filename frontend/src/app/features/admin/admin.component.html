@@ -18,7 +18,7 @@
             <span class="typography-caption text-color-text-secondary">Rol activo: <strong class="text-color-primary-accent uppercase tracking-wide">{{ userRole() || 'admin' }}</strong></span>
           </div>
           <h1 class="typography-h1-display tracking-tight uppercase leading-none">
-            Control de Auditoría y Usuarios
+            Consola de Gestión y Facturación
           </h1>
         </div>
       </div>
@@ -35,136 +35,162 @@
       </button>
     </header>
 
-    <!-- Bloques del Tablero Principal (Dashboard Core Cards - MD3 Alignment) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
-      <!-- Bloque 1: Órdenes -->
-      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
-        <div class="flex items-start justify-between mb-2">
-          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Órdenes Activas</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </div>
-        <div class="typography-h1-display text-white">12</div>
-        <p class="typography-caption mt-1 text-color-primary-accent">4 en revisión de diagnóstico</p>
-      </div>
-
-      <!-- Bloque 2: Usuarios -->
-      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
-        <div class="flex items-start justify-between mb-2">
-          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Usuarios Registrados</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-        </div>
-        <div class="typography-h1-display text-white">48</div>
-        <p class="typography-caption mt-1">3 roles configurados en TK010</p>
-      </div>
-
-      <!-- Bloque 3: Flotas y Clientes -->
-      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
-        <div class="flex items-start justify-between mb-2">
-          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Cartera Clientes</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
-        <div class="typography-h1-display text-white">134</div>
-        <p class="typography-caption mt-1">Vehículos vinculados a órdenes</p>
-      </div>
-
-      <!-- Bloque 4: Turnos -->
-      <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
-        <div class="flex items-start justify-between mb-2">
-          <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Turnos Agendados</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <div class="typography-h1-display text-color-primary-accent">8</div>
-        <p class="typography-caption mt-1">Próximos 7 días hábiles</p>
-      </div>
-    </div>
-
-    <!-- Título de Sección y Botón de Acción Principal (Pill Action Button) -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-md">
-      <div>
-        <h2 class="typography-h2-section uppercase flex items-center gap-2">
-          <span>Gestión de Cuentas y Control RBAC</span>
-        </h2>
-        <p class="typography-caption text-color-text-secondary mt-1">Supervisión de permisos de seguridad de la arquitectura del Frontend.</p>
-      </div>
-
-      <!-- Botón de Acción Principal: Pill Action Button (#FFCC00 y texto negro #000000, min-h 48px, rounded 24px) -->
+    <!-- Barra de Navegación de Pestañas del Administrador -->
+    <div class="flex items-center gap-2 mb-lg border-b border-white/10 pb-2 overflow-x-auto">
       <button
         type="button"
-        class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        (click)="setTab('facturacion')"
+        class="px-5 py-2.5 rounded-pill font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+        [ngClass]="activeTab() === 'facturacion' ? 'bg-color-primary-accent text-black shadow-lg' : 'bg-white/5 text-zinc-300 hover:bg-white/10'">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <span>+ Nuevo Usuario / Técnico</span>
+        <span>Facturación ARCA (TK055)</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="setTab('calendario')"
+        class="px-5 py-2.5 rounded-pill font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+        [ngClass]="activeTab() === 'calendario' ? 'bg-color-primary-accent text-black shadow-lg' : 'bg-white/5 text-zinc-300 hover:bg-white/10'">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span>Calendario Financiero (TK063)</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="setTab('usuarios')"
+        class="px-5 py-2.5 rounded-pill font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+        [ngClass]="activeTab() === 'usuarios' ? 'bg-color-primary-accent text-black shadow-lg' : 'bg-white/5 text-zinc-300 hover:bg-white/10'">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <span>Usuarios y Control RBAC</span>
       </button>
     </div>
 
-    <!-- Listado en Tarjetas y Grilla de Usuarios (#1E1E1E - Order Work Cards Style) -->
-    <div class="bg-color-surface-container border border-white/10 rounded-card p-md shadow-xl">
-      <div class="grid grid-cols-1 gap-md">
-        <div *ngFor="let usr of usuariosRegistrados" 
-             class="p-md rounded-card bg-black/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-color-primary-accent/40">
-          
-          <!-- Datos de usuario -->
-          <div class="flex items-center gap-4">
-            <div class="w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-white uppercase text-base"
-                 [ngClass]="{
-                   'bg-purple-600/30 border border-purple-500/50 text-purple-300': usr.rol === 'admin',
-                   'bg-blue-600/30 border border-blue-500/50 text-blue-300': usr.rol === 'tecnico',
-                   'bg-emerald-600/30 border border-emerald-500/50 text-emerald-300': usr.rol === 'cliente'
-                 }">
-              {{ usr.nombre.charAt(0) }}
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="typography-body-highlight text-white">{{ usr.nombre }}</span>
-                <span class="px-2 py-0.5 rounded-badge typography-caption font-bold uppercase tracking-wider"
-                      [ngClass]="{
-                        'bg-purple-500/20 text-purple-300 border border-purple-500/40': usr.rol === 'admin',
-                        'bg-blue-500/20 text-blue-300 border border-blue-500/40': usr.rol === 'tecnico',
-                        'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40': usr.rol === 'cliente'
-                      }">
-                  {{ usr.rol }}
-                </span>
-              </div>
-              <p class="typography-caption text-color-text-secondary mt-0.5">{{ usr.email }} · ID: <strong class="text-white">{{ usr.id }}</strong></p>
-            </div>
+    <!-- Pestaña 1: Facturación Electrónica ARCA (TK055) -->
+    <div *ngIf="activeTab() === 'facturacion'">
+      <app-facturacion></app-facturacion>
+    </div>
+
+    <!-- Pestaña 2: Calendario Financiero Semafórico (TK063) -->
+    <div *ngIf="activeTab() === 'calendario'">
+      <app-facturacion-calendario></app-facturacion-calendario>
+    </div>
+
+    <!-- Pestaña 3: Gestión de Cuentas y RBAC -->
+    <div *ngIf="activeTab() === 'usuarios'" class="space-y-6">
+      <!-- Bloques del Tablero Principal (Dashboard Core Cards - MD3 Alignment) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
+        <!-- Bloque 1: Órdenes -->
+        <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+          <div class="flex items-start justify-between mb-2">
+            <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Órdenes Activas</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
           </div>
+          <div class="typography-h1-display text-white">12</div>
+          <p class="typography-caption mt-1 text-color-primary-accent">4 en revisión de diagnóstico</p>
+        </div>
 
-          <!-- Estado y Última Conexión -->
-          <div class="flex items-center justify-between sm:justify-end gap-6 pt-2 sm:pt-0 border-t border-white/5 sm:border-t-0">
-            <div class="text-left sm:text-right">
-              <span class="typography-caption block text-color-text-secondary">Última conexión</span>
-              <span class="typography-caption text-white font-medium">{{ usr.ultimaConexion }}</span>
+        <!-- Bloque 2: Usuarios -->
+        <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+          <div class="flex items-start justify-between mb-2">
+            <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Usuarios Registrados</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <div class="typography-h1-display text-white">48</div>
+          <p class="typography-caption mt-1">3 roles configurados</p>
+        </div>
+
+        <!-- Bloque 3: Flotas y Clientes -->
+        <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+          <div class="flex items-start justify-between mb-2">
+            <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Cartera Clientes</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+          <div class="typography-h1-display text-white">134</div>
+          <p class="typography-caption mt-1">Vehículos vinculados a órdenes</p>
+        </div>
+
+        <!-- Bloque 4: Turnos -->
+        <div class="bg-color-surface-container border border-white/5 rounded-card p-md relative flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+          <div class="flex items-start justify-between mb-2">
+            <span class="typography-caption text-color-text-secondary uppercase tracking-wider font-semibold">Turnos Agendados</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-color-primary-accent stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div class="typography-h1-display text-color-primary-accent">8</div>
+          <p class="typography-caption mt-1">Próximos 7 días hábiles</p>
+        </div>
+      </div>
+
+      <!-- Listado en Tarjetas y Grilla de Usuarios -->
+      <div class="bg-color-surface-container border border-white/10 rounded-card p-md shadow-xl">
+        <div class="grid grid-cols-1 gap-md">
+          <div *ngFor="let usr of usuariosRegistrados" 
+               class="p-md rounded-card bg-black/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-color-primary-accent/40">
+            
+            <div class="flex items-center gap-4">
+              <div class="w-11 h-11 rounded-full flex items-center justify-center font-extrabold text-white uppercase text-base"
+                   [ngClass]="{
+                     'bg-purple-600/30 border border-purple-500/50 text-purple-300': usr.rol === 'admin',
+                     'bg-blue-600/30 border border-blue-500/50 text-blue-300': usr.rol === 'tecnico',
+                     'bg-emerald-600/30 border border-emerald-500/50 text-emerald-300': usr.rol === 'cliente'
+                   }">
+                {{ usr.nombre.charAt(0) }}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="typography-body-highlight text-white">{{ usr.nombre }}</span>
+                  <span class="px-2 py-0.5 rounded-badge typography-caption font-bold uppercase tracking-wider"
+                        [ngClass]="{
+                          'bg-purple-500/20 text-purple-300 border border-purple-500/40': usr.rol === 'admin',
+                          'bg-blue-500/20 text-blue-300 border border-blue-500/40': usr.rol === 'tecnico',
+                          'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40': usr.rol === 'cliente'
+                        }">
+                    {{ usr.rol }}
+                  </span>
+                </div>
+                <p class="typography-caption text-color-text-secondary mt-0.5">{{ usr.email }} · ID: <strong class="text-white">{{ usr.id }}</strong></p>
+              </div>
             </div>
 
-            <!-- Badges o Pastillas de Estado Semántico según Página 4 -->
-            <span *ngIf="usr.estado === 'Activo'" 
-                  class="px-2.5 py-1 rounded-badge bg-color-status-process text-black typography-caption font-extrabold uppercase tracking-wide">
-              En proceso / Activo
-            </span>
-            <span *ngIf="usr.estado === 'En revisión'" 
-                  class="px-2.5 py-1 rounded-badge bg-color-status-review text-white typography-caption font-extrabold uppercase tracking-wide">
-              En revisión
-            </span>
-            <span *ngIf="usr.estado === 'Pendiente'" 
-                  class="px-2.5 py-1 rounded-badge bg-color-status-pending text-white typography-caption font-extrabold uppercase tracking-wide">
-              Pendiente
-            </span>
+            <div class="flex items-center justify-between sm:justify-end gap-6 pt-2 sm:pt-0 border-t border-white/5 sm:border-t-0">
+              <div class="text-left sm:text-right">
+                <span class="typography-caption block text-color-text-secondary">Última conexión</span>
+                <span class="typography-caption text-white font-medium">{{ usr.ultimaConexion }}</span>
+              </div>
+
+              <span *ngIf="usr.estado === 'Activo'" 
+                    class="px-2.5 py-1 rounded-badge bg-color-status-process text-black typography-caption font-extrabold uppercase tracking-wide">
+                En proceso / Activo
+              </span>
+              <span *ngIf="usr.estado === 'En revisión'" 
+                    class="px-2.5 py-1 rounded-badge bg-color-status-review text-white typography-caption font-extrabold uppercase tracking-wide">
+                En revisión
+              </span>
+              <span *ngIf="usr.estado === 'Pendiente'" 
+                    class="px-2.5 py-1 rounded-badge bg-color-status-pending text-white typography-caption font-extrabold uppercase tracking-wide">
+                Pendiente
+              </span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
+  <!-- Barra de Navegación Inferior -->
   <div class="max-w-6xl mx-auto w-full mt-lg pt-4 border-t border-[#1E1E1E] flex items-center justify-between text-color-text-secondary typography-caption">
     <div class="flex items-center gap-4">
       <span class="flex items-center gap-1.5 text-color-primary-accent font-semibold">
@@ -172,7 +198,7 @@
         Administrador Global
       </span>
       <span>|</span>
-      <span>Control de Rol y Permisos TK010/TK011</span>
+      <span>Módulos de Facturación ARCA y Calendario Financiero</span>
     </div>
     <span>Material Design 3 · Dark Mode Optimizado</span>
   </div>
