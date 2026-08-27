@@ -311,10 +311,175 @@ class DevLoginViewTest(APITestCase):
         self.assertIn("Rol inválido", response.data["error"])
 
 
-from django.core import mail
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
-from django.contrib.auth.tokens import default_token_generator
+class EmailBienvenidaTest(TestCase):
+    def setUp(self):
+        from django.core import mail
+        mail.outbox = []
+
+    def test_enviar_email_bienvenida_background_directo(self):
+        from django.core import mail
+        from usuarios.signals import enviar_email_bienvenida_background
+
+        # Ejecutar función síncronamente para validar armado y renderizado del email
+        enviar_email_bienvenida_background(
+            email="nuevo_cliente@taller.com",
+            nombre="Lucas",
+            apellido="Gómez",
+            rol="cliente"
+        )
+
+        emails = [e for e in mail.outbox if e.to == ["nuevo_cliente@taller.com"]]
+        self.assertTrue(len(emails) >= 1)
+        email_enviado = emails[-1]
+        self.assertIn("¡Bienvenido a FCC App", email_enviado.subject)
+        self.assertIn("Lucas Gómez", email_enviado.subject)
+        self.assertEqual(email_enviado.to, ["nuevo_cliente@taller.com"])
+        self.assertIn("Lucas Gómez", email_enviado.body)
+        self.assertIn("Cliente", email_enviado.body)
+        
+        # Verificar alternative HTML
+        self.assertEqual(len(email_enviado.alternatives), 1)
+        html_content, mimetype = email_enviado.alternatives[0]
+        self.assertEqual(mimetype, "text/html")
+        self.assertIn("¡Hola Lucas Gómez!", html_content)
+        self.assertIn("nuevo_cliente@taller.com", html_content)
+
+
+    def test_email_bienvenida_sin_email_no_genera_error_ni_envio(self):
+        from django.core import mail
+        from usuarios.signals import enviar_email_bienvenida_background
+        
+        mail.outbox = []
+        enviar_email_bienvenida_background(email="", nombre="Sin", apellido="Email")
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class PasswordResetRequestViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse("password-reset-request")
+        self.user = User.objects.create_user(
+            email="recuperar@ejemplo.com",
+            nombre="Carlos",
+            apellido="Prueba",
+            password="old_password_123"
+        )
+        from django.core import mail
+        mail.outbox = []
+
+    def test_solicitud_reset_usuario_existente_crea_token_y_envia_email(self):
+        from django.core import mail
+        from usuarios.models import PasswordResetToken
+
+        mail.outbox.clear()
+        response = self.client.post(self.url, {"email": "recuperar@ejemplo.com"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+
+        # Verificar que el token se haya creado en BD con expiración aproximada a 1 hora
+        token_obj = PasswordResetToken.objects.filter(usuario=self.user).first()
+        self.assertIsNotNone(token_obj)
+        self.assertTrue(token_obj.is_valid())
+        self.assertFalse(token_obj.usado)
+
+    def test_solicitud_reset_usuario_inexistente_retorna_200_seguro(self):
+        from usuarios.models import PasswordResetToken
+
+        response = self.client.post(self.url, {"email": "noexiste@ejemplo.com"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # No se crea token
+        self.assertFalse(PasswordResetToken.objects.filter(usuario__email="noexiste@ejemplo.com").exists())
+
+    def test_solicitud_reset_email_invalido_retorna_400(self):
+        response = self.client.post(self.url, {"email": "formato-invalido"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+
+class PasswordResetConfirmViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse("password-reset-confirm")
+        self.user = User.objects.create_user(
+            email="confirmar_reset@ejemplo.com",
+            nombre="Mariana",
+            apellido="López",
+            password="old_secure_password_123"
+        )
+
+    def test_confirmar_reset_exitoso_cambia_password_e_invalida_token(self):
+        from usuarios.models import PasswordResetToken
+
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+        
+        response = self.client.post(self.url, {
+            "token": token_obj.token,
+            "password": "NewPassword2026!",
+            "password_confirm": "NewPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+
+        # Verificar que el usuario pueda autenticar con la nueva clave
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewPassword2026!"))
+
+        # TK051: Verificar que el token quedó marcado como consumido (invalidado)
+        token_obj.refresh_from_db()
+        self.assertTrue(token_obj.usado)
+        self.assertFalse(token_obj.is_valid())
+
+    def test_reutilizar_token_consumido_retorna_400_anti_replay(self):
+        from usuarios.models import PasswordResetToken
+
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+        token_obj.consumir()  # Ya fue consumido
+
+        response = self.client.post(self.url, {
+            "token": token_obj.token,
+            "password": "AnotherPassword2026!",
+            "password_confirm": "AnotherPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+    def test_token_expirado_retorna_400(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from usuarios.models import PasswordResetToken
+
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+        # Forzar expiración en el pasado
+        token_obj.expira_en = timezone.now() - timedelta(minutes=5)
+        token_obj.save()
+
+        response = self.client.post(self.url, {
+            "token": token_obj.token,
+            "password": "ExpiredPassword2026!",
+            "password_confirm": "ExpiredPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+    def test_token_inexistente_retorna_400(self):
+        response = self.client.post(self.url, {
+            "token": "token-falso-inexistente-123",
+            "password": "NewPassword2026!",
+            "password_confirm": "NewPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+    def test_passwords_no_coinciden_retorna_400(self):
+        from usuarios.models import PasswordResetToken
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+
+        response = self.client.post(self.url, {
+            "token": token_obj.token,
+            "password": "PasswordUno123!",
+            "password_confirm": "PasswordDos123!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password_confirm", response.data)
+
 
 class AuthTradicionalTest(APITestCase):
     def setUp(self):
@@ -377,54 +542,6 @@ class AuthTradicionalTest(APITestCase):
         response = self.client.post(self.registro_url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email", response.data)
-
-    def test_password_reset_solicitud_exitosa(self):
-        # Limpiar outbox de emails
-        mail.outbox = []
-
-        response = self.client.post(self.reset_url, {"email": "test_auth@ejemplo.com"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("detail", response.data)
-
-        # Verificar que se envió un mail
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Recuperación de Contraseña", mail.outbox[0].subject)
-        self.assertEqual(mail.outbox[0].to, ["test_auth@ejemplo.com"])
-
-    def test_password_reset_solicitud_email_inexistente(self):
-        response = self.client.post(self.reset_url, {"email": "no_existe@ejemplo.com"})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email", response.data)
-
-    def test_password_reset_confirmacion_exitosa(self):
-        # Generar token y uid válidos manualmente
-        token = default_token_generator.make_token(self.user)
-        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-
-        data = {
-            "uid": uid,
-            "token": token,
-            "new_password": "NewSecurePassword456!"
-        }
-        response = self.client.post(self.confirm_url, data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("detail", response.data)
-
-        # Verificar que la clave se actualizó
-        self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("NewSecurePassword456!"))
-
-    def test_password_reset_confirmacion_token_invalido(self):
-        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-
-        data = {
-            "uid": uid,
-            "token": "invalid-token",
-            "new_password": "NewSecurePassword456!"
-        }
-        response = self.client.post(self.confirm_url, data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("token", response.data)
 
 
 class PerfilUsuarioAPITest(APITestCase):
@@ -501,5 +618,6 @@ class PerfilUsuarioAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.check_password("NewAdminPass456!"))
+
 
 

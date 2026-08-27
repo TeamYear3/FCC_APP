@@ -1,0 +1,371 @@
+<div class="space-y-6">
+  
+  <!-- Encabezado de Facturación ARCA -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-color-surface-container border border-white/10 rounded-card p-6 shadow-xl">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="px-2.5 py-0.5 bg-color-primary-accent/20 text-color-primary-accent border border-color-primary-accent/40 rounded-badge text-xs font-bold uppercase tracking-wider">
+          Módulo Fiscal ARCA / AFIP
+        </span>
+        <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-badge text-xs font-semibold">
+          WS Conectado (Sandbox)
+        </span>
+      </div>
+      <h2 class="text-2xl font-bold text-white tracking-tight">Emisión de Facturas Electrónicas</h2>
+      <p class="text-color-text-secondary text-sm mt-1">Generación y autorización oficial de comprobantes tributarios con asignación automática de CAE.</p>
+    </div>
+
+    <!-- Botón Principal: Emitir Nueva Factura -->
+    <button
+      type="button"
+      (click)="abrirModalEmision()"
+      class="min-h-[48px] px-6 py-2.5 rounded-pill bg-color-primary-accent text-black font-bold flex items-center justify-center gap-2 hover:bg-color-primary-accent/90 active:scale-[0.98] transition-all shadow-lg cursor-pointer">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      <span>+ Emitir Factura Electrónica</span>
+    </button>
+  </div>
+
+  <!-- Notificación de Factura Recientemente Emitida con CAE -->
+  <div *ngIf="facturaReciente() as rec" class="bg-gradient-to-r from-emerald-950/80 to-black border border-emerald-500/50 rounded-card p-5 shadow-2xl relative overflow-hidden animate-fadeIn">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 text-2xl font-bold">
+          ✓
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Comprobante Autorizado por ARCA</span>
+            <span class="px-2 py-0.5 rounded-badge bg-emerald-500/20 text-emerald-300 text-xs font-bold">{{ rec.numero_comprobante }}</span>
+          </div>
+          <p class="text-white font-bold text-lg mt-0.5">CAE: <span class="text-color-primary-accent font-mono">{{ rec.cae }}</span> · Vencimiento CAE: {{ rec.fecha_vencimiento_cae }}</p>
+          <p class="text-xs text-zinc-400">Cliente: {{ rec.cliente_nombre }} · OT: {{ rec.numero_ot }} · Total: ${{ rec.total | number:'1.2-2' }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          (click)="verDetalle(rec)"
+          class="px-4 py-2 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all">
+          Ver Factura Completa
+        </button>
+        <button
+          type="button"
+          (click)="facturaReciente.set(null)"
+          class="text-zinc-400 hover:text-white p-2">
+          ✕
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección de Órdenes Pendientes de Facturar -->
+  <div class="bg-color-surface-container border border-white/10 rounded-card p-5">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-amber-400 animate-pulse"></span>
+        <h3 class="text-lg font-bold text-white">Órdenes Aprobadas Listas para Facturar</h3>
+      </div>
+      <span class="text-xs text-color-text-secondary">{{ ordenesParaFacturar.length }} órdenes pendientes</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div *ngFor="let ord of ordenesParaFacturar" class="p-4 rounded-card bg-black/40 border border-white/5 flex flex-col justify-between hover:border-color-primary-accent/40 transition-all">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="px-2 py-0.5 rounded-badge bg-white/10 text-white font-mono text-xs font-bold">{{ ord.numero_ot }}</span>
+            <span class="text-color-primary-accent font-bold text-base">${{ ord.monto | number:'1.2-2' }}</span>
+          </div>
+          <p class="text-white font-semibold text-sm">{{ ord.cliente }}</p>
+          <p class="text-xs text-zinc-400 mt-0.5">CUIT/DNI: {{ ord.dni_cuit }}</p>
+          <p class="text-xs text-zinc-300 mt-1">🚗 {{ ord.vehiculo }} ({{ ord.patente }})</p>
+        </div>
+
+        <button
+          type="button"
+          (click)="abrirModalEmision(ord)"
+          class="mt-4 w-full py-2 px-3 rounded-pill bg-color-primary-accent/15 border border-color-primary-accent/50 text-color-primary-accent hover:bg-color-primary-accent hover:text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Facturar con ARCA</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros y Búsqueda de Facturas Emitidas -->
+  <div class="bg-color-surface-container border border-white/10 rounded-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-3 w-full md:w-auto">
+      <input
+        type="text"
+        [(ngModel)]="busqueda"
+        placeholder="Buscar por N° comprobante, CAE, cliente o patente..."
+        class="w-full md:w-80 px-4 py-2 rounded-pill bg-black/60 border border-white/10 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-color-primary-accent" />
+
+      <select
+        [(ngModel)]="filtroTipo"
+        (change)="cargarFacturas()"
+        class="px-3 py-2 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent">
+        <option value="">Todos los Comprobantes</option>
+        <option value="A">Factura A</option>
+        <option value="B">Factura B</option>
+        <option value="C">Factura C</option>
+      </select>
+
+      <select
+        [(ngModel)]="filtroEstadoPago"
+        (change)="cargarFacturas()"
+        class="px-3 py-2 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent">
+        <option value="">Todos los Estados</option>
+        <option value="pagada">Pagada</option>
+        <option value="a_vencer">A Vencer</option>
+        <option value="vencida">Vencida</option>
+        <option value="sin_interaccion">Sin Interacción</option>
+      </select>
+    </div>
+
+    <div class="text-xs text-color-text-secondary font-medium">
+      Total facturas registradas: <strong class="text-white">{{ facturasFiltradas().length }}</strong>
+    </div>
+  </div>
+
+  <!-- Listado de Facturas Emitidas Oficiales -->
+  <div class="bg-color-surface-container border border-white/10 rounded-card p-5 shadow-xl">
+    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+      <span>Historial Fiscal de Facturas Electrónicas</span>
+    </h3>
+
+    <div *ngIf="cargando()" class="py-8 text-center text-zinc-400">
+      <div class="w-8 h-8 border-2 border-color-primary-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+      <p class="text-xs">Cargando comprobantes fiscales...</p>
+    </div>
+
+    <div *ngIf="!cargando() && facturasFiltradas().length === 0" class="py-8 text-center text-zinc-400">
+      <p class="text-sm">No se encontraron facturas con los filtros seleccionados.</p>
+    </div>
+
+    <div *ngIf="!cargando() && facturasFiltradas().length > 0" class="space-y-3">
+      <div *ngFor="let fact of facturasFiltradas()" class="p-4 rounded-card bg-black/40 border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-color-primary-accent/40 transition-all">
+        
+        <!-- Info Principal -->
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 rounded-card bg-zinc-900 border border-white/10 flex flex-col items-center justify-center font-mono text-center">
+            <span class="text-xs font-bold text-color-primary-accent">{{ fact.tipo_comprobante }}</span>
+            <span class="text-[9px] text-zinc-400">ARCA</span>
+          </div>
+
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-white font-bold text-base">{{ fact.numero_comprobante }}</span>
+              <!-- Semáforo de Estado -->
+              <span class="px-2 py-0.5 rounded-badge text-xs font-extrabold uppercase"
+                [ngClass]="{
+                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': fact.semaforo === 'pagada',
+                  'bg-green-500/20 text-green-300 border border-green-500/30': fact.semaforo === 'a_vencer',
+                  'bg-rose-500/20 text-rose-400 border border-rose-500/30': fact.semaforo === 'vencida',
+                  'bg-zinc-500/20 text-zinc-400 border border-zinc-500/30': fact.semaforo === 'sin_interaccion'
+                }">
+                {{ fact.semaforo }}
+              </span>
+            </div>
+            <p class="text-xs text-zinc-400 mt-0.5">Cliente: <strong class="text-white">{{ fact.cliente_nombre }}</strong> · Patente: <strong class="text-white">{{ fact.vehiculo_patente }}</strong> · OT: {{ fact.numero_ot }}</p>
+            <p class="text-xs text-zinc-500 mt-0.5">CAE: <span class="text-zinc-300 font-mono">{{ fact.cae }}</span> · Emisión: {{ fact.fecha_emision }} · Vencimiento Pago: {{ fact.fecha_vencimiento_pago || 'N/A' }}</p>
+          </div>
+        </div>
+
+        <!-- Total y Acciones -->
+        <div class="flex items-center justify-between md:justify-end gap-4 border-t md:border-t-0 border-white/5 pt-3 md:pt-0">
+          <div class="text-left md:text-right">
+            <span class="text-xs text-zinc-400 block">Total Comprobante</span>
+            <span class="text-lg font-extrabold text-white">${{ fact.total | number:'1.2-2' }}</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              (click)="verDetalle(fact)"
+              class="px-3 py-1.5 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all">
+              Detalle
+            </button>
+            <button
+              type="button"
+              (click)="imprimirComprobante(fact)"
+              class="p-2 rounded-full bg-color-primary-accent/15 border border-color-primary-accent/40 text-color-primary-accent hover:bg-color-primary-accent hover:text-black transition-all"
+              title="Imprimir Factura">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Interactivo de Emisión de Factura Oficial ARCA -->
+  <div *ngIf="modalEmisionAbierto()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+    <div class="bg-[#121212] border border-white/10 rounded-card max-w-lg w-full p-6 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-color-primary-accent/20 border border-color-primary-accent flex items-center justify-center text-color-primary-accent font-bold text-sm">
+            ⚡
+          </div>
+          <h3 class="text-lg font-bold text-white">Emitir Factura Electrónica ARCA</h3>
+        </div>
+        <button type="button" (click)="cerrarModalEmision()" class="text-zinc-400 hover:text-white text-lg">✕</button>
+      </div>
+
+      <div *ngIf="error()" class="p-3 rounded-card bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs">
+        {{ error() }}
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <!-- Selección de Orden -->
+        <div>
+          <label class="block text-zinc-300 font-semibold mb-1">Orden de Trabajo Aprobada:</label>
+          <select
+            [(ngModel)]="ordenSeleccionadaId"
+            class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent">
+            <option *ngFor="let ord of ordenesParaFacturar" [value]="ord.id">
+              {{ ord.numero_ot }} - {{ ord.cliente }} (${{ ord.monto | number:'1.2-2' }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Tipo Comprobante y Punto de Venta -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-zinc-300 font-semibold mb-1">Tipo de Comprobante:</label>
+            <select
+              [(ngModel)]="tipoComprobanteSeleccionado"
+              class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent">
+              <option value="B">Factura B (Consumidor Final)</option>
+              <option value="A">Factura A (Resp. Inscripto)</option>
+              <option value="C">Factura C (Monotributo)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-zinc-300 font-semibold mb-1">Punto de Venta:</label>
+            <input
+              type="number"
+              [(ngModel)]="puntoVentaSeleccionado"
+              class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent" />
+          </div>
+        </div>
+
+        <!-- Días de Vencimiento de Pago -->
+        <div>
+          <label class="block text-zinc-300 font-semibold mb-1">Plazo de Vencimiento para Cobro (Días):</label>
+          <input
+            type="number"
+            [(ngModel)]="diasVencimientoSeleccionado"
+            class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent" />
+          <span class="text-[10px] text-zinc-400">Define la semaforización en el calendario financiero para el control de cobros.</span>
+        </div>
+
+        <!-- Observaciones -->
+        <div>
+          <label class="block text-zinc-300 font-semibold mb-1">Observaciones / Leyenda Fiscal:</label>
+          <textarea
+            [(ngModel)]="observacionesEmision"
+            rows="2"
+            placeholder="Ej: Pago contra entrega de vehículo reparado..."
+            class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent"></textarea>
+        </div>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center justify-end gap-3 border-t border-white/10 pt-4">
+        <button
+          type="button"
+          (click)="cerrarModalEmision()"
+          class="px-4 py-2 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          (click)="confirmarEmision()"
+          [disabled]="emitirEnProgreso()"
+          class="px-6 py-2 rounded-pill bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 hover:bg-color-primary-accent/90 disabled:opacity-50 transition-all shadow-md">
+          <span *ngIf="emitirEnProgreso()" class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+          <span>{{ emitirEnProgreso() ? 'Conectando a ARCA...' : 'Solicitar CAE y Emitir' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Detalle de Factura / Comprobante Fiscal Imprimible -->
+  <div *ngIf="modalDetalleAbierto() && facturaSeleccionada() as f" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-fadeIn">
+    <div class="bg-[#141414] border border-white/15 rounded-card max-w-2xl w-full p-6 shadow-2xl space-y-6">
+      
+      <!-- Encabezado Factura Fiscal -->
+      <div class="border-b border-white/10 pb-4 flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-black text-color-primary-accent">{{ f.numero_comprobante }}</span>
+            <span class="px-2 py-0.5 rounded-badge bg-emerald-500/20 text-emerald-400 text-xs font-bold uppercase">Oficial ARCA</span>
+          </div>
+          <p class="text-xs text-zinc-400 mt-1">CUIT Emisor: {{ f.cuit_emisor }} · Fecha de Emisión: {{ f.fecha_emision }}</p>
+        </div>
+        <button type="button" (click)="cerrarModalDetalle()" class="text-zinc-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <!-- Datos del Cliente y Vehículo -->
+      <div class="grid grid-cols-2 gap-4 bg-black/50 p-4 rounded-card border border-white/5 text-xs">
+        <div>
+          <span class="text-zinc-400 block font-semibold">Cliente:</span>
+          <span class="text-white font-bold text-sm">{{ f.cliente_nombre }}</span>
+        </div>
+        <div>
+          <span class="text-zinc-400 block font-semibold">Vehículo / Patente:</span>
+          <span class="text-white font-bold text-sm">{{ f.vehiculo_patente }} (OT: {{ f.numero_ot }})</span>
+        </div>
+      </div>
+
+      <!-- Cuadro Fiscal de Autorización CAE -->
+      <div class="bg-gradient-to-r from-zinc-900 to-black p-4 rounded-card border border-color-primary-accent/40 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-color-primary-accent font-bold uppercase tracking-wider">Código de Autorización Electrónico (CAE):</span>
+          <span class="text-white font-mono font-bold text-sm bg-black/60 px-3 py-1 rounded border border-white/10">{{ f.cae }}</span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-zinc-400">
+          <span>Fecha de Vencimiento de CAE:</span>
+          <span class="text-white font-semibold">{{ f.fecha_vencimiento_cae }}</span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-zinc-400">
+          <span>Fecha Límite de Pago:</span>
+          <span class="text-white font-semibold">{{ f.fecha_vencimiento_pago || 'N/A' }}</span>
+        </div>
+      </div>
+
+      <!-- Total -->
+      <div class="flex items-center justify-between border-t border-white/10 pt-4">
+        <span class="text-sm text-zinc-300 font-bold uppercase">Importe Total Facturado:</span>
+        <span class="text-2xl font-black text-white">${{ f.total | number:'1.2-2' }}</span>
+      </div>
+
+      <!-- Acciones de Impresión y Cierre -->
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button
+          type="button"
+          (click)="imprimirComprobante(f)"
+          class="px-5 py-2.5 rounded-pill bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 hover:bg-color-primary-accent/90 transition-all shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          <span>Imprimir Comprobante</span>
+        </button>
+        <button
+          type="button"
+          (click)="cerrarModalDetalle()"
+          class="px-4 py-2.5 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

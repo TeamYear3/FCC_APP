@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>¡Bienvenido a FCC App! - {{ nombre_usuario }}</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Roboto', Arial, sans-serif;
+      background-color: #0B0B0B;
+      color: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background-color: #1E1E1E;
+      border: 1px solid #2D2D2D;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .header {
+      background-color: #0B0B0B;
+      border-bottom: 2px solid #FFCC00;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: bold;
+      color: #FFCC00;
+      letter-spacing: 0.5px;
+    }
+    .content {
+      padding: 30px 40px;
+      line-height: 1.6;
+    }
+    .greeting {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #FFFFFF;
+      font-weight: bold;
+    }
+    p {
+      color: #AAAAAA;
+      font-size: 15px;
+    }
+    .welcome-box {
+      background-color: #0B0B0B;
+      border-left: 4px solid #FFCC00;
+      padding: 20px;
+      margin: 30px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .welcome-title {
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: #FFFFFF;
+      font-size: 16px;
+    }
+    .welcome-item {
+      margin: 8px 0;
+      font-size: 14px;
+      color: #AAAAAA;
+    }
+    .welcome-item strong {
+      color: #FFFFFF;
+    }
+    .button-container {
+      text-align: center;
+      margin: 35px 0;
+    }
+    .button {
+      background-color: #FFCC00;
+      color: #0B0B0B !important;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 24px;
+      font-weight: bold;
+      display: inline-block;
+      font-size: 15px;
+    }
+    .footer {
+      background-color: #0B0B0B;
+      color: #AAAAAA;
+      text-align: center;
+      padding: 25px;
+      font-size: 12px;
+      border-top: 1px solid #2D2D2D;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>FCC App</h1>
+    </div>
+    <div class="content">
+      <div class="greeting">¡Hola {{ nombre_usuario }}!</div>
+      <p>Te damos una cordial bienvenida a la plataforma oficial de gestión del taller mecánico <strong>FCC App</strong>.</p>
+      
+      <div class="welcome-box">
+        <div class="welcome-title">Tu Cuenta en FCC App</div>
+        <div class="welcome-item"><strong>Correo registrado:</strong> {{ email }}</div>
+        <div class="welcome-item"><strong>Rol asignado:</strong> {{ rol_display }}</div>
+        <div class="welcome-item"><strong>Estado:</strong> Activo</div>
+      </div>
+      
+      <p>A través de nuestro portal podrás realizar el seguimiento en tiempo real de tus vehículos, consultar órdenes de trabajo, presupuestos, historial de servicios y comprobantes fiscales.</p>
+      
+      <div class="button-container">
+        <a href="{{ enlace_portal }}" class="button" target="_blank">Ingresar a la Plataforma</a>
+      </div>
+      
+      <p>Si tienes alguna consulta técnica o inquietud, nuestro equipo de soporte se encuentra siempre a tu entera disposición.</p>
+    </div>
+    <div class="footer">
+      Este es un correo automático generado por el sistema, por favor no respondas a este mensaje.<br>
+      © 2026 FCC App. Todos los derechos reservados.
+    </div>
+  </div>
+</body>
+</html>

@@ -6,6 +6,7 @@ from .views import (
     DevLoginView,
     LoginView,
     RegistroView,
+    PasswordResetRequestView,
     PasswordResetView,
     PasswordResetConfirmView,
     BusquedaUniversalView,
@@ -19,9 +20,12 @@ urlpatterns = [
     path("auth/registro/", RegistroView.as_view(), name="registro"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
-    path("auth/password-reset/", PasswordResetView.as_view(), name="password-reset"),
+    path("auth/password-reset/", PasswordResetRequestView.as_view(), name="password-reset-request"),
+    path("auth/password-reset-solicitud/", PasswordResetRequestView.as_view(), name="password-reset"),
     path("auth/password-reset-confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
+
     path("auth/perfil/", PerfilUsuarioView.as_view(), name="perfil-usuario"),
     path("busqueda-universal/", BusquedaUniversalView.as_view(), name="busqueda-universal"),
 ]
+
 

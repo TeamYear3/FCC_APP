@@ -8,7 +8,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-fcc-app-default-key-2026-change-me")
 
 INSTALLED_APPS = [
-    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -19,15 +18,28 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
-    "channels",
     # Local apps
     "usuarios",
     "clientes",
     "vehiculos",
     "ordenes",
+    "facturacion",
     "turnos",
     "taller",
 ]
+
+try:
+    import daphne
+    INSTALLED_APPS.insert(0, "daphne")
+except ImportError:
+    pass
+
+try:
+    import channels
+    INSTALLED_APPS.append("channels")
+except ImportError:
+    pass
+
 
 ASGI_APPLICATION = "config.asgi.application"
 
