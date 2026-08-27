@@ -31,6 +31,34 @@ from django.contrib.auth.tokens import default_token_generator
 
 Usuario = get_user_model()
 
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not Usuario.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No existe ningún usuario registrado con este correo electrónico.")
+        return value
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField(required=False)
+    uid = serializers.CharField(required=False)
+    password = serializers.CharField(min_length=8, required=False, write_only=True)
+    password_confirm = serializers.CharField(min_length=8, required=False, write_only=True)
+    new_password = serializers.CharField(write_only=True, required=False)
+
+    def validate(self, attrs):
+        if attrs.get("password") and attrs.get("password_confirm"):
+            if attrs.get("password") != attrs.get("password_confirm"):
+                raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
+        return attrs
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -61,40 +89,6 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
             password=validated_data["password"],
             rol="cliente",
         )
-        return user
-
-
-class PasswordResetSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-
-    def validate_email(self, value):
-        if not Usuario.objects.filter(email=value).exists():
-            raise serializers.ValidationError("No existe ningún usuario registrado con este correo electrónico.")
-        return value
-
-
-class PasswordResetConfirmSerializer(serializers.Serializer):
-    uid = serializers.CharField()
-    token = serializers.CharField()
-    new_password = serializers.CharField(write_only=True, validators=[validate_password])
-
-    def validate(self, attrs):
-        try:
-            uid_decoded = force_str(urlsafe_base64_decode(attrs["uid"]))
-            user = Usuario.objects.get(pk=uid_decoded)
-        except (TypeError, ValueError, OverflowError, Usuario.DoesNotExist):
-            raise serializers.ValidationError({"uid": "ID de usuario inválido."})
-
-        if not default_token_generator.check_token(user, attrs["token"]):
-            raise serializers.ValidationError({"token": "El token de recuperación es inválido o ha expirado."})
-
-        attrs["user"] = user
-        return attrs
-
-    def save(self):
-        user = self.validated_data["user"]
-        user.set_password(self.validated_data["new_password"])
-        user.save()
         return user
 
 
@@ -173,5 +167,4 @@ class ActualizarPerfilSerializer(serializers.Serializer):
             user.cliente_perfil.save()
 
         return user
-
 

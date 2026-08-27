@@ -1,0 +1,282 @@
+<div class="space-y-6">
+
+  <!-- Encabezado de KPIs Financieros y Control de Vencimientos -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- Total Facturado -->
+    <div class="bg-color-surface-container border border-white/10 rounded-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between text-xs text-zinc-400 font-semibold uppercase">
+        <span>Total Facturado ARCA</span>
+        <span class="w-2.5 h-2.5 rounded-full bg-color-primary-accent"></span>
+      </div>
+      <div class="text-2xl font-black text-white mt-2">${{ resumen().total_facturado | number:'1.2-2' }}</div>
+      <p class="text-[11px] text-zinc-500 mt-1">{{ resumen().cantidad_comprobantes }} comprobantes fiscales</p>
+    </div>
+
+    <!-- Total Cobrado / Pagado (Verde Claro) -->
+    <div class="bg-color-surface-container border border-emerald-500/30 rounded-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between text-xs text-emerald-400 font-semibold uppercase">
+        <span>Cobrado / Pagado</span>
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+      </div>
+      <div class="text-2xl font-black text-emerald-400 mt-2">${{ resumen().total_pagado | number:'1.2-2' }}</div>
+      <p class="text-[11px] text-zinc-400 mt-1">Cobros acreditados</p>
+    </div>
+
+    <!-- En Término / A Vencer (Verde) -->
+    <div class="bg-color-surface-container border border-green-500/30 rounded-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between text-xs text-green-300 font-semibold uppercase">
+        <span>En Término / A Vencer</span>
+        <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+      </div>
+      <div class="text-2xl font-black text-green-300 mt-2">${{ resumen().total_a_vencer | number:'1.2-2' }}</div>
+      <p class="text-[11px] text-zinc-400 mt-1">Dentro del plazo fiscal</p>
+    </div>
+
+    <!-- Vencido (Rojo) -->
+    <div class="bg-color-surface-container border border-rose-500/30 rounded-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between text-xs text-rose-400 font-semibold uppercase">
+        <span>Vencidas / En Mora</span>
+        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+      </div>
+      <div class="text-2xl font-black text-rose-400 mt-2">${{ resumen().total_vencido | number:'1.2-2' }}</div>
+      <p class="text-[11px] text-zinc-400 mt-1">Requiere gestión de cobranza</p>
+    </div>
+  </div>
+
+  <!-- Barra de Navegación del Calendario y Leyenda Semafórica -->
+  <div class="bg-color-surface-container border border-white/10 rounded-card p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+    
+    <!-- Controles de Mes -->
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        (click)="mesAnterior()"
+        class="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+        ‹
+      </button>
+
+      <h3 class="text-xl font-extrabold text-white min-w-[180px] text-center tracking-tight">
+        {{ nombreMesActual }}
+      </h3>
+
+      <button
+        type="button"
+        (click)="mesSiguiente()"
+        class="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+        ›
+      </button>
+
+      <button
+        type="button"
+        (click)="hoy()"
+        class="px-3 py-1.5 rounded-pill bg-color-primary-accent/20 border border-color-primary-accent/40 text-color-primary-accent text-xs font-bold hover:bg-color-primary-accent hover:text-black transition-all">
+        Hoy
+      </button>
+    </div>
+
+    <!-- Leyenda de Semáforos de 4 Colores (TK063) -->
+    <div class="flex flex-wrap items-center gap-2 text-xs">
+      <span class="text-zinc-400 font-semibold mr-1">Semáforo ARCA:</span>
+      
+      <button
+        type="button"
+        (click)="filtroSemaforo = filtroSemaforo === 'pagada' ? '' : 'pagada'; generarMatrizCalendario()"
+        class="px-2.5 py-1 rounded-badge text-[11px] font-bold flex items-center gap-1.5 transition-all border"
+        [ngClass]="filtroSemaforo === 'pagada' ? 'bg-emerald-400 text-black border-emerald-400' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30'">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>Pagada (Verde Claro)</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="filtroSemaforo = filtroSemaforo === 'a_vencer' ? '' : 'a_vencer'; generarMatrizCalendario()"
+        class="px-2.5 py-1 rounded-badge text-[11px] font-bold flex items-center gap-1.5 transition-all border"
+        [ngClass]="filtroSemaforo === 'a_vencer' ? 'bg-green-500 text-white border-green-500' : 'bg-green-500/15 text-green-300 border-green-500/30 hover:bg-green-500/30'">
+        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+        <span>A Vencer (Verde)</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="filtroSemaforo = filtroSemaforo === 'vencida' ? '' : 'vencida'; generarMatrizCalendario()"
+        class="px-2.5 py-1 rounded-badge text-[11px] font-bold flex items-center gap-1.5 transition-all border"
+        [ngClass]="filtroSemaforo === 'vencida' ? 'bg-rose-500 text-white border-rose-500' : 'bg-rose-500/15 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'">
+        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+        <span>Vencida (Rojo)</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="filtroSemaforo = filtroSemaforo === 'sin_interaccion' ? '' : 'sin_interaccion'; generarMatrizCalendario()"
+        class="px-2.5 py-1 rounded-badge text-[11px] font-bold flex items-center gap-1.5 transition-all border"
+        [ngClass]="filtroSemaforo === 'sin_interaccion' ? 'bg-zinc-400 text-black border-zinc-400' : 'bg-zinc-500/15 text-zinc-300 border-zinc-500/30 hover:bg-zinc-500/30'">
+        <span class="w-2 h-2 rounded-full bg-zinc-400"></span>
+        <span>Sin Interacción (Gris)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Cuadrícula del Calendario Mensual -->
+  <div class="bg-color-surface-container border border-white/10 rounded-card p-4 shadow-2xl overflow-x-auto">
+    
+    <!-- Encabezados de Días de la Semana -->
+    <div class="grid grid-cols-7 gap-2 min-w-[700px] mb-2 text-center text-xs font-extrabold uppercase tracking-wider text-zinc-400">
+      <div *ngFor="let d of dayNames" class="py-2">
+        {{ d }}
+      </div>
+    </div>
+
+    <!-- Celdas de Días -->
+    <div class="grid grid-cols-7 gap-2 min-w-[700px]">
+      <div
+        *ngFor="let day of calendarDays()"
+        class="min-h-[110px] p-2 rounded-card border transition-all flex flex-col justify-between"
+        [ngClass]="{
+          'bg-black/50 border-white/10': day.isCurrentMonth,
+          'bg-black/20 border-white/5 opacity-40': !day.isCurrentMonth,
+          'ring-2 ring-color-primary-accent': day.isToday
+        }">
+        
+        <!-- Número de Día y Badge de Hoy -->
+        <div class="flex items-center justify-between">
+          <span
+            class="text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center"
+            [ngClass]="day.isToday ? 'bg-color-primary-accent text-black font-extrabold' : 'text-zinc-300'">
+            {{ day.dayNumber }}
+          </span>
+          <span *ngIf="day.facturas.length > 0" class="text-[10px] font-bold text-zinc-400">
+            {{ day.facturas.length }} doc
+          </span>
+        </div>
+
+        <!-- Lista de Facturas del Día -->
+        <div class="space-y-1.5 mt-1.5 overflow-y-auto max-h-[85px]">
+          <div
+            *ngFor="let fact of day.facturas"
+            (click)="abrirDetalle(fact)"
+            class="p-1.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-[1.02] shadow flex items-center justify-between gap-1"
+            [ngClass]="{
+              'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30': fact.semaforo === 'pagada',
+              'bg-green-500/20 text-green-200 border border-green-500/40 hover:bg-green-500/30': fact.semaforo === 'a_vencer',
+              'bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30': fact.semaforo === 'vencida',
+              'bg-zinc-500/20 text-zinc-300 border border-zinc-500/40 hover:bg-zinc-500/30': fact.semaforo === 'sin_interaccion'
+            }">
+            <span class="truncate">{{ fact.numero_comprobante }}</span>
+            <span class="font-mono font-black">${{ fact.total | number:'1.0-0' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Interactivo de Detalle y Actualización de Estado de Cobro -->
+  <div *ngIf="modalDetalleAbierto() && facturaSeleccionada() as sel" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-fadeIn">
+    <div class="bg-[#141414] border border-white/15 rounded-card max-w-lg w-full p-6 shadow-2xl space-y-5">
+      
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl font-black text-color-primary-accent">{{ sel.numero_comprobante }}</span>
+          <span class="px-2 py-0.5 rounded-badge text-xs font-bold uppercase"
+            [ngClass]="{
+              'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': sel.semaforo === 'pagada',
+              'bg-green-500/20 text-green-300 border border-green-500/30': sel.semaforo === 'a_vencer',
+              'bg-rose-500/20 text-rose-400 border border-rose-500/30': sel.semaforo === 'vencida',
+              'bg-zinc-500/20 text-zinc-400 border border-zinc-500/30': sel.semaforo === 'sin_interaccion'
+            }">
+            {{ sel.semaforo }}
+          </span>
+        </div>
+        <button type="button" (click)="cerrarModalDetalle()" class="text-zinc-400 hover:text-white text-xl">✕</button>
+      </div>
+
+      <!-- Datos del comprobante -->
+      <div class="space-y-3 text-xs">
+        <div class="bg-black/50 p-3.5 rounded-card border border-white/5 space-y-1.5">
+          <div class="flex justify-between">
+            <span class="text-zinc-400">Cliente:</span>
+            <span class="text-white font-bold">{{ sel.cliente }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">Patente Vehículo:</span>
+            <span class="text-white font-mono font-bold">{{ sel.patente }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">CAE Autorizado:</span>
+            <span class="text-color-primary-accent font-mono font-bold">{{ sel.cae }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">Fecha de Vencimiento de Pago:</span>
+            <span class="text-white font-semibold">{{ sel.fecha_vencimiento_pago }}</span>
+          </div>
+          <div class="flex justify-between border-t border-white/10 pt-2 mt-2">
+            <span class="text-zinc-300 font-bold uppercase">Monto Total:</span>
+            <span class="text-lg font-black text-white">${{ sel.total | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <!-- Selector de Actualización de Estado de Cobro -->
+        <div>
+          <label class="block text-zinc-300 font-semibold mb-1">Actualizar Estado de Cobro:</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              (click)="cambiarEstadoPago('pagada')"
+              [disabled]="actualizandoPago()"
+              class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
+              [ngClass]="sel.estado_pago === 'pagada' ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'">
+              <span>✓ Marcar Pagada</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="cambiarEstadoPago('a_vencer')"
+              [disabled]="actualizandoPago()"
+              class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
+              [ngClass]="sel.estado_pago === 'a_vencer' ? 'bg-green-500 text-white border-green-500' : 'bg-green-500/10 text-green-300 border-green-500/30 hover:bg-green-500/20'">
+              <span>⏳ En Término</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="cambiarEstadoPago('vencida')"
+              [disabled]="actualizandoPago()"
+              class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
+              [ngClass]="sel.estado_pago === 'vencida' ? 'bg-rose-500 text-white border-rose-500' : 'bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20'">
+              <span>⚠️ Vencida / Mora</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="cambiarEstadoPago('sin_interaccion')"
+              [disabled]="actualizandoPago()"
+              class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
+              [ngClass]="sel.estado_pago === 'sin_interaccion' ? 'bg-zinc-400 text-black border-zinc-400' : 'bg-zinc-500/10 text-zinc-300 border-zinc-500/30 hover:bg-zinc-500/20'">
+              <span>⚪ Sin Interacción</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones de Modal -->
+      <div class="flex items-center justify-between border-t border-white/10 pt-3">
+        <button
+          type="button"
+          (click)="imprimirFactura()"
+          class="px-4 py-2 rounded-pill bg-color-primary-accent text-black font-bold text-xs flex items-center gap-1.5 hover:bg-color-primary-accent/90 transition-all shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          </svg>
+          <span>Imprimir</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="cerrarModalDetalle()"
+          class="px-4 py-2 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
