@@ -1,4 +1,4 @@
-# Plan de Pruebas de Software (Master Test Plan) — FCC_APP
+# Plan de Pruebas de Software — FCC_APP
 
 **Proyecto:** FCC_APP — Sistema de Gestión Comercial y Operativa para Talleres Mecánicos  
 **Organización:** TeamYear3 / Instituto Superior Politécnico Córdoba (ISPC)  
@@ -51,7 +51,7 @@
 |---|---|---|---|---|
 | 19/06/2026 | `v0.1.0` | Laura Zarate, Cristian Vargas, Karina Quinteros | TeamYear3 / ISPC | Pruebas iniciales de arquitectura base: autenticación JWT, Google OAuth2, modelos y endpoints de Clientes y Vehículos (Sprint 1). |
 | 28/08/2026 | `v0.2.0` | Cristian Vargas, Laura Zarate, Karina Quinteros | TeamYear3 / ISPC | Cobertura de pruebas de Órdenes de Trabajo (OTs), presupuestos dinámicos, facturación electrónica ARCA (mock), agenda de turnos, diagnóstico por imágenes y notificaciones (Sprint 2). |
-| 11/09/2026 | `v1.0.0` | Cristian Vargas (QA Lead) | TeamYear3 / ISPC | Formalización y consolidación del Plan Maestro de Pruebas de Software bajo estándar IEEE 829. Pruebas de regresión total, criterios de estabilización, gestión de riesgos de concurrencia en signals y suite integral para Sprint 3. |
+| 11/09/2026 | `v1.0.0` | Cristian Vargas (QA Lead) | TeamYear3 / ISPC | Formalización y consolidación del Plan de Pruebas de Software bajo estándar IEEE 829. Pruebas de regresión total, criterios de estabilización, gestión de riesgos de concurrencia en signals y suite integral para Sprint 3. |
 
 ---
 
@@ -85,13 +85,13 @@ Las firmas a continuación certifican la revisión y aprobación formal del pres
 
 ## 4. Resumen Ejecutivo
 
-El presente documento constituye el **Plan Maestro de Pruebas de Software (*Master Test Plan*)** para la plataforma **FCC_APP**, un sistema integral de gestión operativa, comercial y técnica desarrollado para el taller mecánico automotriz *Full Check Car*.
+El presente documento constituye el **Plan de Pruebas de Software** para la plataforma **FCC_APP**, un sistema integral de gestión operativa, comercial y técnica desarrollado para el taller mecánico automotriz *Full Check Car*.
 
 ### 4.1 Propósito
 Establecer el marco metodológico, los criterios técnicos, la asignación de recursos, el cronograma y la batería de pruebas necesarias para certificar que el software cumple de manera rigurosa con los Requerimientos Funcionales (RF), Requerimientos No Funcionales (RNF), las Historias de Usuario (HU) y los estándares de seguridad definidos en los acuerdos de la **Definition of Done (DoD)** de los Sprints 2 y 3.
 
 ### 4.2 Tipo de Plan y Relación con el Ciclo Scrum
-Es un plan de alcance maestro que gobierna todas las etapas del ciclo de vida del software, articulado bajo el marco ágil Scrum y la estrategia de integración continua mediante Pull Requests:
+Es un plan integral que gobierna todas las etapas del ciclo de vida del software, articulado bajo el marco ágil Scrum y la estrategia de integración continua mediante Pull Requests:
 - **Sprint 1 (`v0.1.0`):** Enfoque en pruebas de infraestructura, seguridad perimetral (JWT/OAuth2) y consistencia de datos fundacionales (Clientes y Vehículos).
 - **Sprint 2 (`v0.2.0`):** Pruebas funcionales de los flujos neurálgicos del negocio: Órdenes de Trabajo con máquina de estados, presupuestación con cálculo reactivo de subtotales/IVA, facturación fiscal ARCA con generación de CAE, agenda interactiva con FullCalendar y mensajería en tiempo real por WebSockets.
 - **Sprint 3 (`v0.3.0`):** Fase de **estabilización, regresión total, resolución de deuda técnica y certificación de calidad** previa a la entrega final. En esta fase no se incorporan requerimientos funcionales nuevos, concentrando el 100% del esfuerzo en la solidez de la suite de pruebas automatizadas y la mitigación de defectos de concurrencia.
@@ -314,7 +314,7 @@ Al culminar las actividades de testing, el equipo generará y pondrá a disposic
 
 | Entregable | Formato / Ubicación | Descripción | Responsable |
 |---|---|---|---|
-| **Plan Maestro de Pruebas de Software** | Markdown (`FCC_APP/docs/PLAN_DE_PRUEBAS_DE_SOFTWARE.md`) y exportación a PDF | Este documento con la planificación, estrategia, alcance y criterios del testing. | Cristian Vargas (QA Lead) |
+| **Plan de Pruebas de Software** | Markdown (`FCC_APP/docs/PLAN_DE_PRUEBAS_DE_SOFTWARE.md`) y exportación a PDF | Este documento con la planificación, estrategia, alcance y criterios del testing. | Cristian Vargas (QA Lead) |
 | **Suites de Pruebas Automatizadas Backend** | Código fuente Python (`backend/**/tests*.py`) | 9 archivos con más de 50 casos de prueba automatizados en Django. | Cristian Vargas |
 | **Suites de Pruebas Automatizadas Frontend** | Código fuente TypeScript (`frontend/**/*.spec.ts`) | 26 archivos de especificación para componentes y servicios Angular. | Laura Zarate |
 | **Matriz de Trazabilidad Actualizada** | Markdown (`wiki/Matriz-de-Trazabilidad.md`) y Google Docs | Mapeo bidireccional entre Requerimientos (RF), Casos de Uso (CU) y Casos de Prueba (TC). | Cristian Vargas / Laura Zarate |
@@ -371,7 +371,7 @@ El entorno de pruebas replica fielmente las versiones de las tecnologías del st
 
 | Integrante | Rol en el Proyecto | Responsabilidades Principales en Pruebas |
 |---|---|---|
-| **Cristian Vargas** | **QA Lead / Líder de Pruebas** & Fullstack Developer | - Diseño, redacción y mantenimiento del Plan Maestro de Pruebas.<br>- Implementación de casos de prueba automatizados en Backend.<br>- Auditoría técnica de calidad y certificación de criterios de aceptación.<br>- Detección y seguimiento de defectos de concurrencia y base de datos. |
+| **Cristian Vargas** | **QA Lead / Líder de Pruebas** & Fullstack Developer | - Diseño, redacción y mantenimiento del Plan de Pruebas.<br>- Implementación de casos de prueba automatizados en Backend.<br>- Auditoría técnica de calidad y certificación de criterios de aceptación.<br>- Detección y seguimiento de defectos de concurrencia y base de datos. |
 | **Laura Zarate** | **Product Manager (PM)** & Scrum Master | - Validación de criterios de aceptación funcionales desde la visión del cliente.<br>- Pruebas exploratorias de interfaz de usuario y usabilidad de la SPA.<br>- Implementación y verificación de pruebas unitarias en Frontend (Angular).<br>- Gestión de prioridades de defectos en el backlog del Kanban. |
 | **Karina Quinteros** | **DevOps Lead** & Tester de Infraestructura | - Mantenimiento de entornos de prueba homogéneos con Docker Compose.<br>- Validación de migraciones de base de datos e integridad relacional.<br>- Automatización de scripts de verificación pre-commit y pre-merge.<br>- Aseguramiento del aprovisionamiento de dependencias y variables de entorno. |
 
