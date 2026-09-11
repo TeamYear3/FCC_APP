@@ -39,9 +39,8 @@
     - 10.4 [Cronograma de Pruebas](#104-cronograma-de-pruebas)
     - 10.5 [Premisas](#105-premisas)
     - 10.6 [Dependencias y Riesgos](#106-dependencias-y-riesgos)
-11. [Referencias y Glosario](#11-referencias-y-glosario)
-    - 11.1 [Referencias Normativas y del Proyecto](#111-referencias-normativas-y-del-proyecto)
-    - 11.2 [Glosario de Términos](#112-glosario-de-términos)
+11. [Referencias](#11-referencias)
+12. [Glosario](#12-glosario)
 
 ---
 
@@ -488,17 +487,15 @@ La matriz RACI delimita el nivel de intervención de cada miembro del equipo fre
 
 ---
 
-## 11. Referencias y Glosario
+## 11. Referencias
 
-### 11.1 Referencias Normativas y del Proyecto
-
-#### A. Estándares Internacionales de Calidad
+### 11.1 Referencias Normativas y Estándares Internacionales
 - **IEEE Std 829-2008:** *IEEE Standard for Software and System Test Documentation*.
 - **ISO/IEC/IEEE 29119:** *Software Testing Standards* (Conceptos, procesos y documentación de pruebas).
 - **ISTQB:** *International Software Testing Qualifications Board — Certified Tester Foundation Level Syllabus*.
 - **SemVer 2.0.0:** *Semantic Versioning Specification* ([semver.org](https://semver.org/)).
 
-#### B. Documentación Interna del Repositorio y Wiki
+### 11.2 Documentación Interna del Proyecto y Wiki
 - [Plan de Gestión de la Configuración](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/FCC_APP/docs/PLAN_GESTION_CONFIGURACION.md)
 - [Historial de Cambios del Proyecto (CHANGELOG)](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/FCC_APP/CHANGELOG.md)
 - [Definition of Done (DoD) Sprint 2 y Sprint 3](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Definition-of-Done.md)
@@ -512,7 +509,7 @@ La matriz RACI delimita el nivel de intervención de cada miembro del equipo fre
 
 ---
 
-### 11.2 Glosario de Términos
+## 12. Glosario
 
 | Término | Definición Técnica y Contextual en FCC_APP |
 |---|---|
