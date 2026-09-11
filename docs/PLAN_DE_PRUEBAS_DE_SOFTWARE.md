@@ -543,18 +543,58 @@ Flujo ante detección de anomalías:
 
 | Término | Definición Técnica |
 |---|---|
-| **API REST** | Interfaz de comunicación cliente-servidor basada en HTTP y transferencias en formato JSON. |
-| **ARCA** | Agencia de Recaudación y Control Aduanero (organismo fiscal emisor del CAE en Argentina). |
-| **Baseline (Línea Base)** | Versión estable y congelada del código y documentación utilizada como punto de referencia. |
-| **CAE** | Código de Autorización Electrónico otorgado por ARCA que valida una factura. |
-| **DoD (Definition of Done)** | Criterios acordados de código, pruebas y documentación necesarios para dar por finalizada una tarea. |
-| **DRF (Django REST Framework)** | Biblioteca para construir APIs REST en Django. |
-| **Fixture** | Conjunto predeterminado de datos para inicializar pruebas en un estado conocido. |
-| **JWT (JSON Web Token)** | Estándar (RFC 7519) para transmisión segura de credenciales de autenticación. |
-| **Mock** | Objeto simulado que emula el comportamiento de un servicio real para aislar pruebas. |
-| **OT (Orden de Trabajo)** | Entidad que gestiona la reparación de un vehículo desde el ingreso hasta la entrega. |
-| **Prueba de Regresión** | Verificación de que los cambios recientes no rompen funcionalidades existentes. |
-| **RBAC (Role-Based Access Control)** | Control de acceso según roles de usuario (`ADMIN`, `TECNICO`, `CLIENTE`). |
-| **Signal** | Mecanismo desacoplado en Django para ejecutar acciones tras eventos de modelo. |
-| **Soft-Delete (Borrado Lógico)** | Marcado de registros como inactivos (`activo=False`) sin eliminarlos físicamente de la base. |
-| **WebSockets** | Protocolo de comunicación bidireccional en tiempo real sobre una única conexión TCP. |
+| **Access Token** | Token JWT de corta duración utilizado para autorizar peticiones HTTP en endpoints protegidos. |
+| **API REST** | Interfaz de comunicación cliente-servidor basada en HTTP y transferencias en formato JSON bajo principios REST. |
+| **APIClient** | Cliente HTTP de pruebas provisto por DRF para ejecutar peticiones simuladas con autenticación y payloads JSON. |
+| **APITestCase** | Clase base de pruebas en DRF que extiende `TestCase` integrando un cliente `APIClient` preconfigurado. |
+| **ARCA** | Agencia de Recaudación y Control Aduanero (organismo fiscal emisor del CAE en Argentina, ex-AFIP). |
+| **Aserción (Assert)** | Expresión booleana que comprueba si el resultado real de una prueba coincide exactamente con el valor esperado. |
+| **Baseline (Línea Base)** | Versión formalmente revisada y congelada del código o documentación que sirve de referencia para iteraciones futuras. |
+| **Blacklist de Tokens** | Registro en base de datos de tokens de refresco invalidados para impedir su reuso tras el cierre de sesión. |
+| **Bug (Defecto)** | Discrepancia entre el comportamiento observado del software y los requerimientos o especificaciones esperadas. |
+| **CAE** | Código de Autorización Electrónico otorgado por ARCA que otorga validez fiscal a una factura electrónica. |
+| **Caso de Prueba (Test Case)** | Conjunto documentado de precondiciones, datos de entrada, pasos de ejecución y resultados esperados para validar un requerimiento. |
+| **Cobertura de Código (Code Coverage)** | Métrica porcentual que mide la cantidad de líneas, ramas o funciones ejecutadas por una suite de pruebas. |
+| **Criterio de Aceptación** | Condición específica y medible que debe cumplirse para validar y dar por aceptada una funcionalidad o historia de usuario. |
+| **Criterio de Reanudación** | Condiciones técnicas requeridas para retomar la ejecución de pruebas tras una suspensión formal. |
+| **Criterio de Suspensión** | Condición crítica o bloqueo estructural que obliga a detener temporalmente las pruebas de software. |
+| **DoD (Definition of Done)** | Lista consensuada de requerimientos técnicos, de pruebas y de calidad que debe cumplir un ticket para considerarse finalizado. |
+| **DoR (Definition of Ready)** | Criterios previos que debe satisfacer una tarea antes de ser admitida para desarrollo en el backlog del sprint. |
+| **DRF (Django REST Framework)** | Toolkit para construir APIs REST en Django mediante serializers, vistas genéricas y autenticación por tokens. |
+| **Fake** | Doble de prueba con una implementación funcional simplificada, no apta para producción pero útil para ensayos de integración. |
+| **Fixture** | Conjunto de datos precargados utilizado para establecer un estado conocido y reproducible en la base de datos de pruebas. |
+| **Guardia de Ruta (Route Guard)** | Interceptor de navegación en Angular que evalúa autenticación o roles de usuario antes de permitir el acceso a una vista. |
+| **IEEE 829** | Estándar internacional para la estructura y contenido de la documentación de pruebas de software y sistemas. |
+| **Idempotencia** | Propiedad de una operación o endpoint HTTP (como GET, PUT o DELETE) de generar el mismo resultado final ante múltiples ejecuciones repetidas. |
+| **Integración Continua (CI)** | Práctica de ingeniería donde los cambios de código se integran y validan automáticamente mediante compilación y pruebas. |
+| **Interceptor HTTP** | Servicio en Angular que inspecciona y transforma solicitudes HTTP salientes y respuestas entrantes (inyección de JWT, manejo de errores). |
+| **ISO/IEC/IEEE 29119** | Estándar internacional consensuado que define vocabulario, procesos y técnicas para el ciclo de vida del testing. |
+| **ISTQB** | International Software Testing Qualifications Board (organismo internacional que normaliza conceptos y certificaciones de pruebas). |
+| **Jasmine** | Framework de pruebas unitarias basado en Behavior-Driven Development (BDD) utilizado en Angular. |
+| **JWT (JSON Web Token)** | Estándar abierto (RFC 7519) para transmitir información de autenticación de forma segura y firmada criptográficamente. |
+| **Kanban** | Marco de gestión ágil que visualiza el flujo de trabajo en columnas de estado operativo para limitar el trabajo en progreso. |
+| **Matriz RACI** | Cuadro organizativo que asigna responsabilidades (*Responsible, Accountable, Consulted, Informed*) para cada tarea de calidad. |
+| **Matriz de Trazabilidad** | Tabla bidireccional que relaciona requerimientos de software con sus casos de uso y casos de prueba correspondientes. |
+| **Mock** | Objeto simulado que registra invocaciones y emula respuestas predeterminadas de servicios externos para aislar la prueba. |
+| **ORM (Object-Relational Mapping)** | Mecanismo que mapea tablas y relaciones de una base de datos relacional a objetos y clases en el código fuente. |
+| **OT (Orden de Trabajo)** | Registro central del sistema que modela el ciclo de vida del servicio mecánico prestado a un vehículo en el taller. |
+| **Pirámide de Testing** | Modelo estratégico de automatización que prioriza gran volumen de tests unitarios, menor nivel de integración y un mínimo de E2E manual. |
+| **Precondición** | Estado inicial o requisito previo del sistema y de los datos que debe cumplirse antes de iniciar un caso de prueba. |
+| **Prueba de Humo (Smoke Test)** | Batería rápida de pruebas básicas para verificar si una build o despliegue es mínimamente estable para testing más profundo. |
+| **Prueba de Integración** | Verificación orientada a validar la interacción correcta entre múltiples módulos, interfaces o componentes dependientes. |
+| **Prueba de Regresión** | Verificación dirigida a asegurar que los cambios recientes o fixes no hayan alterado o roto funcionalidades preexistentes. |
+| **Prueba Unitaria** | Prueba automatizada que valida el comportamiento aislado de la unidad funcional más pequeña de código (método, función o clase). |
+| **RBAC (Role-Based Access Control)** | Esquema de seguridad que restringe operaciones y accesos a vistas en función del rol de usuario (`ADMIN`, `TECNICO`, `CLIENTE`). |
+| **Refresh Token** | Token JWT de larga duración empleado para renovar tokens de acceso vencidos sin requerir reingreso de credenciales. |
+| **Rollback** | Operación que revierte una transacción de base de datos a su estado previo tras un error o al finalizar un test aislado. |
+| **SemVer (Versionado Semántico)** | Esquema de numeración `MAJOR.MINOR.PATCH` que comunica el tipo de cambios introducidos en cada release de software. |
+| **Serializer** | Componente de DRF que convierte tipos de datos complejos y consultas ORM en JSON nativo y valida datos de entrada. |
+| **Signal** | Despachador de eventos desacoplado en Django que notifica a receptores registrados ante acciones sobre modelos. |
+| **Soft-Delete (Borrado Lógico)** | Técnica de persistencia donde un registro no se elimina físicamente, sino que se marca como inactivo (`activo=False`). |
+| **Spy (Espía)** | Función de prueba que registra llamadas, argumentos y retornos de métodos sin reemplazar su lógica interna original. |
+| **Stub** | Doble de prueba simplificado que devuelve respuestas estáticas preprogramadas a llamadas durante la ejecución. |
+| **Test Runner** | Herramienta de línea de comandos que descubre, organiza, ejecuta y reporta resultados de suites de pruebas automáticas. |
+| **TestBed** | API de pruebas provista por Angular para configurar entornos de testing unitario e inyección de dependencias de componentes. |
+| **Transacción Atómica** | Unidad indivisible de operaciones de base de datos que garantiza confirmación íntegra de cambios o descarte total ante fallas. |
+| **VIN (Vehicle Identification Number)** | Número de identificación vehicular alfanumérico único de 17 caracteres estandarizado internacionalmente. |
+| **WebSockets** | Protocolo bidireccional full-duplex sobre un socket TCP utilizado para la sincronización de estados en tiempo real. |
