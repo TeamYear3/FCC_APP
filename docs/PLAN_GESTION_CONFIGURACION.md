@@ -122,5 +122,5 @@ El formato obligatorio es:
 | Integrante | Rol | Responsabilidades |
 |---|---|---|
 | **Karina Quinteros** | Líder de Configuración (DevOps) | Administrar el repositorio central, resolver conflictos complejos de integración en `develop` y `main`, gestionar variables de entorno comunes, crear etiquetas de release al cierre de cada Sprint y mantener la orquestación con Docker Compose. |
-| **Cristian Vargas** | Product Manager (PM) | Administrar el Product Backlog, validar criterios de aceptación en las Pull Requests, verificar la trazabilidad de requisitos hacia historias de usuario y actualizar el estado de los ítems en el Kanban y Product Backlog. |
-| **Laura Zarate** | Desarrolladora y QA / Auditora | Desarrollar componentes en frontend/backend, redactar pruebas unitarias y de integración, auditar cambios de código en revisiones de Pull Requests para certificar cumplimiento de convenciones de commit y asegurar que la suite de test pase correctamente. |
+| **Laura Zarate** | Product Manager (PM) & Scrum Master | Administrar el Product Backlog, validar criterios de aceptación en las Pull Requests, verificar la trazabilidad de requisitos hacia historias de usuario y actualizar el estado de los ítems en el Kanban y Product Backlog. |
+| **Cristian Vargas** | QA Lead / Fullstack Developer | Redactar y mantener el Plan de Pruebas, implementar pruebas unitarias y de integración en backend, certificar criterios de aceptación en Pull Requests y asegurar que la suite de tests pase al 100%. |
