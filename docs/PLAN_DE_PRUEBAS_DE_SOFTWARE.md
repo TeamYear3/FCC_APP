@@ -5,7 +5,13 @@
 **Cátedra:** Práctica Profesionalizante / Proyecto Integrador  
 **Estándar de Referencia:** IEEE 829 / ISO/IEC/IEEE 29119  
 **Fecha:** Septiembre 2026  
-**Versión:** 1.0.0 (Hito Sprint 3 — Estabilización y Calidad)  
+**Versión del Documento:** 1.0.0 (Línea Base Formal de Calidad para Cátedra)  
+**Versión del Software Asociada:** 0.3.0 (Cierre de Sprint 3 — Estabilización)  
+
+> [!NOTE]
+> **Aclaración sobre Versionado:** En este proyecto conviven dos numeraciones complementarias:
+> - **Versión del Plan de Pruebas (`v1.0.0`):** Versión mayor formal del documento que representa la línea base aprobada por el equipo para la entrega académica.
+> - **Versión de Release del Software (`v0.3.0`):** Versión del código fuente al cierre del Sprint 3 bajo SemVer 2.0.0 (incremento de estabilización previo a la release final `v1.0.0` para defensa oral).
 
 ---
 
@@ -46,11 +52,11 @@
 
 ## 1. Historial de Versiones
 
-| Fecha | Versión | Autor(es) | Organización | Descripción del Cambio |
-|---|---|---|---|---|
-| 19/06/2026 | `v0.1.0` | Laura Zarate, Cristian Vargas, Karina Quinteros | TeamYear3 / ISPC | Pruebas iniciales de arquitectura base: autenticación JWT, Google OAuth2, modelos y endpoints de Clientes y Vehículos (Sprint 1). |
-| 28/08/2026 | `v0.2.0` | Cristian Vargas, Laura Zarate, Karina Quinteros | TeamYear3 / ISPC | Cobertura de pruebas de Órdenes de Trabajo (OTs), presupuestos dinámicos, facturación electrónica ARCA (mock), agenda de turnos, diagnóstico por imágenes y notificaciones (Sprint 2). |
-| 11/09/2026 | `v1.0.0` | Cristian Vargas (QA Lead) | TeamYear3 / ISPC | Formalización y consolidación del Plan de Pruebas de Software bajo estándar IEEE 829. Pruebas de regresión total, criterios de estabilización, gestión de riesgos de concurrencia en signals y suite integral para Sprint 3. |
+| Fecha | Versión Doc. | Versión App | Autor(es) | Organización | Descripción del Cambio |
+|---|---|---|---|---|---|
+| 19/06/2026 | `v0.1.0` | `v0.1.0` | Laura Zarate, Cristian Vargas, Karina Quinteros | TeamYear3 / ISPC | Pruebas iniciales de arquitectura base: autenticación JWT, Google OAuth2, modelos y endpoints de Clientes y Vehículos (Sprint 1). |
+| 28/08/2026 | `v0.2.0` | `v0.2.0` | Cristian Vargas, Laura Zarate, Karina Quinteros | TeamYear3 / ISPC | Cobertura de pruebas de Órdenes de Trabajo (OTs), presupuestos dinámicos, facturación electrónica ARCA (mock), agenda de turnos, diagnóstico por imágenes y notificaciones (Sprint 2). |
+| 11/09/2026 | `v1.0.0` | `v0.3.0` | Cristian Vargas (QA Lead) | TeamYear3 / ISPC | Formalización y consolidación del Plan Detallado de Pruebas de Software bajo estándar IEEE 829. Pruebas de regresión total, criterios de estabilización, gestión de riesgos de concurrencia en signals y suite integral para Sprint 3. |
 
 ---
 
@@ -89,11 +95,12 @@ El presente documento constituye el **Plan de Pruebas de Software** para la plat
 ### 4.1 Propósito
 Establecer el marco metodológico, los criterios técnicos, la asignación de recursos, el cronograma y la batería de pruebas necesarias para certificar que el software cumple de manera rigurosa con los Requerimientos Funcionales (RF), Requerimientos No Funcionales (RNF), las Historias de Usuario (HU) y los estándares de seguridad definidos en los acuerdos de la **Definition of Done (DoD)** de los Sprints 2 y 3.
 
-### 4.2 Tipo de Plan y Relación con el Ciclo Scrum
-Es un plan integral que gobierna todas las etapas del ciclo de vida del software, articulado bajo el marco ágil Scrum y la estrategia de integración continua mediante Pull Requests:
-- **Sprint 1 (`v0.1.0`):** Enfoque en pruebas de infraestructura, seguridad perimetral (JWT/OAuth2) y consistencia de datos fundacionales (Clientes y Vehículos).
-- **Sprint 2 (`v0.2.0`):** Pruebas funcionales de los flujos neurálgicos del negocio: Órdenes de Trabajo con máquina de estados, presupuestación con cálculo reactivo de subtotales/IVA, facturación fiscal ARCA con generación de CAE, agenda interactiva con FullCalendar y mensajería en tiempo real por WebSockets.
-- **Sprint 3 (`v0.3.0`):** Fase de **estabilización, regresión total, resolución de deuda técnica y certificación de calidad** previa a la entrega final. En esta fase no se incorporan requerimientos funcionales nuevos, concentrando el 100% del esfuerzo en la solidez de la suite de pruebas automatizadas y la mitigación de defectos de concurrencia.
+### 4.2 Clasificación del Plan y Relación con el Ciclo Scrum
+
+**Clasificación Formal:** En cumplimiento explícito con las directrices de la plantilla oficial de la cátedra, se establece formalmente que el presente documento constituye un **Plan Detallado de Pruebas** (*Detailed Test Plan*) centrado en la estabilización, regresión y validación de aceptación del **Sprint 3 (Software `v0.3.0` / Documento `v1.0.0`)**, consolidando e integrando a su vez el marco estratégico y los criterios acumulativos de los Sprints 1 y 2 para todo el ciclo de vida del producto:
+- **Sprint 1 (Software `v0.1.0`):** Pruebas de infraestructura Docker, seguridad perimetral (JWT/OAuth2) y consistencia de datos fundacionales (Clientes y Vehículos).
+- **Sprint 2 (Software `v0.2.0`):** Pruebas funcionales de los flujos neurálgicos del negocio: Órdenes de Trabajo con máquina de estados, presupuestación con cálculo reactivo de subtotales/IVA, facturación fiscal ARCA con generación de CAE, agenda interactiva con FullCalendar y mensajería en tiempo real por WebSockets.
+- **Sprint 3 (Software `v0.3.0` / Documento `v1.0.0`):** Fase de **estabilización, regresión total, resolución de deuda técnica y certificación de calidad** previa a la entrega final. En esta fase no se incorporan requerimientos funcionales nuevos, concentrando el 100% del esfuerzo en la solidez de la suite de pruebas automatizadas y la mitigación de defectos de concurrencia.
 
 ### 4.3 Restricciones Principales
 - **Entorno de ejecución:** Proyecto académico con infraestructura local orquestada mediante Docker y bases de datos relacionales PostgreSQL en entornos integrados, empleando motores SQLite optimizados para la ejecución veloz de la suite de pruebas unitarias.
@@ -138,6 +145,11 @@ Estructura modular orientada a componentes, servicios reactivos e interceptores 
 #### C. Planilla de Casos de Prueba del Sistema (Estructura Oficial de Cátedra)
 
 Conforme a los lineamientos y estructura requeridos por la cátedra para la especificación de pruebas manuales y funcionales, se presenta la planilla de casos organizada en **4 módulos clave del sistema** con **5 casos de prueba exhaustivos por módulo** (20 casos de prueba en total). Cada caso define sus 10 atributos reglamentarios:
+
+> [!NOTE]
+> **Nota Metodológica sobre Estado de Ejecución y Certificación de Calidad:**
+> Al presentarse este documento como evidencia del cierre del **Sprint 3 (Fase de Estabilización y Calidad)**, las columnas *Resultado Real* y *Estado* reflejan la **corrida de certificación final** ejecutada por el equipo de QA en entornos locales y Docker/staging (alcanzando estado `Pass` tras la aplicación de correcciones y hotfixes sobre defectos detectados, tales como el bloqueo concurrente mitigado en `TEST-DB-005`).
+> Para futuras ejecuciones de regresión o ciclos de re-testing en nuevos incrementos, las columnas *Resultado Real* y *Estado* deben reiniciarse al valor por defecto `Pendiente / No Ejecutado`.
 
 ##### Módulo 1: Ingreso sin Registro (Flujo de Invitado y Seguridad Perimetral)
 
@@ -504,11 +516,11 @@ La matriz RACI delimita el nivel de intervención de cada miembro del equipo fre
 
 ### 10.4 Cronograma de Pruebas
 
-| Hito / Fase | Fechas | Objetivos de Prueba y Entregables | Estado |
-|---|---|---|---|
-| **Sprint 1 (`v0.1.0`)** | 01/06/2026 – 19/06/2026 | Pruebas iniciales de arquitectura, autenticación JWT, login con Google y ABM de Clientes y Vehículos. | **Completado (100%)** |
-| **Sprint 2 (`v0.2.0`)** | 20/06/2026 – 28/08/2026 | Pruebas de Órdenes de Trabajo, Presupuestos, Facturación ARCA (mock), Turnos, Diagnóstico por fotos y WebSockets. | **Completado (100%)** |
-| **Sprint 3 (`v0.3.0`)** | 01/09/2026 – 25/09/2026 | **Fase de Calidad:** Redacción formal del Plan de Pruebas IEEE 829, ejecución de regresión total, resolución del bloqueo SQLite en signals y estabilización final para entrega de cátedra. | **En Curso** |
+| Hito / Fase | Versión Software | Versión Documento | Fechas | Objetivos de Prueba y Entregables | Estado |
+|---|---|---|---|---|---|
+| **Sprint 1** | `v0.1.0` | `v0.1.0` | 01/06/2026 – 19/06/2026 | Pruebas iniciales de arquitectura, autenticación JWT, login con Google y ABM de Clientes y Vehículos. | **Completado (100%)** |
+| **Sprint 2** | `v0.2.0` | `v0.2.0` | 20/06/2026 – 28/08/2026 | Pruebas de Órdenes de Trabajo, Presupuestos, Facturación ARCA (mock), Turnos, Diagnóstico por fotos y WebSockets. | **Completado (100%)** |
+| **Sprint 3** | `v0.3.0` | `v1.0.0` | 01/09/2026 – 25/09/2026 | **Fase de Calidad:** Redacción formal del Plan Detallado de Pruebas IEEE 829, ejecución de regresión total, resolución del bloqueo SQLite en signals y estabilización final para entrega de cátedra. | **En Curso** |
 
 ---
 
@@ -542,16 +554,16 @@ La matriz RACI delimita el nivel de intervención de cada miembro del equipo fre
 - **SemVer 2.0.0:** *Semantic Versioning Specification* ([semver.org](https://semver.org/)).
 
 ### 11.2 Documentación Interna del Proyecto y Wiki
-- [Plan de Gestión de la Configuración](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/FCC_APP/docs/PLAN_GESTION_CONFIGURACION.md)
-- [Historial de Cambios del Proyecto (CHANGELOG)](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/FCC_APP/CHANGELOG.md)
-- [Definition of Done (DoD) Sprint 2 y Sprint 3](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Definition-of-Done.md)
-- [Especificación de Requerimientos del Sistema](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Requerimientos.md)
-- [Alcance del MVP y Exclusiones](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Alcance.md)
-- [Especificación de Casos de Uso del Taller](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Casos-de-Uso.md)
-- [Modelo de Datos Entidad-Relación](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Modelo-de-Datos.md)
-- [Matriz de Trazabilidad](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Matriz-de-Trazabilidad.md)
-- [Stack Tecnológico Oficial](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Stack-Tecnol%C3%B3gico.md)
-- [Equipo de Desarrollo y Roles](file:///c:/Users/av-cr/OneDrive/Escritorio/Integrador-fullstack/.agents/skills/ispc-dev/wiki/Equipo-de-Desarrollo.md)
+- [Plan de Gestión de la Configuración](https://github.com/TeamYear3/FCC_APP/blob/develop/docs/PLAN_GESTION_CONFIGURACION.md) *(Ruta en repositorio: `docs/PLAN_GESTION_CONFIGURACION.md`)*
+- [Historial de Cambios del Proyecto (CHANGELOG)](https://github.com/TeamYear3/FCC_APP/blob/develop/CHANGELOG.md) *(Ruta en repositorio: `CHANGELOG.md`)*
+- [Definition of Done (DoD) Sprint 2 y Sprint 3](https://github.com/TeamYear3/FCC_APP/wiki/Definition-of-Done)
+- [Especificación de Requerimientos del Sistema](https://github.com/TeamYear3/FCC_APP/wiki/Requerimientos)
+- [Alcance del MVP y Exclusiones](https://github.com/TeamYear3/FCC_APP/wiki/Alcance)
+- [Especificación de Casos de Uso del Taller](https://github.com/TeamYear3/FCC_APP/wiki/Casos-de-Uso)
+- [Modelo de Datos Entidad-Relación](https://github.com/TeamYear3/FCC_APP/wiki/Modelo-de-Datos)
+- [Matriz de Trazabilidad](https://github.com/TeamYear3/FCC_APP/wiki/Matriz-de-Trazabilidad)
+- [Stack Tecnológico Oficial](https://github.com/TeamYear3/FCC_APP/wiki/Stack-Tecnol%C3%B3gico)
+- [Equipo de Desarrollo y Roles](https://github.com/TeamYear3/FCC_APP/wiki/Equipo-de-Desarrollo)
 
 ---
 
