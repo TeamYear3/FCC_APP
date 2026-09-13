@@ -97,9 +97,25 @@
             <option value="en_presupuesto">En Presupuesto</option>
             <option value="aprobado">Aprobado</option>
             <option value="en_proceso">En Proceso</option>
+            <option value="en_pausa">En Pausa</option>
             <option value="finalizado">Finalizado</option>
             <option value="entregado">Entregado</option>
             <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+
+        <!-- Selector de Complejidad Operativa (TK101) -->
+        <div class="space-y-1">
+          <label class="text-zinc-400 font-medium block">Nivel Complejidad</label>
+          <select
+            [ngModel]="complejidadFiltro()"
+            (ngModelChange)="complejidadFiltro.set($event); onFiltroChange()"
+            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+          >
+            <option value="todas">Todas las Complejidades</option>
+            <option value="baja">🟢 Baja (Service Rápido)</option>
+            <option value="media">🟡 Media (Frenos / Tren Del.)</option>
+            <option value="alta">🔴 Alta (Motor / Transmisión)</option>
           </select>
         </div>
 
