@@ -3,7 +3,11 @@
   <div class="bg-zinc-900/90 border border-white/10 p-6 rounded-card shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div>
       <h2 class="text-xl font-extrabold text-color-primary-accent uppercase tracking-tight flex items-center gap-2">
-        <span>⚙️</span> Mi Perfil de Administrador
+        <svg class="w-5 h-5 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        Mi Perfil de Administrador
       </h2>
       <p class="text-xs text-zinc-400 mt-1">Gestión segura de credenciales de acceso, datos personales y de contacto.</p>
     </div>
@@ -16,9 +20,12 @@
         [class.bg-color-primary-accent]="tabActivo() === 'personales'"
         [class.text-black]="tabActivo() === 'personales'"
         [class.text-zinc-400]="tabActivo() !== 'personales'"
-        class="px-4 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+        class="px-4 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
       >
-        👤 Datos Personales
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        Datos Personales
       </button>
 
       <button 
@@ -27,9 +34,12 @@
         [class.bg-color-primary-accent]="tabActivo() === 'seguridad'"
         [class.text-black]="tabActivo() === 'seguridad'"
         [class.text-zinc-400]="tabActivo() !== 'seguridad'"
-        class="px-4 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+        class="px-4 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
       >
-        🔒 Seguridad & Clave
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+        Seguridad & Clave
       </button>
     </div>
   </div>
@@ -46,42 +56,54 @@
     <!-- Mensajes de Alerta Flotantes -->
     <div *ngIf="mensajeExito()" class="p-4 rounded-card bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-between shadow">
       <div class="flex items-center gap-2">
-        <span>✅</span>
+        <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+        </svg>
         <span>{{ mensajeExito() }}</span>
       </div>
-      <button type="button" (click)="mensajeExito.set(null)" class="text-emerald-300 hover:text-white font-bold">✕</button>
+      <button type="button" (click)="mensajeExito.set(null)" class="text-emerald-300 hover:text-white font-bold">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
 
     <div *ngIf="mensajeError()" class="p-4 rounded-card bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center justify-between shadow">
       <div class="flex items-center gap-2">
-        <span>⚠️</span>
+        <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
         <span>{{ mensajeError() }}</span>
       </div>
-      <button type="button" (click)="mensajeError.set(null)" class="text-rose-300 hover:text-white font-bold">✕</button>
+      <button type="button" (click)="mensajeError.set(null)" class="text-rose-300 hover:text-white font-bold">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
     </div>
 
     <!-- TAB 1: DATOS PERSONALES -->
     <div *ngIf="tabActivo() === 'personales'" class="bg-zinc-900 border border-white/10 p-6 rounded-card shadow-xl space-y-6">
       <div class="border-b border-white/10 pb-3">
         <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
-          <span>📋</span> Información de Contacto y Personal
+          <svg class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Información de Contacto y Personal
         </h3>
         <p class="text-xs text-zinc-400">Mantén actualizados tus datos principales de la cuenta de administrador.</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <!-- Campo: Nombre -->
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-zinc-300">Nombre <span class="text-rose-400">*</span></label>
-          <div class="relative flex items-center">
-            <span class="absolute left-3 text-zinc-400 text-sm">👤</span>
-            <input 
-              type="text" 
-              formControlName="nombre" 
-              placeholder="Ingresa tu nombre"
-              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
-            />
-          </div>
+          <input 
+            type="text" 
+            formControlName="nombre" 
+            placeholder="Ej. Laura"
+            class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+          />
           <span *ngIf="perfilForm.get('nombre')?.touched && perfilForm.get('nombre')?.invalid" class="text-[10px] text-rose-400">
             El nombre es requerido.
           </span>
@@ -90,15 +112,12 @@
         <!-- Campo: Apellido -->
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-zinc-300">Apellido <span class="text-rose-400">*</span></label>
-          <div class="relative flex items-center">
-            <span class="absolute left-3 text-zinc-400 text-sm">👤</span>
-            <input 
-              type="text" 
-              formControlName="apellido" 
-              placeholder="Ingresa tu apellido"
-              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
-            />
-          </div>
+          <input 
+            type="text" 
+            formControlName="apellido" 
+            placeholder="Ej. Zárate"
+            class="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+          />
           <span *ngIf="perfilForm.get('apellido')?.touched && perfilForm.get('apellido')?.invalid" class="text-[10px] text-rose-400">
             El apellido es requerido.
           </span>
@@ -108,7 +127,9 @@
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-zinc-300">Correo Electrónico <span class="text-rose-400">*</span></label>
           <div class="relative flex items-center">
-            <span class="absolute left-3 text-zinc-400 text-sm">✉️</span>
+            <svg class="absolute left-3 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
             <input 
               type="email" 
               formControlName="email" 

@@ -224,7 +224,10 @@
               [disabled]="actualizandoPago()"
               class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
               [ngClass]="sel.estado_pago === 'pagada' ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'">
-              <span>✓ Marcar Pagada</span>
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Marcar Pagada</span>
             </button>
 
             <button
@@ -233,7 +236,10 @@
               [disabled]="actualizandoPago()"
               class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
               [ngClass]="sel.estado_pago === 'a_vencer' ? 'bg-green-500 text-white border-green-500' : 'bg-green-500/10 text-green-300 border-green-500/30 hover:bg-green-500/20'">
-              <span>⏳ En Término</span>
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>En Término</span>
             </button>
 
             <button
@@ -242,7 +248,10 @@
               [disabled]="actualizandoPago()"
               class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
               [ngClass]="sel.estado_pago === 'vencida' ? 'bg-rose-500 text-white border-rose-500' : 'bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20'">
-              <span>⚠️ Vencida / Mora</span>
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+              <span>Vencida / Mora</span>
             </button>
 
             <button
@@ -251,7 +260,10 @@
               [disabled]="actualizandoPago()"
               class="py-2 px-3 rounded-card text-xs font-bold flex items-center justify-center gap-1.5 border transition-all"
               [ngClass]="sel.estado_pago === 'sin_interaccion' ? 'bg-zinc-400 text-black border-zinc-400' : 'bg-zinc-500/10 text-zinc-300 border-zinc-500/30 hover:bg-zinc-500/20'">
-              <span>⚪ Sin Interacción</span>
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+              </svg>
+              <span>Sin Interacción</span>
             </button>
           </div>
         </div>

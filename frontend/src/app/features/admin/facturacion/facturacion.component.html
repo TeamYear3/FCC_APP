@@ -31,8 +31,10 @@
   <div *ngIf="facturaReciente() as rec" class="bg-gradient-to-r from-emerald-950/80 to-black border border-emerald-500/50 rounded-card p-5 shadow-2xl relative overflow-hidden animate-fadeIn">
     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
       <div class="flex items-center gap-4">
-        <div class="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 text-2xl font-bold">
-          ✓
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-400 text-xl font-bold">
+          <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+          </svg>
         </div>
         <div>
           <div class="flex items-center gap-2">
@@ -54,7 +56,9 @@
           type="button"
           (click)="facturaReciente.set(null)"
           class="text-zinc-400 hover:text-white p-2">
-          ✕
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
     </div>
@@ -79,7 +83,12 @@
           </div>
           <p class="text-white font-semibold text-sm">{{ ord.cliente }}</p>
           <p class="text-xs text-zinc-400 mt-0.5">CUIT/DNI: {{ ord.dni_cuit }}</p>
-          <p class="text-xs text-zinc-300 mt-1">🚗 {{ ord.vehiculo }} ({{ ord.patente }})</p>
+          <p class="text-xs text-zinc-300 mt-1 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 17a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zM3 9l2-4h10l2 4M3 9v7a1 1 0 001 1h16a1 1 0 001-1V9M3 9h18"/>
+            </svg>
+            {{ ord.vehiculo }} ({{ ord.patente }})
+          </p>
         </div>
 
         <button
@@ -210,7 +219,9 @@
       <div class="flex items-center justify-between border-b border-white/10 pb-3">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 rounded-full bg-color-primary-accent/20 border border-color-primary-accent flex items-center justify-center text-color-primary-accent font-bold text-sm">
-            ⚡
+            <svg class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
           </div>
           <h3 class="text-lg font-bold text-white">Emitir Factura Electrónica ARCA</h3>
         </div>
