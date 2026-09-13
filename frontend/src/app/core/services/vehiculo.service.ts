@@ -9,6 +9,7 @@ export interface VehiculoCreatePayload {
   marca: string;
   modelo: string;
   anio?: number | null;
+  tipo_motor?: string;
   kilometraje?: number | null;
   color?: string;
   numero_chasis?: string;
