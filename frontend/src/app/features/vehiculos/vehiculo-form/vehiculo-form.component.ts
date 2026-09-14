@@ -61,6 +61,7 @@ export class VehiculoFormComponent implements OnInit {
       marca: ['', [Validators.required, Validators.minLength(2)]],
       modelo: ['', [Validators.required, Validators.minLength(2)]],
       anio: [null, [Validators.min(1900), Validators.max(new Date().getFullYear() + 1)]],
+      tipo_motor: ['NAFTERO', [Validators.required]],
       patente: ['', [
         Validators.required,
         Validators.pattern(/^([A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/i)
@@ -110,6 +111,7 @@ export class VehiculoFormComponent implements OnInit {
       next: (vehiculo) => {
         this.vehiculoForm.patchValue({
           ...vehiculo,
+          tipo_motor: vehiculo.tipo_motor || 'NAFTERO',
           numero_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || '',
           nro_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || ''
         });
@@ -184,6 +186,7 @@ export class VehiculoFormComponent implements OnInit {
       marca: formValue.marca.trim(),
       modelo: formValue.modelo.trim(),
       anio: formValue.anio ? Number(formValue.anio) : null,
+      tipo_motor: formValue.tipo_motor || 'NAFTERO',
       kilometraje: formValue.kilometraje ? Number(formValue.kilometraje) : null,
       color: formValue.color ? formValue.color.trim() : ''
     };

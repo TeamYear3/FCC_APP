@@ -48,6 +48,7 @@ class VehiculoSerializer(serializers.ModelSerializer):
             'marca',
             'modelo',
             'anio',
+            'tipo_motor',
             'kilometraje',
             'kilometraje_actual',
             'mantenimientos_programados',

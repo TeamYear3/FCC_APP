@@ -51,6 +51,7 @@ export class OrdenesComponent implements OnInit {
   // Filtros Avanzados (TK056)
   readonly busqueda = signal<string>('');
   readonly estadoFiltro = signal<string>('todos');
+  readonly complejidadFiltro = signal<string>('todas');
   readonly fechaDesde = signal<string>('');
   readonly fechaHasta = signal<string>('');
 
@@ -85,6 +86,7 @@ export class OrdenesComponent implements OnInit {
       patente: busq,
       cliente: busq,
       estado: this.estadoFiltro(),
+      complejidad: this.complejidadFiltro(),
       fecha_desde: this.fechaDesde(),
       fecha_hasta: this.fechaHasta()
     };
@@ -111,6 +113,7 @@ export class OrdenesComponent implements OnInit {
   limpiarFiltros(): void {
     this.busqueda.set('');
     this.estadoFiltro.set('todos');
+    this.complejidadFiltro.set('todas');
     this.fechaDesde.set('');
     this.fechaHasta.set('');
     this.cargarOrdenes(1);
@@ -119,6 +122,36 @@ export class OrdenesComponent implements OnInit {
   cambiarPagina(nuevaPagina: number): void {
     if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas()) {
       this.cargarOrdenes(nuevaPagina);
+    }
+  }
+
+  pausarOReanudarOrden(orden: OrdenResponse): void {
+    if (orden.estado === 'en_proceso') {
+      const motivo = prompt('Ingrese el motivo del pausado de la orden (ej: Espera de repuestos / Rectificadora):');
+      if (motivo !== null) {
+        this.ordenService.actualizarEstado(orden.id, 'en_pausa', motivo || 'Pausado temporal en taller').subscribe({
+          next: () => this.cargarOrdenes(this.paginaActual()),
+          error: (err) => console.error('Error al pausar la orden:', err)
+        });
+      }
+    } else if (orden.estado === 'en_pausa') {
+      this.ordenService.actualizarEstado(orden.id, 'en_proceso', 'Reanudación de trabajos en taller').subscribe({
+        next: () => this.cargarOrdenes(this.paginaActual()),
+        error: (err) => console.error('Error al reanudar la orden:', err)
+      });
+    }
+  }
+
+  getComplejidadBadgeClass(complejidad?: string): string {
+    switch (complejidad?.toLowerCase()) {
+      case 'baja':
+        return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+      case 'media':
+        return 'bg-amber-500/10 text-amber-400 border border-amber-500/30';
+      case 'alta':
+        return 'bg-rose-500/10 text-rose-400 border border-rose-500/30';
+      default:
+        return 'bg-zinc-800 text-zinc-400 border border-zinc-700';
     }
   }
 
@@ -132,6 +165,8 @@ export class OrdenesComponent implements OnInit {
         return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
       case 'en_proceso':
         return 'bg-purple-500/20 text-purple-400 border border-purple-500/40';
+      case 'en_pausa':
+        return 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
       case 'finalizado':
         return 'bg-green-500/20 text-green-400 border border-green-500/40';
       case 'entregado':

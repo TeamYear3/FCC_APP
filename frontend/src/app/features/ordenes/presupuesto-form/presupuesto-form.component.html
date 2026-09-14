@@ -3,7 +3,7 @@
   <!-- Encabezado de Sección -->
   <div class="header-section">
     <div class="title-group">
-      <span class="section-icon">📊</span>
+      <span class="material-symbols-outlined text-[#FFCC00] text-xl">bar_chart</span>
       <h3 class="section-title">
         {{ modoEjecucion ? 'Checklist de Ejecución y Tareas' : 'Presupuesto de Trabajo' }}
       </h3>
@@ -15,11 +15,13 @@
   </div>
 
   <!-- Alertas de Error y Éxito -->
-  <div *ngIf="errorMessage()" class="alert alert-danger" role="alert">
-    ⚠️ {{ errorMessage() }}
+  <div *ngIf="errorMessage()" class="alert alert-danger flex items-center gap-2" role="alert">
+    <span class="material-symbols-outlined text-base shrink-0">warning</span>
+    <span>{{ errorMessage() }}</span>
   </div>
-  <div *ngIf="successMessage()" class="alert alert-success" role="alert">
-    ✅ {{ successMessage() }}
+  <div *ngIf="successMessage()" class="alert alert-success flex items-center gap-2" role="alert">
+    <span class="material-symbols-outlined text-emerald-400 text-base shrink-0">check_circle</span>
+    <span>{{ successMessage() }}</span>
   </div>
 
   <!-- Modo Ejecución: Barra de Progreso -->
@@ -37,8 +39,9 @@
 
   <!-- Formulario de Carga de Ítem (Solo en Modo Presupuesto) -->
   <div *ngIf="!modoEjecucion" class="add-item-card">
-    <h4 class="card-subtitle">
-      <span class="subtitle-icon">➕</span> Agregar Ítem al Presupuesto
+    <h4 class="card-subtitle flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[#FFCC00] text-lg">add_circle</span>
+      Agregar Ítem al Presupuesto
     </h4>
     
     <div class="form-grid">
@@ -48,17 +51,19 @@
         <div class="type-selector">
           <button 
             type="button" 
-            class="type-btn"
+            class="type-btn flex items-center justify-center gap-1.5"
             [class.active]="nuevoTipo() === 'repuesto'"
             (click)="nuevoTipo.set('repuesto')">
-            📦 Repuesto
+            <span class="material-symbols-outlined text-base">inventory_2</span>
+            Repuesto
           </button>
           <button 
             type="button" 
-            class="type-btn"
+            class="type-btn flex items-center justify-center gap-1.5"
             [class.active]="nuevoTipo() === 'mano_de_obra'"
             (click)="nuevoTipo.set('mano_de_obra')">
-            🔧 Mano de Obra
+            <span class="material-symbols-outlined text-base">handyman</span>
+            Mano de Obra
           </button>
         </div>
       </div>
@@ -67,7 +72,7 @@
       <div class="form-group col-span-2">
         <label class="form-label">Descripción</label>
         <div class="input-icon-wrapper">
-          <span class="input-icon">📝</span>
+          <span class="material-symbols-outlined input-icon text-zinc-400 text-sm">description</span>
           <input 
             type="text" 
             class="form-control"
@@ -82,7 +87,7 @@
       <div class="form-group">
         <label class="form-label">Cantidad</label>
         <div class="input-icon-wrapper">
-          <span class="input-icon">🔢</span>
+          <span class="material-symbols-outlined input-icon text-zinc-400 text-sm">tag</span>
           <input 
             type="number" 
             class="form-control"
@@ -98,7 +103,7 @@
       <div class="form-group">
         <label class="form-label">Precio Unitario ($)</label>
         <div class="input-icon-wrapper">
-          <span class="input-icon">💲</span>
+          <span class="material-symbols-outlined input-icon text-zinc-400 text-sm">attach_money</span>
           <input 
             type="number" 
             class="form-control"
@@ -124,11 +129,17 @@
     <div class="action-row">
       <button 
         type="button" 
-        class="btn-agregar" 
+        class="btn-agregar flex items-center justify-center gap-1.5" 
         (click)="agregarItem()"
         [disabled]="guardando()">
-        <span *ngIf="!guardando()">➕ Agregar Ítem</span>
-        <span *ngIf="guardando()">⏳ Guardando...</span>
+        <span *ngIf="!guardando()" class="flex items-center gap-1">
+          <span class="material-symbols-outlined text-base">add</span>
+          Agregar Ítem
+        </span>
+        <span *ngIf="guardando()" class="flex items-center gap-1">
+          <div class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+          Guardando...
+        </span>
       </button>
     </div>
   </div>
@@ -142,8 +153,8 @@
   <!-- Lista de Ítems / Tabla / Checklist -->
   <div *ngIf="!cargando()" class="items-list-container">
     <div *ngIf="items().length === 0" class="empty-state">
-      <span class="empty-icon">📂</span>
-      <p>No hay ítems agregados al presupuesto todavia.</p>
+      <span class="material-symbols-outlined text-zinc-600 text-3xl mb-2">folder_open</span>
+      <p>No hay ítems agregados al presupuesto todavía.</p>
     </div>
 
     <div *ngIf="items().length > 0" class="items-table-wrapper">
@@ -174,8 +185,10 @@
 
             <!-- Tipo Badge -->
             <td class="col-tipo">
-              <span class="item-type-badge" [class.badge-repuesto]="item.tipo === 'repuesto'" [class.badge-mano]="item.tipo === 'mano_de_obra'">
-                {{ item.tipo === 'mano_de_obra' ? '🔧 Mano Obra' : '📦 Repuesto' }}
+              <span class="item-type-badge flex items-center gap-1" [class.badge-repuesto]="item.tipo === 'repuesto'" [class.badge-mano]="item.tipo === 'mano_de_obra'">
+                <span *ngIf="item.tipo === 'mano_de_obra'" class="material-symbols-outlined text-xs">handyman</span>
+                <span *ngIf="item.tipo === 'repuesto'" class="material-symbols-outlined text-xs">inventory_2</span>
+                {{ item.tipo === 'mano_de_obra' ? 'Mano Obra' : 'Repuesto' }}
               </span>
             </td>
 
@@ -202,7 +215,7 @@
                 class="btn-delete"
                 title="Eliminar Ítem"
                 (click)="eliminarItem(item)">
-                🗑️
+                <span class="material-symbols-outlined text-sm">delete</span>
               </button>
             </td>
           </tr>

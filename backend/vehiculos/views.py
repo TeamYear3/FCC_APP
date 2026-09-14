@@ -180,7 +180,7 @@ class ExportarHistorialPDFView(APIView):
             [Paragraph("<b>Patente:</b> " + vehiculo.patente, cell_style), Paragraph("<b>Marca/Modelo:</b> " + f"{vehiculo.marca} {vehiculo.modelo}", cell_style)],
             [Paragraph("<b>Año:</b> " + str(vehiculo.anio or 'N/A'), cell_style), Paragraph("<b>Kilometraje:</b> " + f"{vehiculo.kilometraje:,} km", cell_style)],
             [Paragraph("<b>N° Chasis:</b> " + str(chasis_val), cell_style), Paragraph("<b>Cliente:</b> " + cliente_nombre, cell_style)],
-            [Paragraph("<b>Doc. Cliente:</b> " + cliente_doc, cell_style), Paragraph("", cell_style)]
+            [Paragraph("<b>Doc. Cliente:</b> " + cliente_doc, cell_style), Paragraph("<b>Motorización:</b> " + vehiculo.get_tipo_motor_display(), cell_style)]
         ]
 
         info_table = Table(info_data, colWidths=[260, 260])

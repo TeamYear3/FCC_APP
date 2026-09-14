@@ -5,10 +5,7 @@
     <!-- Top Bar (Header según Figma "cargar vehiculo - admin") -->
     <div class="flex items-center justify-between py-2 border-b border-white/10">
       <a [routerLink]="returnUrl()" class="p-2 -ml-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center justify-center">
-        <!-- Ícono flecha atrás ← -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
+        <span class="material-symbols-outlined">arrow_back</span>
       </a>
       <div class="text-center">
         <h2 class="text-2xl font-black text-white tracking-tight">
@@ -18,12 +15,7 @@
           {{ isEditMode() ? 'Modifique datos. La patente no puede ser alterada.' : 'Ingrese los datos del vehículo y propietario.' }}
         </p>
       </div>
-      <div class="p-2 text-color-primary-accent flex items-center justify-center">
-        <!-- Ícono coche superior derecha -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-        </svg>
-      </div>
+      <div class="w-10"></div>
     </div>
 
     <!-- Mensaje de Error API global si existe -->
@@ -191,6 +183,26 @@
             <div *ngIf="vehiculoForm.get('anio')?.invalid && vehiculoForm.get('anio')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
               <span *ngIf="vehiculoForm.get('anio')?.errors?.['min'] || vehiculoForm.get('anio')?.errors?.['max']">Ingrese un año válido (1900 - Actualidad).</span>
               <span *ngIf="vehiculoForm.get('anio')?.errors?.['serverError']">{{ vehiculoForm.get('anio')?.errors?.['serverError'] }}</span>
+            </div>
+          </div>
+
+          <!-- Campo Tipo de Motor (TK084) -->
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-gray-400 pl-1 block">Tipo de Motor <span class="text-color-primary-accent">*</span></label>
+            <div class="bg-black/40 border border-white/10 rounded-xl px-3.5 py-3 flex items-center gap-3 focus-within:border-color-primary-accent transition-colors">
+              <span class="material-symbols-outlined text-gray-500 shrink-0 text-xl">electric_car</span>
+              <select 
+                formControlName="tipo_motor"
+                class="bg-transparent text-white w-full focus:outline-none text-sm font-medium cursor-pointer"
+              >
+                <option value="NAFTERO" class="bg-color-surface-container text-white">Naftero</option>
+                <option value="GASOLERO" class="bg-color-surface-container text-white">Gasolero</option>
+                <option value="GNC" class="bg-color-surface-container text-white">GNC</option>
+                <option value="HIBRIDO_ELECTRICO" class="bg-color-surface-container text-white">Híbrido/Eléctrico</option>
+              </select>
+            </div>
+            <div *ngIf="vehiculoForm.get('tipo_motor')?.invalid && vehiculoForm.get('tipo_motor')?.touched" class="text-xs text-red-400 pl-1 flex flex-col mt-1">
+              <span *ngIf="vehiculoForm.get('tipo_motor')?.errors?.['required']">Debe seleccionar el tipo de motor.</span>
             </div>
           </div>
 

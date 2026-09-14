@@ -74,3 +74,38 @@ Una vez levantada la orquestación con Docker Compose, podrás interactuar con l
 - `docker-compose.yml`: Definición de la orquestación de la infraestructura.
 - `.env.example`: Plantilla base de configuración de variables de entorno.
 
+---
+
+## 🍃 Justificación Técnica de Persistencia NoSQL (MongoDB) - TK107
+
+Dentro de la arquitectura de **FCC_APP**, el modelo de datos utiliza un enfoque híbrido de persistencia (**Polyglot Persistence**) para garantizar la máxima performance, escalabilidad y separación de responsabilidades:
+
+1. **PostgreSQL (Base Relacional Principal):** Administra las entidades transaccionales ACID principales (`Usuarios`, `Clientes`, `Vehiculos`, `OrdenesDeTrabajo`, `Presupuestos`, `Facturas`).
+2. **MongoDB (Base NoSQL de Documentos):** Se encarga del almacenamiento de datos no estructurados, eventos de alto volumen y registros de trazabilidad cronológica sin penalizar el rendimiento de la base relacional:
+   - **`audit_logs` (Historial de Trazabilidad de OTs):** Registro inmutable tipo *append-only* de cada cambio de estado, diagnóstico técnico y movimiento de repuestos en los expedientes de taller.
+   - **`arca_error_logs` (Telemetría tributaria de ARCA):** Payload JSON estructurado con las respuestas, excepciones y tokens de autenticación devueltos por la API de ARCA (ex AFIP) para auditar rechazos o inconsistencias de facturación fiscal.
+   - **`websocket_events` (Historial de Eventos en Tiempo Real):** Registro de mensajería y notificaciones push transmitidas mediante Django Channels / Daphne (WebSockets) entre Administradores y Técnicos en taller.
+
+---
+
+## 🔑 Usuarios de Prueba Preconfigurados
+
+Para facilitar la evaluación técnica y funcional del sistema, se encuentran disponibles las siguientes credenciales preconfiguradas según el rol del usuario:
+
+| Rol | Correo Electrónico | Contraseña | Alcance y Permisos |
+| :--- | :--- | :--- | :--- |
+| **Administrador** | `admin@fcc.com` | `admin123` | Control total del sistema, ABM Clientes/Vehículos, Facturación ARCA y Gestión de Turnos. |
+| **Técnico** | `tecnico@fcc.com` | `tecnico123` | Operativa de taller, confección de presupuestos, checklist de OT y cierre de servicio. |
+| **Cliente** | `cliente@fcc.com` | `cliente123` | Portal de autogestión, consulta de estado de vehículo y aprobación de presupuestos. |
+
+---
+
+## 🧪 Ejecución de Pruebas Unitarias
+
+Para ejecutar las suites de pruebas unitarias de backend utilizando el entorno de configuraciones dinámicas desde variables de entorno (`TK106`):
+
+```bash
+# Ejecutar desde la carpeta backend con el entorno virtual activado
+python manage.py test --settings=config.settings.test
+```
+

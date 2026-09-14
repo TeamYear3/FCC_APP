@@ -281,6 +281,22 @@
           </div>
         </div>
 
+        <!-- Nivel de Complejidad Operativa -->
+        <div class="flex flex-col gap-2">
+          <label for="complejidad" class="typography-body-highlight text-white uppercase tracking-wide">
+            Nivel de Complejidad Operativa <span class="text-color-primary-accent">*</span>
+          </label>
+          <select
+            id="complejidad"
+            formControlName="complejidad"
+            class="w-full min-h-[48px] px-md py-3 rounded-card bg-black/40 border border-white/10 text-white typography-body-highlight focus:outline-none focus:border-color-primary-accent transition-colors duration-200 cursor-pointer"
+          >
+            <option value="baja" class="bg-zinc-900 text-emerald-400 font-bold">🟢 Complejidad Baja (Service / Reparación Rápida en el día)</option>
+            <option value="media" class="bg-zinc-900 text-amber-400 font-bold">🟡 Complejidad Media (Mecánica Ligera / Frenos / Tren Delantero)</option>
+            <option value="alta" class="bg-zinc-900 text-rose-400 font-bold">🔴 Complejidad Alta (Desarme Complejo / Motor / Caja de Cambios)</option>
+          </select>
+        </div>
+
         <!-- Fecha de Ingreso -->
         <div class="flex flex-col gap-2">
           <label for="fecha_ingreso" class="typography-body-highlight text-white uppercase tracking-wide">

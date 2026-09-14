@@ -2,7 +2,8 @@ import os
 from .base import *
 
 DEBUG = True
-SECRET_KEY = "test-secret-key-for-unit-testing"
+# Hereda SECRET_KEY desde variables de entorno (.env) o desde base.py
+SECRET_KEY = os.getenv("SECRET_KEY", SECRET_KEY)
 
 # Usar SQLite en memoria para la suite de pruebas cuando no hay PostgreSQL local corriendo
 DATABASES = {

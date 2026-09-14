@@ -4,7 +4,7 @@ import { VehiculoService } from '../../../core/services/vehiculo.service';
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 describe('VehiculoFormComponent', () => {
   let component: VehiculoFormComponent;
@@ -102,6 +102,7 @@ describe('VehiculoFormComponent', () => {
       marca: 'Toyota',
       modelo: 'Hilux',
       anio: 2023,
+      tipo_motor: 'GASOLERO',
       patente: 'AC123DE',
       kilometraje: 38500,
       color: 'Gris Plata'
@@ -114,6 +115,7 @@ describe('VehiculoFormComponent', () => {
       marca: 'Toyota',
       modelo: 'Hilux',
       anio: 2023,
+      tipo_motor: 'GASOLERO',
       kilometraje: 38500,
       color: 'Gris Plata',
       creado_en: '2026-07-22T20:00:00Z',
@@ -122,8 +124,14 @@ describe('VehiculoFormComponent', () => {
 
     component.onSubmit();
 
-    expect(vehiculoServiceSpy.crearVehiculo).toHaveBeenCalled();
+    expect(vehiculoServiceSpy.crearVehiculo).toHaveBeenCalledWith(expect.objectContaining({
+      tipo_motor: 'GASOLERO'
+    }));
     expect(component.isSubmitting()).toBe(false);
+  });
+
+  it('debe inicializar el campo tipo_motor con valor por defecto NAFTERO (TK084)', () => {
+    expect(component.vehiculoForm.get('tipo_motor')?.value).toBe('NAFTERO');
   });
 
   it('debe mostrar mensaje descriptivo ante un error del backend (patente duplicada)', () => {

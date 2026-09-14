@@ -23,6 +23,8 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'descripcion_problema',
             'fecha_ingreso',
             'estado',
+            'complejidad',
+            'motivo_pausa',
             'tecnico',
             'fecha_entrega',
             'comentario_rechazo',
