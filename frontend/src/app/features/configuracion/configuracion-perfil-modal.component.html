@@ -146,7 +146,9 @@
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-zinc-300">Teléfono de Contacto</label>
           <div class="relative flex items-center">
-            <span class="absolute left-3 text-zinc-400 text-sm">📞</span>
+            <svg class="absolute left-3 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
             <input 
               type="text" 
               formControlName="telefono" 
@@ -162,7 +164,10 @@
     <div *ngIf="tabActivo() === 'seguridad'" class="bg-zinc-900 border border-white/10 p-6 rounded-card shadow-xl space-y-6">
       <div class="border-b border-white/10 pb-3">
         <h3 class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2">
-          <span>🔑</span> Seguridad de la Cuenta
+          <svg class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+          </svg>
+          Seguridad de la Cuenta
         </h3>
         <p class="text-xs text-zinc-400">Para actualizar tu correo o cambiar tu contraseña, ingresa tu contraseña actual por seguridad.</p>
       </div>
@@ -172,13 +177,29 @@
         <div class="space-y-1.5">
           <label class="block text-xs font-bold text-zinc-300">Contraseña Actual</label>
           <div class="relative flex items-center">
-            <span class="absolute left-3 text-zinc-400 text-sm">🔐</span>
+            <svg class="absolute left-3 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
             <input 
-              type="password" 
+              [type]="mostrarPasswordActual() ? 'text' : 'password'" 
               formControlName="password_actual" 
               placeholder="••••••••••••"
-              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+              class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
             />
+            <button 
+              type="button" 
+              (click)="togglePasswordVisibility('actual')" 
+              class="absolute right-3 p-1 text-zinc-400 hover:text-white transition-colors focus:outline-none"
+              title="Ver/Ocultar contraseña actual"
+            >
+              <svg *ngIf="!mostrarPasswordActual()" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              <svg *ngIf="mostrarPasswordActual()" class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.025 10.025 0 013.122-.063c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21M3 3l18 18"/>
+              </svg>
+            </button>
           </div>
           <span class="text-[10px] text-zinc-400">Requerida sólo para confirmar cambios de correo o contraseña.</span>
         </div>
@@ -188,15 +209,47 @@
           <div class="space-y-1.5">
             <label class="block text-xs font-bold text-zinc-300">Nueva Contraseña</label>
             <div class="relative flex items-center">
-              <span class="absolute left-3 text-zinc-400 text-sm">🔑</span>
+              <svg class="absolute left-3 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+              </svg>
               <input 
-                type="password" 
+                [type]="mostrarNuevaPassword() ? 'text' : 'password'" 
                 formControlName="nueva_password" 
                 placeholder="Mínimo 8 caracteres"
-                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
               />
+              <button 
+                type="button" 
+                (click)="togglePasswordVisibility('nueva')" 
+                class="absolute right-3 p-1 text-zinc-400 hover:text-white transition-colors focus:outline-none"
+                title="Ver/Ocultar nueva contraseña"
+              >
+                <svg *ngIf="!mostrarNuevaPassword()" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                <svg *ngIf="mostrarNuevaPassword()" class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.025 10.025 0 013.122-.063c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21M3 3l18 18"/>
+                </svg>
+              </button>
             </div>
-            <span *ngIf="perfilForm.get('nueva_password')?.touched && perfilForm.get('nueva_password')?.invalid" class="text-[10px] text-rose-400">
+
+            <!-- Indicador Dinámico de Fortaleza de Contraseña -->
+            <div *ngIf="perfilForm.get('nueva_password')?.value" class="space-y-1 pt-1">
+              <div class="flex items-center justify-between text-[11px] font-bold">
+                <span class="text-zinc-400">Fortaleza de contraseña:</span>
+                <span [class]="fortalezaPassword.claseColorTexto">{{ fortalezaPassword.etiqueta }}</span>
+              </div>
+              <div class="h-1.5 w-full bg-black/60 rounded-full overflow-hidden border border-white/5">
+                <div 
+                  class="h-full transition-all duration-300 rounded-full" 
+                  [class]="fortalezaPassword.claseColorBarra" 
+                  [style.width.%]="fortalezaPassword.porcentaje"
+                ></div>
+              </div>
+            </div>
+
+            <span *ngIf="perfilForm.get('nueva_password')?.touched && perfilForm.get('nueva_password')?.invalid" class="text-[10px] text-rose-400 block mt-1">
               La nueva contraseña debe tener al menos 8 caracteres.
             </span>
           </div>
@@ -205,13 +258,29 @@
           <div class="space-y-1.5">
             <label class="block text-xs font-bold text-zinc-300">Confirmar Nueva Contraseña</label>
             <div class="relative flex items-center">
-              <span class="absolute left-3 text-zinc-400 text-sm">🔑</span>
+              <svg class="absolute left-3 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+              </svg>
               <input 
-                type="password" 
+                [type]="mostrarConfirmarPassword() ? 'text' : 'password'" 
                 formControlName="confirmar_password" 
                 placeholder="Repite la nueva contraseña"
-                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
+                class="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-color-primary-accent transition-all"
               />
+              <button 
+                type="button" 
+                (click)="togglePasswordVisibility('confirmar')" 
+                class="absolute right-3 p-1 text-zinc-400 hover:text-white transition-colors focus:outline-none"
+                title="Ver/Ocultar confirmación de contraseña"
+              >
+                <svg *ngIf="!mostrarConfirmarPassword()" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+                <svg *ngIf="mostrarConfirmarPassword()" class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.025 10.025 0 013.122-.063c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21M3 3l18 18"/>
+                </svg>
+              </button>
             </div>
             <span *ngIf="perfilForm.errors?.['passwordsNoCoinciden'] && perfilForm.get('confirmar_password')?.touched" class="text-[10px] text-rose-400">
               Las contraseñas no coinciden.
@@ -229,7 +298,10 @@
         class="px-6 py-3 rounded-pill bg-color-primary-accent text-black font-extrabold text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg flex items-center gap-2 cursor-pointer disabled:opacity-50"
       >
         <span *ngIf="guardando()" class="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full"></span>
-        <span>{{ guardando() ? 'Guardando Cambios...' : '💾 Guardar Perfil' }}</span>
+        <svg *ngIf="!guardando()" class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+        </svg>
+        <span>{{ guardando() ? 'Guardando Cambios...' : 'Guardar Perfil' }}</span>
       </button>
     </div>
 

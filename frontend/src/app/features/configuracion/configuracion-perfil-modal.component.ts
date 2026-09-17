@@ -20,6 +20,10 @@ export class ConfiguracionPerfilModalComponent implements OnInit {
   readonly mensajeExito = signal<string | null>(null);
   readonly mensajeError = signal<string | null>(null);
 
+  readonly mostrarPasswordActual = signal<boolean>(false);
+  readonly mostrarNuevaPassword = signal<boolean>(false);
+  readonly mostrarConfirmarPassword = signal<boolean>(false);
+
   readonly perfilForm: FormGroup = this.fb.group({
     nombre: ['', [Validators.required, Validators.maxLength(150)]],
     apellido: ['', [Validators.required, Validators.maxLength(150)]],
@@ -63,6 +67,43 @@ export class ConfiguracionPerfilModalComponent implements OnInit {
     this.tabActivo.set(tab);
     this.mensajeExito.set(null);
     this.mensajeError.set(null);
+  }
+
+  togglePasswordVisibility(campo: 'actual' | 'nueva' | 'confirmar'): void {
+    if (campo === 'actual') {
+      this.mostrarPasswordActual.update((v) => !v);
+    } else if (campo === 'nueva') {
+      this.mostrarNuevaPassword.update((v) => !v);
+    } else if (campo === 'confirmar') {
+      this.mostrarConfirmarPassword.update((v) => !v);
+    }
+  }
+
+  get fortalezaPassword(): {
+    nivel: 'debil' | 'media' | 'fuerte' | null;
+    porcentaje: number;
+    etiqueta: string;
+    claseColorBarra: string;
+    claseColorTexto: string;
+  } {
+    const val = this.perfilForm.get('nueva_password')?.value || '';
+    if (!val) {
+      return { nivel: null, porcentaje: 0, etiqueta: '', claseColorBarra: 'bg-zinc-700', claseColorTexto: 'text-zinc-400' };
+    }
+    if (val.length < 8) {
+      return { nivel: 'debil', porcentaje: 33, etiqueta: 'Débil', claseColorBarra: 'bg-rose-500', claseColorTexto: 'text-rose-400' };
+    }
+    const tieneMayuscula = /[A-Z]/.test(val);
+    const tieneNumero = /[0-9]/.test(val);
+    const tieneSimbolo = /[^A-Za-z0-9]/.test(val);
+
+    if (val.length >= 10 && tieneMayuscula && tieneNumero && tieneSimbolo) {
+      return { nivel: 'fuerte', porcentaje: 100, etiqueta: 'Fuerte', claseColorBarra: 'bg-emerald-500', claseColorTexto: 'text-emerald-400' };
+    }
+    if (tieneMayuscula || tieneNumero || tieneSimbolo) {
+      return { nivel: 'media', porcentaje: 66, etiqueta: 'Media', claseColorBarra: 'bg-amber-500', claseColorTexto: 'text-amber-400' };
+    }
+    return { nivel: 'debil', porcentaje: 33, etiqueta: 'Débil', claseColorBarra: 'bg-rose-500', claseColorTexto: 'text-rose-400' };
   }
 
   validarPasswordsCoinciden(control: AbstractControl): ValidationErrors | null {
