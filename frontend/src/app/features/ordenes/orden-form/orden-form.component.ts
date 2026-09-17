@@ -49,6 +49,7 @@ export class OrdenFormComponent implements OnInit {
     this.ordenForm = this.fb.group({
       modo: ['PRESUPUESTO', [Validators.required]],
       vehiculo_id: [null, [Validators.required]],
+      complejidad: ['media', [Validators.required]],
       descripcion_problema: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(2000)]],
       fecha_ingreso: [hoyString, [Validators.required]],
       turno_id: [null],
@@ -120,6 +121,7 @@ export class OrdenFormComponent implements OnInit {
       vehiculo_id: formVal.vehiculo_id,
       descripcion_problema: formVal.descripcion_problema,
       fecha_ingreso: formVal.fecha_ingreso,
+      complejidad: formVal.complejidad,
       estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado'
     };
 

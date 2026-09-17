@@ -84,6 +84,10 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
         if fecha_hasta:
             queryset = queryset.filter(fecha_ingreso__lte=fecha_hasta)
 
+        complejidad = self.request.query_params.get('complejidad')
+        if complejidad and complejidad.lower() != 'todas':
+            queryset = queryset.filter(complejidad__iexact=complejidad.strip())
+
         return queryset
 
 

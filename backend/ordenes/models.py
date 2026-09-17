@@ -7,12 +7,19 @@ from django.core.exceptions import ValidationError
 from vehiculos.models import Vehiculo
 
 
+class ComplejidadOrden(models.TextChoices):
+    BAJA = 'baja', 'Baja'
+    MEDIA = 'media', 'Media'
+    ALTA = 'alta', 'Alta'
+
+
 class EstadoOrden(models.TextChoices):
     INGRESADO = 'ingresado', 'Ingresado'
     EN_PRESUPUESTO = 'en_presupuesto', 'En Presupuesto'
     APROBADO = 'aprobado', 'Aprobado'
     RECHAZADO = 'rechazado', 'Rechazado'
     EN_PROCESO = 'en_proceso', 'En Proceso'
+    EN_PAUSA = 'en_pausa', 'En Pausa'
     FINALIZADO = 'finalizado', 'Finalizado'
     ENTREGADO = 'entregado', 'Entregado'
 
@@ -40,6 +47,12 @@ class OrdenTrabajo(models.Model):
         choices=EstadoOrden.choices,
         default=EstadoOrden.INGRESADO
     )
+    complejidad = models.CharField(
+        max_length=10,
+        choices=ComplejidadOrden.choices,
+        default=ComplejidadOrden.MEDIA
+    )
+    motivo_pausa = models.CharField(max_length=255, blank=True, null=True)
     descripcion_problema = models.TextField()
     fecha_ingreso = models.DateField(default=timezone.now)
     fecha_entrega = models.DateField(null=True, blank=True)
@@ -77,7 +90,8 @@ class OrdenTrabajo(models.Model):
             EstadoOrden.EN_PRESUPUESTO: [EstadoOrden.APROBADO, EstadoOrden.RECHAZADO],
             EstadoOrden.APROBADO: [EstadoOrden.EN_PROCESO],
             EstadoOrden.RECHAZADO: [EstadoOrden.EN_PRESUPUESTO],
-            EstadoOrden.EN_PROCESO: [EstadoOrden.FINALIZADO],
+            EstadoOrden.EN_PROCESO: [EstadoOrden.FINALIZADO, EstadoOrden.EN_PAUSA],
+            EstadoOrden.EN_PAUSA: [EstadoOrden.EN_PROCESO],
             EstadoOrden.FINALIZADO: [EstadoOrden.ENTREGADO],
             EstadoOrden.ENTREGADO: []
         }
