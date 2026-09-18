@@ -35,6 +35,9 @@ export interface OrdenResponse {
 }
 
 export interface OrdenFiltros {
+  busqueda?: string;
+  id?: string;
+  numero_ot?: string;
   patente?: string;
   cliente?: string;
   estado?: string;
@@ -61,7 +64,7 @@ export interface HistorialEstadoItem {
 }
 
 export interface OrdenHistorialResponse {
-  orden_id: string;
+  id: string;
   numero_ot: string;
   estado_actual: string;
   estado_actual_display: string;
@@ -116,9 +119,13 @@ export class OrdenService {
       .set('page', page.toString())
       .set('limit', limit.toString());
 
+    if (filtros.busqueda?.trim()) params = params.set('busqueda', filtros.busqueda.trim());
+    if (filtros.id?.trim()) params = params.set('id', filtros.id.trim());
+    if (filtros.numero_ot?.trim()) params = params.set('numero_ot', filtros.numero_ot.trim());
     if (filtros.patente?.trim()) params = params.set('patente', filtros.patente.trim());
     if (filtros.cliente?.trim()) params = params.set('cliente', filtros.cliente.trim());
     if (filtros.estado?.trim() && filtros.estado.toLowerCase() !== 'todos') params = params.set('estado', filtros.estado.trim());
+    if (filtros.complejidad?.trim() && filtros.complejidad.toLowerCase() !== 'todas') params = params.set('complejidad', filtros.complejidad.trim());
     if (filtros.tecnico?.trim()) params = params.set('tecnico', filtros.tecnico.trim());
     if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
     if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
