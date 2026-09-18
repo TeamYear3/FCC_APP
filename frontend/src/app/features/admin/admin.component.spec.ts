@@ -18,15 +18,10 @@ describe('AdminComponent', () => {
     fixture.detectChanges();
   });
 
-  it('debe crearse correctamente el componente administrador', () => {
+  it('debe crearse correctamente el componente administrador como Layout Shell', () => {
     expect(component).toBeTruthy();
-  });
-
-  it('debe cambiar de pestaña activamente', () => {
-    expect(component.activeTab()).toBe('facturacion');
-    component.setTab('calendario');
-    expect(component.activeTab()).toBe('calendario');
-    component.setTab('usuarios');
-    expect(component.activeTab()).toBe('usuarios');
+    expect(component.sidebarService).toBeTruthy();
+    expect(component.authService).toBeTruthy();
   });
 });
+
