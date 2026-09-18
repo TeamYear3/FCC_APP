@@ -1,21 +1,21 @@
 import { Component, OnInit, forwardRef, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule, NG_VALUE_ACCESSOR, ControlValueAccessor } from '@angular/forms';
 import { VehiculoService, VehiculoResponse } from '../../../core/services/vehiculo.service';
 
 @Component({
   selector: 'app-vehiculo-selector',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => VehiculoSelectorComponent),
-      multi: true
-    }
+      multi: true,
+    },
   ],
   templateUrl: './vehiculo-selector.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class VehiculoSelectorComponent implements OnInit, ControlValueAccessor {
   private readonly vehiculoService = inject(VehiculoService);
@@ -37,7 +37,7 @@ export class VehiculoSelectorComponent implements OnInit, ControlValueAccessor {
       (v) =>
         v.patente.toLowerCase().includes(term) ||
         v.marca.toLowerCase().includes(term) ||
-        v.modelo.toLowerCase().includes(term)
+        v.modelo.toLowerCase().includes(term),
     );
   });
 
@@ -64,7 +64,7 @@ export class VehiculoSelectorComponent implements OnInit, ControlValueAccessor {
         console.error('Error al obtener vehículos:', err);
         this.errorMsg.set('No se pudieron cargar los vehículos.');
         this.isLoading.set(false);
-      }
+      },
     });
   }
 
@@ -72,7 +72,7 @@ export class VehiculoSelectorComponent implements OnInit, ControlValueAccessor {
   private syncSelectedVehiculo(): void {
     const currentId = this.selectedVehiculo()?.id || null;
     if (currentId) {
-      const found = this.vehiculos().find(v => v.id === currentId);
+      const found = this.vehiculos().find((v) => v.id === currentId);
       if (found) {
         this.selectedVehiculo.set(found);
         this.searchTerm.set(`${found.marca} ${found.modelo} (${found.patente})`);
