@@ -32,7 +32,7 @@ class ResumenMecanicosView(views.APIView):
                 filter=Q(ordenes_asignadas__estado__in=ESTADOS_ACTIVOS),
                 distinct=True
             )
-        ).order_by('nombre', 'email')
+        ).prefetch_related('ordenes_asignadas__vehiculo').order_by('nombre', 'email')
 
         mecanicos_data = []
 
@@ -41,6 +41,20 @@ class ResumenMecanicosView(views.APIView):
             ots_totales = tec.ots_totales_count
             porcentaje_carga = min(100, int((ots_activas / CAPACIDAD_MAXIMA_MECANICO) * 100))
 
+            ordenes_activas = [o for o in tec.ordenes_asignadas.all() if o.estado in ESTADOS_ACTIVOS]
+            ordenes_activas.sort(key=lambda o: (o.fecha_ingreso or o.creado_en), reverse=True)
+            ultima_ot = ordenes_activas[0] if ordenes_activas else None
+
+            ot_activa_numero = None
+            ot_activa_vehiculo = None
+            ot_activa_estado = 'Disponible' if ots_activas == 0 else 'Activo'
+
+            if ultima_ot:
+                ot_activa_numero = ultima_ot.numero_ot
+                if ultima_ot.vehiculo:
+                    ot_activa_vehiculo = f"{ultima_ot.vehiculo.marca} {ultima_ot.vehiculo.modelo}".strip()
+                ot_activa_estado = ultima_ot.get_estado_display() or ultima_ot.estado
+
             mecanicos_data.append({
                 'id': str(tec.id),
                 'nombre': f"{tec.nombre} {tec.apellido}".strip() or tec.email,
@@ -48,7 +62,10 @@ class ResumenMecanicosView(views.APIView):
                 'estado': 'Activo' if tec.is_active else 'Inactivo',
                 'ots_asignadas': ots_totales,
                 'ots_activas': ots_activas,
-                'porcentaje_carga': porcentaje_carga
+                'porcentaje_carga': porcentaje_carga,
+                'ot_activa_numero': ot_activa_numero,
+                'ot_activa_vehiculo': ot_activa_vehiculo,
+                'ot_activa_estado': ot_activa_estado
             })
 
         return Response(mecanicos_data, status=status.HTTP_200_OK)
