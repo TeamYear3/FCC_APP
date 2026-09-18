@@ -165,4 +165,24 @@ describe('ClientesComponent', () => {
       expect(component.clientesFiltrados().length).toBe(2);
     });
   });
+
+  describe('TK087 - Modal / Drawer de Expediente Clínico de Cliente', () => {
+    it('debe abrir el expediente seleccionando el cliente adecuado', () => {
+      const cli = component.clientes()[0];
+      component.abrirExpediente(cli);
+
+      expect(component.mostrarModalExpediente()).toBe(true);
+      expect(component.clienteSeleccionadoExpediente()).toEqual(cli);
+    });
+
+    it('debe cerrar el expediente y limpiar el cliente seleccionado', () => {
+      const cli = component.clientes()[0];
+      component.abrirExpediente(cli);
+      expect(component.mostrarModalExpediente()).toBe(true);
+
+      component.cerrarExpediente();
+      expect(component.mostrarModalExpediente()).toBe(false);
+      expect(component.clienteSeleccionadoExpediente()).toBeNull();
+    });
+  });
 });

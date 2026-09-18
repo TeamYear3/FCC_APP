@@ -231,6 +231,7 @@
             <div class="flex gap-2 mt-md">
               <button
                 type="button"
+                (click)="abrirExpediente(cli)"
                 class="flex-1 min-h-[44px] rounded-pill bg-white/5 border border-white/10 hover:bg-white/10 text-white typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Expediente</span>
@@ -294,5 +295,10 @@
       <span>Acceso operativo para Admin y Técnico</span>
     </div>
     <span>Material Design 3 · Dark Mode Optimizado</span>
-  </div>
+  <!-- Drawer / Modal de Expediente Clínico de Cliente (TK087) -->
+  <app-expediente-cliente-modal
+    [mostrar]="mostrarModalExpediente()"
+    [cliente]="clienteSeleccionadoExpediente()"
+    (cerrado)="cerrarExpediente()"
+  ></app-expediente-cliente-modal>
 </div>

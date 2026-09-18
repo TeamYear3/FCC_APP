@@ -1,13 +1,13 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
-
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../core/auth/auth.service';
-import { ClienteService, ClienteResponse } from '../../core/services/cliente.service';
-import { TallerService, ClienteResumen } from '../../core/services/taller.service';
-import { VehiculoService, VehiculoResponse } from '../../core/services/vehiculo.service';
+import { ClienteService } from '../../core/services/cliente.service';
+import { TallerService } from '../../core/services/taller.service';
+import { VehiculoService } from '../../core/services/vehiculo.service';
 import { PageComponent } from '../../shared/components/page-component/page-component';
+import { ExpedienteClienteModalComponent } from './expediente-cliente-modal/expediente-cliente-modal.component';
 
 export interface ClienteDisplayItem {
   id: string;
@@ -27,7 +27,7 @@ export interface ClienteDisplayItem {
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [RouterLink, PageComponent],
+  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css',
 })
@@ -45,6 +45,9 @@ export class ClientesComponent implements OnInit {
   readonly mensajeError = signal<string | null>(null);
   readonly clientes = signal<ClienteDisplayItem[]>([]);
 
+  readonly clienteSeleccionadoExpediente = signal<ClienteDisplayItem | null>(null);
+  readonly mostrarModalExpediente = signal<boolean>(false);
+
   readonly terminoBusqueda = signal<string>('');
   readonly estadoFiltro = signal<string>('Todos');
 
@@ -52,7 +55,7 @@ export class ClientesComponent implements OnInit {
     const termino = this.terminoBusqueda().trim().toLowerCase();
     const estado = this.estadoFiltro();
 
-    return this.clientes().filter((cli) => {
+    return this.clientes().filter(cli => {
       // 1. Filtrado por Píldora de Estado
       if (estado !== 'Todos' && cli.estado !== estado) {
         return false;
@@ -67,24 +70,21 @@ export class ClientesComponent implements OnInit {
       const matchDoc = cli.dniCuit.toLowerCase().includes(termino);
       const matchEmail = cli.email.toLowerCase().includes(termino);
       const matchTel = cli.telefono.toLowerCase().includes(termino);
-      const matchFlota = cli.flota.some((v) => v.toLowerCase().includes(termino));
+      const matchFlota = cli.flota.some(v => v.toLowerCase().includes(termino));
 
       return matchNombre || matchDoc || matchEmail || matchTel || matchFlota;
     });
   });
 
   readonly totalClientes = computed(() => this.clientes().length);
-  readonly cuentasCorporativas = computed(
-    () =>
-      this.clientes().filter(
-        (c) => c.tipoDocumento === 'CUIT' || c.condicionIva === 'RI' || c.condicionIva === 'EX',
-      ).length,
+  readonly cuentasCorporativas = computed(() => 
+    this.clientes().filter(c => c.tipoDocumento === 'CUIT' || c.condicionIva === 'RI' || c.condicionIva === 'EX').length
   );
-  readonly totalVehiculos = computed(() =>
-    this.clientes().reduce((acc, c) => acc + (c.flota.length || c.vehiculos_count || 0), 0),
+  readonly totalVehiculos = computed(() => 
+    this.clientes().reduce((acc, c) => acc + (c.flota.length || c.vehiculos_count || 0), 0)
   );
-  readonly ordenesAbiertas = computed(() =>
-    this.clientes().reduce((acc, c) => acc + (c.ots_activas || 0), 0),
+  readonly ordenesAbiertas = computed(() => 
+    this.clientes().reduce((acc, c) => acc + (c.ots_activas || 0), 0)
   );
 
   ngOnInit(): void {
@@ -99,13 +99,13 @@ export class ClientesComponent implements OnInit {
     forkJoin({
       clientes: this.clienteService.obtenerClientes(),
       resumen: this.tallerService.getResumenClientes().pipe(catchError(() => of([]))),
-      vehiculos: this.vehiculoService.getVehiculos().pipe(catchError(() => of([]))),
+      vehiculos: this.vehiculoService.getVehiculos().pipe(catchError(() => of([])))
     }).subscribe({
       next: ({ clientes, resumen, vehiculos }) => {
-        const mapResumen = new Map(resumen.map((r) => [r.id, r]));
+        const mapResumen = new Map(resumen.map(r => [r.id, r]));
         const mapVehiculos = new Map<string, string[]>();
 
-        vehiculos.forEach((v) => {
+        vehiculos.forEach(v => {
           if (v.cliente_id) {
             const desc = `${v.marca} ${v.modelo} (${v.patente})`.trim();
             const list = mapVehiculos.get(v.cliente_id) || [];
@@ -114,11 +114,11 @@ export class ClientesComponent implements OnInit {
           }
         });
 
-        const items: ClienteDisplayItem[] = clientes.map((c) => {
+        const items: ClienteDisplayItem[] = clientes.map(c => {
           const res = mapResumen.get(c.id);
           const vehs = mapVehiculos.get(c.id) || [];
           const otsActivas = res ? res.ots_activas : 0;
-
+          
           let estadoCalculado: 'En proceso' | 'En revisión' | 'Pendiente' | 'Activo' = 'Activo';
           if (otsActivas > 0) {
             estadoCalculado = 'En proceso';
@@ -138,7 +138,7 @@ export class ClientesComponent implements OnInit {
             vehiculos_count: vehs.length || (res ? res.vehiculos_count : 0),
             estado: estadoCalculado,
             ordenActiva: otsActivas > 0 ? `${otsActivas} OT(s) activa(s)` : 'Sin OT activa',
-            ots_activas: otsActivas,
+            ots_activas: otsActivas
           };
         });
 
@@ -149,8 +149,18 @@ export class ClientesComponent implements OnInit {
         console.error('Error al cargar clientes desde la API:', err);
         this.mensajeError.set('No se pudo cargar la cartera de clientes desde el servidor.');
         this.cargando.set(false);
-      },
+      }
     });
+  }
+
+  abrirExpediente(cli: ClienteDisplayItem): void {
+    this.clienteSeleccionadoExpediente.set(cli);
+    this.mostrarModalExpediente.set(true);
+  }
+
+  cerrarExpediente(): void {
+    this.mostrarModalExpediente.set(false);
+    this.clienteSeleccionadoExpediente.set(null);
   }
 
   onBusquedaInput(event: Event): void {
