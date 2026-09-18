@@ -107,4 +107,62 @@ describe('ClientesComponent', () => {
     expect(component.mensajeError()).toBe('No se pudo cargar la cartera de clientes desde el servidor.');
     expect(component.cargando()).toBe(false);
   });
+
+  describe('TK086 - Buscador Dinámico en Vivo y Filtro por Estado', () => {
+    it('debe inicializar con los filtros por defecto (todos los clientes visibles)', () => {
+      expect(component.terminoBusqueda()).toBe('');
+      expect(component.estadoFiltro()).toBe('Todos');
+      expect(component.clientesFiltrados().length).toBe(2);
+    });
+
+    it('debe filtrar en vivo por nombre del cliente', () => {
+      component.terminoBusqueda.set('carlos');
+      expect(component.clientesFiltrados().length).toBe(1);
+      expect(component.clientesFiltrados()[0].nombreCompleto).toContain('Carlos');
+    });
+
+    it('debe filtrar en vivo por DNI / CUIT', () => {
+      component.terminoBusqueda.set('30712345678');
+      expect(component.clientesFiltrados().length).toBe(1);
+      expect(component.clientesFiltrados()[0].dniCuit).toBe('30712345678');
+    });
+
+    it('debe filtrar en vivo por vehículo o patente vinculada', () => {
+      component.terminoBusqueda.set('AD456XY');
+      expect(component.clientesFiltrados().length).toBe(1);
+      expect(component.clientesFiltrados()[0].id).toBe('uuid-cli-1');
+    });
+
+    it('debe filtrar por estado del cliente (píldoras de estado)', () => {
+      // Carlos Rodríguez tiene ots_activas = 1 -> estado 'En proceso'
+      // Transportes Sur S.A. sin vehículos -> estado 'Pendiente'
+      component.setEstadoFiltro('En proceso');
+      expect(component.clientesFiltrados().length).toBe(1);
+      expect(component.clientesFiltrados()[0].estado).toBe('En proceso');
+
+      component.setEstadoFiltro('Pendiente');
+      expect(component.clientesFiltrados().length).toBe(1);
+      expect(component.clientesFiltrados()[0].estado).toBe('Pendiente');
+    });
+
+    it('debe combinar la búsqueda por texto y el filtro por estado', () => {
+      component.terminoBusqueda.set('Carlos');
+      component.setEstadoFiltro('Pendiente'); // Carlos está 'En proceso', no 'Pendiente'
+      expect(component.clientesFiltrados().length).toBe(0);
+
+      component.setEstadoFiltro('En proceso');
+      expect(component.clientesFiltrados().length).toBe(1);
+    });
+
+    it('debe restablecer la búsqueda y los filtros con limpiarFiltros()', () => {
+      component.terminoBusqueda.set('Búsqueda sin resultado');
+      component.setEstadoFiltro('En revisión');
+      expect(component.clientesFiltrados().length).toBe(0);
+
+      component.limpiarFiltros();
+      expect(component.terminoBusqueda()).toBe('');
+      expect(component.estadoFiltro()).toBe('Todos');
+      expect(component.clientesFiltrados().length).toBe(2);
+    });
+  });
 });
