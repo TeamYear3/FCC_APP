@@ -11,6 +11,9 @@ export interface MecanicoResumen {
   ots_asignadas: number;
   ots_activas: number;
   porcentaje_carga: number;
+  ot_activa_numero?: string | null;
+  ot_activa_vehiculo?: string | null;
+  ot_activa_estado?: string | null;
 }
 
 export interface ClienteResumen {

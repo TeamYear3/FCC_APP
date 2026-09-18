@@ -27,7 +27,10 @@ export interface OrdenResponse {
   creado_en: string;
   actualizado_en: string;
   vehiculo_patente?: string;
+  vehiculo_marca_modelo?: string;
   cliente_nombre?: string;
+  cliente_documento?: string;
+  cliente_dni_cuit?: string;
   monto_total?: number;
 }
 
