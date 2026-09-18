@@ -53,7 +53,7 @@ describe('OrdenesComponent', () => {
     component.busqueda.set('ABC123');
     component.onFiltroChange();
     expect(mockOrdenService.obtenerOrdenes).toHaveBeenCalledWith(
-      expect.objectContaining({ patente: 'ABC123' }),
+      expect.objectContaining({ busqueda: 'ABC123' }),
       1,
       10
     );

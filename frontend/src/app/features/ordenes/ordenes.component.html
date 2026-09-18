@@ -208,21 +208,22 @@
         <div>
           <div class="flex items-center gap-3">
             <span class="typography-h1-display text-color-primary-accent tracking-tight"
-              >#OT-1257</span
+              >#OT-{{ (ordenActiva()?.numero_ot || '0000').replace('OT-', '').replace('#', '') }}</span
             >
-            <!-- Badge Semántico En Proceso (Página 4) -->
+            <!-- Badge Semántico Dinámico -->
             <span
-              class="px-3 py-1 rounded-badge bg-color-status-process text-black typography-caption font-extrabold uppercase tracking-wide shadow"
+              class="px-3 py-1 rounded-pill text-xs font-bold uppercase tracking-wider shadow inline-flex items-center"
+              [ngClass]="obtenerClaseEstado(ordenActiva()?.estado)"
             >
-              En proceso
+              {{ obtenerTextoEstado(ordenActiva()?.estado) }}
             </span>
           </div>
           <h2 class="typography-h2-section text-white mt-1">
-            Volkswagen Amarok V6 3.0 TDI Highline 4x4
+            {{ ordenActiva()?.vehiculo_marca_modelo || 'Vehículo en taller' }}
           </h2>
           <p class="typography-body-main text-color-text-secondary mt-0.5">
-            Patente: <strong class="text-white">AD 456 XY</strong> · VIN:
-            <span class="font-mono text-xs">8AWZZZ2HZMA091234</span>
+            Patente: <strong class="text-white">{{ ordenActiva()?.vehiculo_patente || 'S/D' }}</strong> · 
+            Motivo: <span class="text-white/80">{{ ordenActiva()?.descripcion_problema || 'Sin descripción' }}</span>
           </p>
         </div>
 
@@ -258,16 +259,16 @@
             class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
             >Titular / Cliente</span
           >
-          <p class="typography-body-highlight text-white mt-0.5">Carlos Rodríguez</p>
-          <p class="typography-caption text-color-text-secondary">Tel: +54 9 11 5566-7788</p>
+          <p class="typography-body-highlight text-white mt-0.5">{{ ordenActiva()?.cliente_nombre || 'Cliente Registrado' }}</p>
+          <p class="typography-caption text-color-text-secondary">{{ ordenActiva()?.cliente_documento || ('Documento: ' + (ordenActiva()?.cliente_dni_cuit || 'S/D')) }}</p>
         </div>
         <div>
           <span
             class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
             >Ingreso Técnico</span
           >
-          <p class="typography-body-highlight text-white mt-0.5">16 Jul 2026 - 08:30 AM</p>
-          <p class="typography-caption text-color-text-secondary">Asesor: Martín Gómez</p>
+          <p class="typography-body-highlight text-white mt-0.5">{{ ordenActiva()?.fecha_ingreso | date: 'dd MMM yyyy' }}</p>
+          <p class="typography-caption text-color-text-secondary">Técnico: {{ ordenActiva()?.tecnico || 'Asignado en taller' }}</p>
         </div>
         <div class="sm:text-right">
           <span
@@ -275,7 +276,7 @@
             >Presupuesto Estimado</span
           >
           <p class="typography-h2-section text-color-primary-accent mt-0.5 font-extrabold">
-            $ 485,000.00
+            $ {{ (ordenActiva()?.monto_total || 0) | number: '1.2-2' }}
           </p>
           <p class="typography-caption text-color-text-secondary">IVA y mano de obra incluidos</p>
         </div>
