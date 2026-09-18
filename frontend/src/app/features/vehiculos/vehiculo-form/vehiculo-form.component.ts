@@ -1,5 +1,13 @@
-import { Component, OnInit, inject, signal, computed, ElementRef, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  ElementRef,
+  HostListener,
+} from '@angular/core';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { VehiculoService, VehiculoCreatePayload } from '../../../core/services/vehiculo.service';
@@ -8,9 +16,9 @@ import { ClienteService, ClienteResponse } from '../../../core/services/cliente.
 @Component({
   selector: 'app-vehiculo-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './vehiculo-form.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class VehiculoFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -47,7 +55,7 @@ export class VehiculoFormComponent implements OnInit {
     if (!termino) {
       return clientes.slice(0, 10);
     }
-    return clientes.filter(c => {
+    return clientes.filter((c) => {
       const nombreCompleto = `${c.nombre} ${c.apellido}`.toLowerCase();
       const doc = (c.dni_cuit || '').toLowerCase();
       return nombreCompleto.includes(termino) || doc.includes(termino);
@@ -62,15 +70,15 @@ export class VehiculoFormComponent implements OnInit {
       modelo: ['', [Validators.required, Validators.minLength(2)]],
       anio: [null, [Validators.min(1900), Validators.max(new Date().getFullYear() + 1)]],
       tipo_motor: ['NAFTERO', [Validators.required]],
-      patente: ['', [
-        Validators.required,
-        Validators.pattern(/^([A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/i)
-      ]],
+      patente: [
+        '',
+        [Validators.required, Validators.pattern(/^([A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/i)],
+      ],
       numero_chasis: ['', [Validators.maxLength(50)]],
       nro_chasis: ['', [Validators.maxLength(50)]],
       kilometraje: [null, [Validators.min(0)]],
       color: ['', [Validators.maxLength(50)]],
-      informacion_adicional: ['', [Validators.maxLength(255)]]
+      informacion_adicional: ['', [Validators.maxLength(255)]],
     });
 
     this.cargarClientes();
@@ -90,19 +98,19 @@ export class VehiculoFormComponent implements OnInit {
         // Si viene un cliente_id por query param, preseleccionarlo
         const clienteIdParam = this.route.snapshot.queryParamMap.get('cliente_id');
         if (clienteIdParam) {
-          const encontrado = clientes.find(c => c.id === clienteIdParam);
+          const encontrado = clientes.find((c) => c.id === clienteIdParam);
           if (encontrado) {
             this.seleccionarCliente(encontrado);
           }
         }
-        
+
         // Si estamos en modo edición, ahora que los clientes están cargados,
         // podemos seleccionar al cliente asociado al vehículo si ya obtuvimos el vehículo.
         // Pero es más seguro buscarlo dentro del subscribe de cargarDatosVehiculo.
       },
       error: (err) => {
         console.error('Error al cargar la lista de clientes:', err);
-      }
+      },
     });
   }
 
@@ -113,7 +121,7 @@ export class VehiculoFormComponent implements OnInit {
           ...vehiculo,
           tipo_motor: vehiculo.tipo_motor || 'NAFTERO',
           numero_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || '',
-          nro_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || ''
+          nro_chasis: vehiculo.numero_chasis || vehiculo.nro_chasis || '',
         });
         this.vehiculoForm.get('patente')?.disable(); // Bloqueamos patente por regla de negocio
 
@@ -121,13 +129,13 @@ export class VehiculoFormComponent implements OnInit {
         if (vehiculo.cliente_id) {
           // Buscamos si ya tenemos la lista cargada
           const clientes = this.listaClientes();
-          const encontrado = clientes.find(c => c.id === vehiculo.cliente_id);
+          const encontrado = clientes.find((c) => c.id === vehiculo.cliente_id);
           if (encontrado) {
             this.seleccionarCliente(encontrado);
           } else {
             // Si la lista aún no carga, nos suscribimos puntualmente al cliente
-            this.clienteService.obtenerClientes().subscribe(clientesAPI => {
-              const cli = clientesAPI.find(c => c.id === vehiculo.cliente_id);
+            this.clienteService.obtenerClientes().subscribe((clientesAPI) => {
+              const cli = clientesAPI.find((c) => c.id === vehiculo.cliente_id);
               if (cli) this.seleccionarCliente(cli);
             });
           }
@@ -136,7 +144,7 @@ export class VehiculoFormComponent implements OnInit {
       error: (err) => {
         console.error('Error al cargar vehículo:', err);
         this.errorMessage.set('No se pudieron cargar los datos del vehículo.');
-      }
+      },
     });
   }
 
@@ -188,12 +196,13 @@ export class VehiculoFormComponent implements OnInit {
       anio: formValue.anio ? Number(formValue.anio) : null,
       tipo_motor: formValue.tipo_motor || 'NAFTERO',
       kilometraje: formValue.kilometraje ? Number(formValue.kilometraje) : null,
-      color: formValue.color ? formValue.color.trim() : ''
+      color: formValue.color ? formValue.color.trim() : '',
     };
 
-    const request$ = this.isEditMode() && this.vehiculoId()
-      ? this.vehiculoService.actualizarVehiculo(this.vehiculoId()!, payload)
-      : this.vehiculoService.crearVehiculo(payload);
+    const request$ =
+      this.isEditMode() && this.vehiculoId()
+        ? this.vehiculoService.actualizarVehiculo(this.vehiculoId()!, payload)
+        : this.vehiculoService.crearVehiculo(payload);
 
     request$.subscribe({
       next: () => {
@@ -212,8 +221,12 @@ export class VehiculoFormComponent implements OnInit {
             vehiculo_id: err.error?.vehiculo_id || err.error?.id,
             patente: payload.patente,
             nro_chasis: payload.nro_chasis,
-            clienteNombre: err.error?.cliente_propietario || err.error?.cliente_nombre || 'otro cliente',
-            mensaje: err.error?.detail || err.error?.mensaje || 'El vehículo con esta patente o número de chasis ya se encuentra registrado a nombre de otro cliente.'
+            clienteNombre:
+              err.error?.cliente_propietario || err.error?.cliente_nombre || 'otro cliente',
+            mensaje:
+              err.error?.detail ||
+              err.error?.mensaje ||
+              'El vehículo con esta patente o número de chasis ya se encuentra registrado a nombre de otro cliente.',
           });
           return;
         }
@@ -236,10 +249,12 @@ export class VehiculoFormComponent implements OnInit {
           if (err.error?.detail || err.error?.error) {
             this.errorMessage.set(err.error.detail || err.error.error);
           } else {
-            this.errorMessage.set('No se pudo registrar el vehículo. Verifique los datos ingresados o la conexión al servidor.');
+            this.errorMessage.set(
+              'No se pudo registrar el vehículo. Verifique los datos ingresados o la conexión al servidor.',
+            );
           }
         }
-      }
+      },
     });
   }
 
@@ -270,7 +285,7 @@ export class VehiculoFormComponent implements OnInit {
         this.cerrarModalUnicidad();
         console.error('Error al reasignar vehículo:', err);
         this.errorMessage.set('No se pudo completar la reasignación de la titularidad.');
-      }
+      },
     });
   }
 }

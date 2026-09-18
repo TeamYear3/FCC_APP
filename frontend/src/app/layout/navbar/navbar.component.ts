@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, of } from 'rxjs';
@@ -11,8 +11,8 @@ import { BusquedaService, BusquedaResultadoResponse } from '../../core/services/
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './navbar.component.html'
+  imports: [FormsModule],
+  templateUrl: './navbar.component.html',
 })
 export class NavbarComponent implements OnInit {
   private readonly authService = inject(AuthService);
@@ -22,29 +22,35 @@ export class NavbarComponent implements OnInit {
 
   readonly userRole = this.authService.userRoleSignal;
   readonly query = signal<string>('');
-  readonly resultados = signal<BusquedaResultadoResponse>({ clientes: [], vehiculos: [], ordenes: [] });
+  readonly resultados = signal<BusquedaResultadoResponse>({
+    clientes: [],
+    vehiculos: [],
+    ordenes: [],
+  });
   readonly cargando = signal<boolean>(false);
   readonly desplegableAbierto = signal<boolean>(false);
 
   private readonly searchSubject = new Subject<string>();
 
   ngOnInit(): void {
-    this.searchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap((term) => {
-        if (!term || term.trim().length < 2) {
-          this.cargando.set(false);
-          return of({ clientes: [], vehiculos: [], ordenes: [] });
-        }
-        this.cargando.set(true);
-        return this.busquedaService.buscarUniversal(term);
-      })
-    ).subscribe((res) => {
-      this.resultados.set(res);
-      this.cargando.set(false);
-      this.desplegableAbierto.set(true);
-    });
+    this.searchSubject
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((term) => {
+          if (!term || term.trim().length < 2) {
+            this.cargando.set(false);
+            return of({ clientes: [], vehiculos: [], ordenes: [] });
+          }
+          this.cargando.set(true);
+          return this.busquedaService.buscarUniversal(term);
+        }),
+      )
+      .subscribe((res) => {
+        this.resultados.set(res);
+        this.cargando.set(false);
+        this.desplegableAbierto.set(true);
+      });
   }
 
   onSearchInput(value: string): void {
