@@ -52,6 +52,25 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
             queryset = queryset.filter(vehiculo__cliente__usuario=user)
 
         # Filtros acumulativos TK056
+        busqueda = self.request.query_params.get('busqueda') or self.request.query_params.get('q')
+        if busqueda:
+            term = busqueda.strip()
+            queryset = queryset.filter(
+                Q(numero_ot__icontains=term) |
+                Q(vehiculo__patente__icontains=term) |
+                Q(vehiculo__cliente__nombre__icontains=term) |
+                Q(vehiculo__cliente__apellido__icontains=term) |
+                Q(vehiculo__cliente__dni_cuit__icontains=term)
+            )
+
+        numero_ot = self.request.query_params.get('numero_ot')
+        if numero_ot:
+            queryset = queryset.filter(numero_ot__icontains=numero_ot.strip())
+
+        orden_id = self.request.query_params.get('id')
+        if orden_id:
+            queryset = queryset.filter(id=orden_id.strip())
+
         patente = self.request.query_params.get('patente')
         if patente:
             queryset = queryset.filter(vehiculo__patente__icontains=patente.strip())
