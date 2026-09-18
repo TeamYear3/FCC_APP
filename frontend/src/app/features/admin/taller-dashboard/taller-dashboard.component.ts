@@ -1,5 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SidebarService, RolVistaPrevia } from '../../../core/services/sidebar.service';
@@ -8,7 +8,7 @@ import { TallerService, MecanicoResumen, ClienteResumen } from '../../../core/se
 @Component({
   selector: 'app-taller-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [DecimalPipe, RouterLink],
   templateUrl: './taller-dashboard.component.html',
   styleUrl: './taller-dashboard.component.css'
 })
@@ -22,6 +22,23 @@ export class TallerDashboardComponent implements OnInit {
   readonly clientes = signal<ClienteResumen[]>([]);
   readonly cargandoMecanicos = signal<boolean>(true);
   readonly cargandoClientes = signal<boolean>(true);
+
+  readonly totalOtsActivas = computed(() =>
+    this.mecanicos().reduce((acc, m) => acc + (m.ots_activas || 0), 0)
+  );
+
+  readonly capacidadPromedio = computed(() => {
+    const mecs = this.mecanicos();
+    if (mecs.length === 0) return 0;
+    const sum = mecs.reduce((acc, m) => acc + (m.porcentaje_carga || 0), 0);
+    return Math.round(sum / mecs.length);
+  });
+
+  readonly totalClientesRegistrados = computed(() => this.clientes().length);
+
+  readonly facturacionTotalConsolidada = computed(() =>
+    this.clientes().reduce((acc, c) => acc + (c.monto_total_facturado || 0), 0)
+  );
 
   ngOnInit(): void {
     this.cargarResumenMecanicos();
@@ -54,3 +71,4 @@ export class TallerDashboardComponent implements OnInit {
     this.sidebarService.setVistaPreviaRol(rol);
   }
 }
+

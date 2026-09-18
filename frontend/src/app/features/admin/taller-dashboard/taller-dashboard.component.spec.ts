@@ -50,4 +50,12 @@ describe('TallerDashboardComponent', () => {
     component.cambiarVistaPrevia('admin');
     expect(component.sidebarService.vistaPreviaRolSignal()).toBeNull();
   });
+
+  it('debe calcular correctamente los Core KPIs del taller', () => {
+    expect(component.totalOtsActivas()).toBe(2);
+    expect(component.capacidadPromedio()).toBe(40);
+    expect(component.totalClientesRegistrados()).toBe(1);
+    expect(component.facturacionTotalConsolidada()).toBe(15000);
+  });
 });
+
