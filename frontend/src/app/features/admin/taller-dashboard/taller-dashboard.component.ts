@@ -1,27 +1,31 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { SidebarService, RolVistaPrevia } from '../../../core/services/sidebar.service';
 import { TallerService, MecanicoResumen, ClienteResumen } from '../../../core/services/taller.service';
+import { OrdenService, OrdenResponse } from '../../../core/services/orden.service';
 
 @Component({
   selector: 'app-taller-dashboard',
   standalone: true,
-  imports: [DecimalPipe, RouterLink],
+  imports: [DecimalPipe, DatePipe, RouterLink],
   templateUrl: './taller-dashboard.component.html',
   styleUrl: './taller-dashboard.component.css'
 })
 export class TallerDashboardComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly tallerService = inject(TallerService);
+  private readonly ordenService = inject(OrdenService);
   readonly sidebarService = inject(SidebarService);
 
   readonly userRole = this.authService.userRoleSignal;
   readonly mecanicos = signal<MecanicoResumen[]>([]);
   readonly clientes = signal<ClienteResumen[]>([]);
+  readonly ordenesRecientes = signal<OrdenResponse[]>([]);
   readonly cargandoMecanicos = signal<boolean>(true);
   readonly cargandoClientes = signal<boolean>(true);
+  readonly cargandoOrdenes = signal<boolean>(true);
 
   readonly totalOtsActivas = computed(() =>
     this.mecanicos().reduce((acc, m) => acc + (m.ots_activas || 0), 0)
@@ -43,6 +47,7 @@ export class TallerDashboardComponent implements OnInit {
   ngOnInit(): void {
     this.cargarResumenMecanicos();
     this.cargarResumenClientes();
+    this.cargarOrdenesRecientes();
   }
 
   cargarResumenMecanicos(): void {
@@ -64,6 +69,17 @@ export class TallerDashboardComponent implements OnInit {
         this.cargandoClientes.set(false);
       },
       error: () => this.cargandoClientes.set(false)
+    });
+  }
+
+  cargarOrdenesRecientes(): void {
+    this.cargandoOrdenes.set(true);
+    this.ordenService.obtenerOrdenes({}, 1, 5).subscribe({
+      next: (res) => {
+        this.ordenesRecientes.set(res.results || []);
+        this.cargandoOrdenes.set(false);
+      },
+      error: () => this.cargandoOrdenes.set(false)
     });
   }
 
