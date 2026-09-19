@@ -198,7 +198,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (item of items(); track item) {
+              @for (item of items(); track item.id || item.descripcion) {
                 <tr [class.row-completada]="item.completado">
                   <!-- Checkbox Modo Ejecución -->
                   @if (modoEjecucion) {
