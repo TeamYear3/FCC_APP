@@ -91,7 +91,7 @@ export const routes: Routes = [
       {
         path: 'facturacion',
         loadComponent: () =>
-          import('./features/facturacion/facturacion-calendario.component').then(
+          import('./features/admin/facturacion-calendario/facturacion-calendario.component').then(
             (m) => m.FacturacionCalendarioComponent
           )
       },
