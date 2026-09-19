@@ -33,6 +33,9 @@ export interface OrdenResponse {
   cliente_documento?: string;
   cliente_dni_cuit?: string;
   monto_total?: number | string;
+  estado_cobro?: 'pendiente' | 'cobrado' | string;
+  metodo_pago?: string | null;
+  fecha_cobro?: string | null;
 }
 
 export interface OrdenFiltros {
@@ -229,6 +232,19 @@ export class OrdenService {
     return this.http.get(`${this.apiUrl}${id}/pdf/`, {
       responseType: 'blob'
     });
+  }
+
+  /**
+   * Registrar cobro operativo de una OT desacoplado de facturación fiscal (POST /api/ordenes/<id>/registrar-pago/) (TK103)
+   */
+  registrarPago(
+    ordenId: string,
+    payload: { metodo_pago: string; comentario?: string; entregar_orden?: boolean }
+  ): Observable<{ message: string; orden: OrdenResponse }> {
+    return this.http.post<{ message: string; orden: OrdenResponse }>(
+      `${this.apiUrl}${ordenId}/registrar-pago/`,
+      payload
+    );
   }
 }
 
