@@ -37,8 +37,9 @@ yarn-error.log*
 .docker/
 docker-compose.override.yml
 
-# Documentación local
-docs/
+# Documentación local (se ignoran binarios/temporales, se versionan .md)
+docs/*
+!docs/*.md
 
 # Archivos multimedia temporales
 media/

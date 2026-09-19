@@ -109,3 +109,42 @@ def notificar_cambio_estado_websocket(orden: OrdenTrabajo, estado_anterior: str)
     return payload
 
 
+def notificar_adjunto_diagnostico_websocket(adjunto_o_id, orden_id, numero_ot=None, accion="creado", datos_adjunto=None) -> dict:
+    """
+    Emite una notificación WebSocket cuando se sube o elimina una foto de diagnóstico.
+    Permite sincronización multidispositivo en tiempo real (PC, smartphone).
+    """
+    payload = {
+        "event": f"adjunto_{accion}",
+        "accion": accion,
+        "orden_id": str(orden_id),
+        "numero_ot": numero_ot,
+        "adjunto_id": str(adjunto_o_id),
+        "adjunto": datos_adjunto
+    }
+
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            groups = ["ordenes_actualizaciones"]
+            if numero_ot:
+                groups.append(f"orden_{numero_ot}")
+            for group in groups:
+                async_to_sync(channel_layer.group_send)(
+                    group,
+                    {
+                        "type": "adjunto_actualizado",
+                        "data": payload
+                    }
+                )
+            logger.info(f"Notificación WebSocket de adjunto enviada para OT {numero_ot}: {accion}")
+    except (ImportError, Exception) as e:
+        logger.info(f"Notificación WebSocket de adjunto fallback: {payload} - Info: {e}")
+
+    return payload
+
+
+

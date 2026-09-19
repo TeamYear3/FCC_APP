@@ -56,7 +56,9 @@ def subir_imagen_diagnostico(file_obj, orden_id):
 
     saved_path = default_storage.save(relative_path, ContentFile(file_obj.read()))
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
-    url_secure = f"{media_url.rstrip('/')}/{saved_path.replace(os.sep, '/')}"
+    backend_base = os.getenv('BACKEND_BASE_URL', os.getenv('BACKEND_URL', 'http://localhost:8000')).rstrip('/')
+    path_clean = saved_path.replace(os.sep, '/')
+    url_secure = f"{backend_base}{media_url.rstrip('/')}/{path_clean}"
 
     return {
         'url_secure': url_secure,

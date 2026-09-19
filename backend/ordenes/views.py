@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, generics
@@ -51,18 +52,44 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
         if getattr(user, 'rol', None) == 'cliente':
             queryset = queryset.filter(vehiculo__cliente__usuario=user)
 
-        # Filtros acumulativos TK056
+        # Filtros acumulativos TK056 & TK119
+        search = self.request.query_params.get('search') or self.request.query_params.get('busqueda')
         patente = self.request.query_params.get('patente')
-        if patente:
-            queryset = queryset.filter(vehiculo__patente__icontains=patente.strip())
-
         cliente = self.request.query_params.get('cliente')
-        if cliente:
-            cliente_term = cliente.strip()
+
+        # Si patente y cliente tienen el mismo valor (búsqueda unificada desde frontend)
+        if patente and cliente and patente.strip() == cliente.strip():
+            term = patente.strip()
             queryset = queryset.filter(
-                Q(vehiculo__cliente__nombre__icontains=cliente_term) |
-                Q(vehiculo__cliente__apellido__icontains=cliente_term) |
-                Q(vehiculo__cliente__dni_cuit__icontains=cliente_term)
+                Q(vehiculo__patente__icontains=term) |
+                Q(vehiculo__cliente__nombre__icontains=term) |
+                Q(vehiculo__cliente__apellido__icontains=term) |
+                Q(vehiculo__cliente__dni_cuit__icontains=term) |
+                Q(numero_ot__icontains=term) |
+                Q(descripcion_problema__icontains=term)
+            )
+        else:
+            if patente:
+                queryset = queryset.filter(
+                    Q(vehiculo__patente__icontains=patente.strip()) |
+                    Q(numero_ot__icontains=patente.strip())
+                )
+            if cliente:
+                cliente_term = cliente.strip()
+                queryset = queryset.filter(
+                    Q(vehiculo__cliente__nombre__icontains=cliente_term) |
+                    Q(vehiculo__cliente__apellido__icontains=cliente_term) |
+                    Q(vehiculo__cliente__dni_cuit__icontains=cliente_term)
+                )
+
+        if search:
+            search_term = search.strip()
+            queryset = queryset.filter(
+                Q(vehiculo__patente__icontains=search_term) |
+                Q(vehiculo__cliente__nombre__icontains=search_term) |
+                Q(vehiculo__cliente__apellido__icontains=search_term) |
+                Q(vehiculo__cliente__dni_cuit__icontains=search_term) |
+                Q(numero_ot__icontains=search_term)
             )
 
         estado = self.request.query_params.get('estado')
@@ -204,7 +231,7 @@ class AdjuntoDiagnosticoListCreateView(APIView):
     def get(self, request, orden_id, *args, **kwargs):
         orden = get_object_or_404(OrdenTrabajo, id=orden_id)
         adjuntos = orden.adjuntos_diagnostico.all()
-        serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True)
+        serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, orden_id=None, *args, **kwargs):
@@ -219,8 +246,14 @@ class AdjuntoDiagnosticoListCreateView(APIView):
 
         resultado_upload = subir_imagen_diagnostico(file_obj, orden.id)
 
+        item_id = request.data.get('item_presupuesto_id') or request.data.get('item_presupuesto')
+        item_obj = None
+        if item_id:
+            item_obj = ItemPresupuesto.objects.filter(id=item_id, orden_trabajo=orden).first()
+
         adjunto = AdjuntoDiagnostico.objects.create(
             orden_trabajo=orden,
+            item_presupuesto=item_obj,
             url_secure=resultado_upload['url_secure'],
             public_id=resultado_upload['public_id'],
             nombre_archivo=resultado_upload['nombre_archivo'],
@@ -229,7 +262,15 @@ class AdjuntoDiagnosticoListCreateView(APIView):
             creado_por=request.user if request.user.is_authenticated else None
         )
 
-        serializer = AdjuntoDiagnosticoSerializer(adjunto)
+        serializer = AdjuntoDiagnosticoSerializer(adjunto, context={'request': request})
+        from .services import notificar_adjunto_diagnostico_websocket
+        notificar_adjunto_diagnostico_websocket(
+            adjunto_o_id=adjunto.id,
+            orden_id=orden.id,
+            numero_ot=orden.numero_ot,
+            accion="creado",
+            datos_adjunto=serializer.data
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -242,8 +283,18 @@ class AdjuntoDiagnosticoDetailView(APIView):
 
     def delete(self, request, adjunto_id, *args, **kwargs):
         adjunto = get_object_or_404(AdjuntoDiagnostico, id=adjunto_id)
+        orden_id = str(adjunto.orden_trabajo_id)
+        numero_ot = adjunto.orden_trabajo.numero_ot if adjunto.orden_trabajo else None
         eliminar_imagen_diagnostico(adjunto.public_id)
         adjunto.delete()
+
+        from .services import notificar_adjunto_diagnostico_websocket
+        notificar_adjunto_diagnostico_websocket(
+            adjunto_o_id=adjunto_id,
+            orden_id=orden_id,
+            numero_ot=numero_ot,
+            accion="eliminado"
+        )
         return Response({'message': 'Adjunto de diagnóstico eliminado exitosamente.'}, status=status.HTTP_204_NO_CONTENT)
 
 
@@ -300,3 +351,219 @@ class EliminarItemPresupuestoView(APIView):
         orden.save(update_fields=['monto_total', 'actualizado_en'])
 
         return Response({'message': 'Ítem eliminado del presupuesto exitosamente.', 'monto_total': float(total)}, status=status.HTTP_200_OK)
+
+
+class ExportarOrdenPDFView(APIView):
+    """
+    TK121: Endpoint GET /api/ordenes/<pk>/pdf/
+    Genera y exporta el comprobante oficial de la Orden de Trabajo en formato PDF utilizando ReportLab.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico | EsCliente]
+
+    def get(self, request, pk, *args, **kwargs):
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+        except ImportError:
+            return HttpResponse("Biblioteca reportlab no disponible en este entorno.", status=501)
+
+        import io
+        from django.http import HttpResponse
+
+        orden = get_object_or_404(
+            OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario', 'tecnico'),
+            id=pk
+        )
+
+        # Validación de autorización para clientes
+        if getattr(request.user, 'rol', None) == 'cliente':
+            vehiculo = orden.vehiculo
+            if not vehiculo.cliente or vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para descargar la orden de este vehículo.")
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=36,
+            leftMargin=36,
+            topMargin=36,
+            bottomMargin=36
+        )
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Heading1'],
+            fontName='Helvetica-Bold',
+            fontSize=16,
+            textColor=colors.HexColor('#1E1E1E'),
+            spaceAfter=4
+        )
+        subtitle_style = ParagraphStyle(
+            'SubTitleStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=9,
+            textColor=colors.HexColor('#555555'),
+            spaceAfter=12
+        )
+        section_heading = ParagraphStyle(
+            'SectionHeading',
+            parent=styles['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=11,
+            textColor=colors.HexColor('#1E1E1E'),
+            spaceBefore=10,
+            spaceAfter=6
+        )
+        body_style = ParagraphStyle(
+            'Body',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=8.5,
+            textColor=colors.HexColor('#333333'),
+            leading=11
+        )
+        body_bold = ParagraphStyle(
+            'BodyBold',
+            parent=body_style,
+            fontName='Helvetica-Bold'
+        )
+
+        elements = []
+
+        # Encabezado Empresa y Comprobante
+        elements.append(Paragraph("FCC TALLER MECÁNICO Y SERVICIOS", title_style))
+        elements.append(Paragraph(
+            f"Comprobante de Orden de Trabajo #{orden.numero_ot or str(orden.id)[:8].upper()} · Emisión: {timezone.now().strftime('%d/%m/%Y %H:%M')}",
+            subtitle_style
+        ))
+        elements.append(Spacer(1, 4))
+
+        # Tabla 1: Datos de la Orden y Vehículo / Cliente
+        veh = orden.vehiculo
+        cli = veh.cliente if veh else None
+
+        info_data = [
+            [
+                Paragraph("<b>N° Orden:</b>", body_style),
+                Paragraph(f"#{orden.numero_ot or str(orden.id)[:8]}", body_bold),
+                Paragraph("<b>Vehículo:</b>", body_style),
+                Paragraph(f"{veh.marca} {veh.modelo} ({veh.anio})", body_bold)
+            ],
+            [
+                Paragraph("<b>Estado:</b>", body_style),
+                Paragraph(orden.estado.upper().replace('_', ' '), body_bold),
+                Paragraph("<b>Patente:</b>", body_style),
+                Paragraph(veh.patente.upper(), body_bold)
+            ],
+            [
+                Paragraph("<b>Complejidad:</b>", body_style),
+                Paragraph(orden.complejidad.capitalize(), body_style),
+                Paragraph("<b>Cliente / Titular:</b>", body_style),
+                Paragraph(f"{cli.nombre} {cli.apellido}" if cli else "Consumidor Final", body_style)
+            ],
+            [
+                Paragraph("<b>Fecha Ingreso:</b>", body_style),
+                Paragraph(orden.fecha_ingreso.strftime('%d/%m/%Y') if orden.fecha_ingreso else "-", body_style),
+                Paragraph("<b>Contacto / CUIT:</b>", body_style),
+                Paragraph(f"Tel: {cli.telefono or 'S/D'} · {cli.dni_cuit or ''}" if cli else "-", body_style)
+            ]
+        ]
+
+        info_table = Table(info_data, colWidths=[80, 180, 80, 200])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8F9FA')),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        elements.append(info_table)
+        elements.append(Spacer(1, 10))
+
+        # Diagnóstico inicial / Problema
+        elements.append(Paragraph("DIAGNÓSTICO INICIAL / SÍNTOMAS REPORTADOS", section_heading))
+        problema_text = orden.descripcion_problema or "Inspección técnica integral."
+        if orden.motivo_pausa:
+            problema_text += f"\n[Pausado en taller: {orden.motivo_pausa}]"
+        elements.append(Paragraph(problema_text.replace('\n', '<br/>'), body_style))
+        elements.append(Spacer(1, 10))
+
+        # Detalle de Ítems de Presupuesto
+        elements.append(Paragraph("DETALLE DE TRABAJOS Y REPUESTOS (PRESUPUESTO)", section_heading))
+        items = list(orden.items_presupuesto.all())
+        if items:
+            items_data = [
+                [
+                    Paragraph("<b>Tipo</b>", body_bold),
+                    Paragraph("<b>Descripción</b>", body_bold),
+                    Paragraph("<b>Cant.</b>", body_bold),
+                    Paragraph("<b>P. Unitario</b>", body_bold),
+                    Paragraph("<b>Subtotal</b>", body_bold)
+                ]
+            ]
+            for it in items:
+                tipo_lbl = "Mano de Obra" if it.tipo == 'mano_de_obra' else "Repuesto"
+                items_data.append([
+                    Paragraph(tipo_lbl, body_style),
+                    Paragraph(it.descripcion, body_style),
+                    Paragraph(str(it.cantidad), body_style),
+                    Paragraph(f"${it.precio_unitario:,.2f}", body_style),
+                    Paragraph(f"${it.subtotal:,.2f}", body_bold)
+                ])
+
+            items_data.append([
+                Paragraph("<b>TOTAL PRESUPUESTADO</b>", body_bold),
+                Paragraph("", body_style),
+                Paragraph("", body_style),
+                Paragraph("", body_style),
+                Paragraph(f"<b>${orden.monto_total:,.2f}</b>", body_bold)
+            ])
+
+            items_table = Table(items_data, colWidths=[80, 240, 45, 85, 90])
+            items_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E5E7EB')),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#999999')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#DDDDDD')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#F3F4F6')),
+            ]))
+            elements.append(items_table)
+        else:
+            elements.append(Paragraph(
+                f"Sin ítems detallados cargados. Presupuesto estimado base: <b>${orden.monto_total:,.2f}</b>",
+                body_style
+            ))
+
+        elements.append(Spacer(1, 24))
+
+        # Firmas de conformidad
+        firmas_data = [
+            [
+                Paragraph("_______________________________<br/>Firma y Aclaración Cliente", body_style),
+                Paragraph("_______________________________<br/>Firma Responsable Técnico Taller", body_style)
+            ]
+        ]
+        firmas_table = Table(firmas_data, colWidths=[270, 270])
+        firmas_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(firmas_table)
+
+        doc.build(elements)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        filename = f"orden_trabajo_{orden.numero_ot or str(orden.id)[:8]}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+

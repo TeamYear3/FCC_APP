@@ -1,7 +1,10 @@
 from decimal import Decimal
 from rest_framework import serializers
 from vehiculos.models import Vehiculo
-from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
+from .models import (
+    OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem,
+    HistorialEstadoOrden, AdjuntoDiagnostico
+)
 
 class OrdenTrabajoSerializer(serializers.ModelSerializer):
     vehiculo_id = serializers.UUIDField(required=True)
@@ -63,6 +66,23 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
         rep = super().to_representation(instance)
         # Mapeamos vehiculo ForeignKey a vehiculo_id en la respuesta
         rep['vehiculo_id'] = str(instance.vehiculo.id) if instance.vehiculo else None
+        if instance.vehiculo:
+            rep['vehiculo_patente'] = instance.vehiculo.patente
+            rep['vehiculo_marca_modelo'] = f"{instance.vehiculo.marca} {instance.vehiculo.modelo}".strip()
+            if instance.vehiculo.cliente:
+                rep['cliente_nombre'] = f"{instance.vehiculo.cliente.nombre} {instance.vehiculo.cliente.apellido}".strip()
+                rep['cliente_telefono'] = instance.vehiculo.cliente.telefono or ''
+                rep['cliente_dni_cuit'] = instance.vehiculo.cliente.dni_cuit or ''
+            else:
+                rep['cliente_nombre'] = 'Sin Cliente'
+                rep['cliente_telefono'] = ''
+                rep['cliente_dni_cuit'] = ''
+        else:
+            rep['vehiculo_patente'] = ''
+            rep['vehiculo_marca_modelo'] = ''
+            rep['cliente_nombre'] = ''
+            rep['cliente_telefono'] = ''
+            rep['cliente_dni_cuit'] = ''
         return rep
 
 
@@ -143,7 +163,67 @@ class ItemRepuestoSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class AdjuntoDiagnosticoSerializer(serializers.ModelSerializer):
+    creado_por_nombre = serializers.SerializerMethodField()
+    item_presupuesto_id = serializers.UUIDField(source='item_presupuesto.id', read_only=True, allow_null=True)
+    item_presupuesto_descripcion = serializers.CharField(
+        source='item_presupuesto.descripcion',
+        read_only=True,
+        allow_null=True,
+        default=None
+    )
+
+    class Meta:
+        model = AdjuntoDiagnostico
+        fields = [
+            'id',
+            'orden_trabajo',
+            'item_presupuesto',
+            'item_presupuesto_id',
+            'item_presupuesto_descripcion',
+            'url_secure',
+            'public_id',
+            'nombre_archivo',
+            'tamanio',
+            'mime_type',
+            'creado_por',
+            'creado_por_nombre',
+            'creado_en'
+        ]
+        read_only_fields = [
+            'id',
+            'item_presupuesto_id',
+            'item_presupuesto_descripcion',
+            'public_id',
+            'nombre_archivo',
+            'tamanio',
+            'mime_type',
+            'creado_por',
+            'creado_por_nombre',
+            'creado_en'
+        ]
+
+    def get_creado_por_nombre(self, obj):
+        if obj.creado_por:
+            full = f"{getattr(obj.creado_por, 'nombre', '')} {getattr(obj.creado_por, 'apellido', '')}".strip()
+            return full or obj.creado_por.email
+        return "Técnico"
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        url = data.get('url_secure') or ''
+        if url and url.startswith('/'):
+            request = self.context.get('request')
+            if request:
+                data['url_secure'] = request.build_absolute_uri(url)
+            else:
+                data['url_secure'] = f"http://localhost:8000{url}"
+        return data
+
+
 class ItemPresupuestoSerializer(serializers.ModelSerializer):
+    adjuntos = AdjuntoDiagnosticoSerializer(many=True, read_only=True)
+
     class Meta:
         model = ItemPresupuesto
         fields = [
@@ -155,13 +235,11 @@ class ItemPresupuestoSerializer(serializers.ModelSerializer):
             'precio_unitario',
             'subtotal',
             'completado',
+            'adjuntos',
             'creado_en',
             'actualizado_en'
         ]
-        read_only_fields = ['id', 'orden_trabajo', 'subtotal', 'creado_en', 'actualizado_en']
-
-
-from .models import HistorialEstadoOrden, AdjuntoDiagnostico
+        read_only_fields = ['id', 'orden_trabajo', 'subtotal', 'adjuntos', 'creado_en', 'actualizado_en']
 
 
 class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
@@ -187,46 +265,10 @@ class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
         return "Sistema"
 
 
-
 class ActualizarEstadoOrdenSerializer(serializers.Serializer):
     estado = serializers.ChoiceField(choices=EstadoOrden.choices, required=True)
     comentario = serializers.CharField(required=False, allow_blank=True, default="")
 
-
-class AdjuntoDiagnosticoSerializer(serializers.ModelSerializer):
-    creado_por_nombre = serializers.SerializerMethodField()
-
-    class Meta:
-        model = AdjuntoDiagnostico
-        fields = [
-            'id',
-            'orden_trabajo',
-            'url_secure',
-            'public_id',
-            'nombre_archivo',
-            'tamanio',
-            'mime_type',
-            'creado_por',
-            'creado_por_nombre',
-            'creado_en'
-        ]
-        read_only_fields = [
-            'id',
-            'url_secure',
-            'public_id',
-            'nombre_archivo',
-            'tamanio',
-            'mime_type',
-            'creado_por',
-            'creado_por_nombre',
-            'creado_en'
-        ]
-
-    def get_creado_por_nombre(self, obj):
-        if obj.creado_por:
-            full = f"{getattr(obj.creado_por, 'nombre', '')} {getattr(obj.creado_por, 'apellido', '')}".strip()
-            return full or obj.creado_por.email
-        return "Técnico"
 
 
 
