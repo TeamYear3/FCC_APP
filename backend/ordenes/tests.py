@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import patch
 from decimal import Decimal
 from django.test import TestCase
@@ -1123,6 +1124,163 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertIn("está cancelado", str(ctx.exception))
+
+
+class ExportarOrdenPDFViewTest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email='admin_pdf@taller.com',
+            nombre='Admin',
+            apellido='PDF',
+            password='password123',
+            rol='admin'
+        )
+        self.user_cliente = User.objects.create_user(
+            email='cliente_pdf@taller.com',
+            nombre='Cliente',
+            apellido='PDF',
+            password='password123',
+            rol='cliente'
+        )
+        self.user_otro_cliente = User.objects.create_user(
+            email='otro_pdf@taller.com',
+            nombre='Otro',
+            apellido='PDF',
+            password='password123',
+            rol='cliente'
+        )
+
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Carlos",
+            apellido="Gómez",
+            tipo_documento="DNI",
+            dni_cuit="20334455667",
+            condicion_iva="CF",
+            telefono="1122334455"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="PDF123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido en tren delantero y frenos",
+            complejidad='media'
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Revisión tren delantero",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("15000.00")
+        )
+
+    def test_admin_puede_descargar_pdf_orden(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('inline; filename="orden_trabajo_', response['Content-Disposition'])
+        self.assertTrue(len(response.content) > 0)
+
+    def test_cliente_propietario_puede_descargar_pdf(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_cliente_ajeno_recibe_forbidden(self):
+        self.client.force_authenticate(user=self.user_otro_cliente)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_orden_inexistente_retorna_404(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import AdjuntoDiagnostico
+
+
+class AdjuntoDiagnosticoAPITest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_adjuntos@fccapp.com",
+            password="Password123!",
+            rol="admin"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="22334455",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AC123BD",
+            marca="Ford",
+            modelo="Ranger",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Fallo en bomba de combustible",
+            fecha_ingreso="2026-09-19"
+        )
+        self.item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Reemplazo de bomba de nafta",
+            precio_unitario=Decimal("15000.00"),
+            cantidad=Decimal("1.00")
+        )
+
+    def test_subir_adjunto_vinculado_a_servicio_y_notificar_ws(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        foto_mock = SimpleUploadedFile("bomba.jpg", b"fake image bytes", content_type="image/jpeg")
+
+        with patch('ordenes.services.notificar_adjunto_diagnostico_websocket') as mock_ws:
+            response = self.client.post(url, {
+                'archivo': foto_mock,
+                'item_presupuesto_id': str(self.item.id)
+            }, format='multipart')
+
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(response.data['item_presupuesto_id'], str(self.item.id))
+            self.assertEqual(response.data['item_presupuesto_descripcion'], "Reemplazo de bomba de nafta")
+            self.assertTrue(mock_ws.called)
+            self.assertEqual(mock_ws.call_args[1]['accion'], 'creado')
+
+    def test_eliminar_adjunto_y_notificar_ws(self):
+        self.client.force_authenticate(user=self.admin)
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="test.jpg"
+        )
+        url = reverse('eliminar-adjunto-diagnostico', kwargs={'adjunto_id': adjunto.id})
+
+        with patch('ordenes.services.notificar_adjunto_diagnostico_websocket') as mock_ws:
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+            self.assertFalse(AdjuntoDiagnostico.objects.filter(id=adjunto.id).exists())
+            self.assertTrue(mock_ws.called)
+            self.assertEqual(mock_ws.call_args[1]['accion'], 'eliminado')
+
+
 
 
 

@@ -1,23 +1,16 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
-import { OrdenService, OrdenResponse, OrdenFiltros } from '../../core/services/orden.service';
+import { OrdenService, OrdenResponse, OrdenFiltros, ItemPresupuesto } from '../../core/services/orden.service';
+import { environment } from '../../../environments/environment';
 import { OrdenEstadoModalComponent } from './orden-estado-modal/orden-estado-modal.component';
 import { DiagnosticoFotosComponent } from './diagnostico-fotos/diagnostico-fotos.component';
 import { PresupuestoFormComponent } from './presupuesto-form/presupuesto-form.component';
 import { PageComponent } from '../../shared/components/page-component/page-component';
 
-export interface ServiceTask {
-  id: number;
-  titulo: string;
-  descripcion: string;
-  completada: boolean;
-  tiempoEstimado: string;
-}
-
-export type OrderTab = 'Detalle' | 'Servicios' | 'Fotos y Diagnóstico' | 'Presupuesto y Checklist' | 'Repuestos' | 'Pagos' | 'Notas';
+export type OrderTab = 'Resumen' | 'Carga de Mano de Obra y Repuestos' | 'Imágenes';
 
 @Component({
   selector: 'app-ordenes',
@@ -49,26 +42,33 @@ export class OrdenesComponent implements OnInit {
   readonly mostrarModalEstado = signal<boolean>(false);
   readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
 
-  // Filtros Avanzados (TK056)
+  // Filtros Avanzados (TK056 / TK119)
   readonly busqueda = signal<string>('');
   readonly estadoFiltro = signal<string>('todos');
   readonly complejidadFiltro = signal<string>('todas');
   readonly fechaDesde = signal<string>('');
   readonly fechaHasta = signal<string>('');
 
-  // Estado de lista paginada y orden activa
+  // Estado de lista paginada y orden activa (TK120)
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
   readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
-  readonly ordenActiva = computed(() => this.ordenSeleccionada() || this.listaOrdenes()[0] || null);
+  readonly otQueryParam = signal<string | null>(null);
+
+  readonly ordenActiva = computed<OrdenResponse | null>(() => {
+    const sel = this.ordenSeleccionada();
+    if (sel) return sel;
+    const lista = this.listaOrdenes();
+    return lista.length > 0 ? lista[0] : null;
+  });
+
   readonly cargando = signal<boolean>(false);
   readonly paginaActual = signal<number>(1);
   readonly totalPaginas = signal<number>(1);
   readonly totalItems = signal<number>(0);
 
   get ordenIdActiva(): string {
-    return this.ordenActiva()?.id || this.listaOrdenes()[0]?.id || '1';
+    return this.ordenActiva()?.id || '';
   }
-
   ngOnInit(): void {
     const isAdmin = this.router.url.startsWith('/admin');
     this.isAdminView.set(isAdmin);
@@ -80,12 +80,15 @@ export class OrdenesComponent implements OnInit {
     }
 
     this.route.queryParams.subscribe(params => {
+      const targetOt = params['ot'] || params['id'];
+      if (targetOt) {
+        this.otQueryParam.set(targetOt);
+      }
       const targetBusqueda = params['busqueda'];
-      const targetId = params['id'];
       if (targetBusqueda) {
         this.busqueda.set(targetBusqueda);
       }
-      this.cargarOrdenes(1, targetId, targetBusqueda);
+      this.cargarOrdenes(1, targetOt, targetBusqueda);
     });
   }
 
@@ -102,25 +105,43 @@ export class OrdenesComponent implements OnInit {
 
     this.ordenService.obtenerOrdenes(filtros, page, 10).subscribe({
       next: (res) => {
-        const results = res.results || [];
-        this.listaOrdenes.set(results);
+        const ordenes = res.results || [];
+        this.listaOrdenes.set(ordenes);
         this.paginaActual.set(res.current_page || 1);
         this.totalPaginas.set(res.total_pages || 1);
         this.totalItems.set(res.total_items || 0);
 
         if (targetId) {
-          const enc = results.find(o => String(o.id) === String(targetId) || o.numero_ot === targetId);
+          const enc = ordenes.find((o: OrdenResponse) => String(o.id) === String(targetId) || o.numero_ot === targetId);
           if (enc) this.ordenSeleccionada.set(enc);
         } else if (targetBusqueda) {
-          const enc = results.find(o => 
-            o.numero_ot.toLowerCase().includes(targetBusqueda.toLowerCase()) ||
+          const enc = ordenes.find((o: OrdenResponse) => 
+            (o.numero_ot && o.numero_ot.toLowerCase().includes(targetBusqueda.toLowerCase())) ||
             String(o.id) === String(targetBusqueda)
           );
           if (enc) this.ordenSeleccionada.set(enc);
-        } else if (results.length > 0 && (!this.ordenSeleccionada() || !results.some(r => r.id === this.ordenSeleccionada()?.id))) {
-          this.ordenSeleccionada.set(results[0]);
+        } else if (ordenes.length > 0 && (!this.ordenSeleccionada() || !ordenes.some((r: OrdenResponse) => r.id === this.ordenSeleccionada()?.id))) {
+          this.ordenSeleccionada.set(ordenes[0]);
         }
         this.cargando.set(false);
+
+        // Auto-selección por query param o preservar selección previa
+        const targetOt = this.otQueryParam();
+        if (targetOt && ordenes.length > 0) {
+          const encontrada = ordenes.find(o => o.id === targetOt || o.numero_ot === targetOt);
+          if (encontrada) {
+            this.ordenSeleccionada.set(encontrada);
+            this.cargarItemsDeOrden(encontrada.id);
+          }
+        } else if (this.ordenSeleccionada()) {
+          const sigueExistiendo = ordenes.find(o => o.id === this.ordenSeleccionada()?.id);
+          if (sigueExistiendo) {
+            this.ordenSeleccionada.set(sigueExistiendo);
+            this.cargarItemsDeOrden(sigueExistiendo.id);
+          }
+        } else if (ordenes.length > 0) {
+          this.cargarItemsDeOrden(ordenes[0].id);
+        }
       },
       error: (err) => {
         console.error('Error al cargar órdenes:', err);
@@ -129,8 +150,34 @@ export class OrdenesComponent implements OnInit {
     });
   }
 
-  seleccionarOrden(orden: OrdenResponse): void {
+  seleccionarOrden(orden: OrdenResponse, scrollToExpediente: boolean = false): void {
     this.ordenSeleccionada.set(orden);
+    this.cargarItemsDeOrden(orden.id);
+    if (scrollToExpediente && typeof document !== 'undefined') {
+      const elem = document.getElementById('expediente-activo');
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  imprimirOT(orden?: OrdenResponse | null): void {
+    const target = orden || this.ordenActiva();
+    if (!target) return;
+    this.ordenService.descargarOrdenPDF(target.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Orden_Trabajo_${target.numero_ot || target.id}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error al descargar PDF de la orden:', err);
+        alert('No se pudo generar el PDF de la orden de trabajo.');
+      }
+    });
   }
 
   obtenerClaseEstado(estado?: string | null): string {
@@ -262,48 +309,111 @@ export class OrdenesComponent implements OnInit {
     }
   }
 
-  readonly activeTab = signal<OrderTab>('Servicios');
-  readonly tabs: OrderTab[] = ['Detalle', 'Servicios', 'Fotos y Diagnóstico', 'Presupuesto y Checklist', 'Repuestos', 'Pagos', 'Notas'];
+  readonly activeTab = signal<OrderTab>('Resumen');
+  readonly tabs: OrderTab[] = ['Resumen', 'Carga de Mano de Obra y Repuestos', 'Imágenes'];
 
-  readonly tareasServicio = signal<ServiceTask[]>([
-    {
-      id: 1,
-      titulo: 'Inspección de niveles de fluidos y escaneo ECU',
-      descripcion: 'Verificar presión de aceite, líquido refrigerante y códigos de falla OBD2.',
-      completada: true,
-      tiempoEstimado: '30 min'
-    },
-    {
-      id: 2,
-      titulo: 'Reemplazo de pastillas de freno delanteras y rectificado',
-      descripcion: 'Desmontaje de mordazas, sustitución por juego original y purga de líquido de frenos.',
-      completada: true,
-      tiempoEstimado: '1 h 15 min'
-    },
-    {
-      id: 3,
-      titulo: 'Alineación computarizada 3D y balanceo dinámico de 4 ruedas',
-      descripcion: 'Ajuste de ángulos de avance, comba y convergencia según especificación de fábrica.',
-      completada: false,
-      tiempoEstimado: '45 min'
-    },
-    {
-      id: 4,
-      titulo: 'Control final de calidad y prueba de rodaje en pista',
-      descripcion: 'Verificación de ruidos, respuesta en frenada y sellado general del vehículo.',
-      completada: false,
-      tiempoEstimado: '20 min'
+  // Ítems reales del presupuesto (servicios y repuestos)
+  readonly itemsPresupuesto = signal<ItemPresupuesto[]>([]);
+  readonly cargandoItems = signal<boolean>(false);
+
+  readonly serviciosRealizados = computed<ItemPresupuesto[]>(() => {
+    return this.itemsPresupuesto().filter(i => i.tipo === 'mano_de_obra');
+  });
+
+  readonly repuestosUtilizados = computed<ItemPresupuesto[]>(() => {
+    return this.itemsPresupuesto().filter(i => i.tipo === 'repuesto');
+  });
+
+  readonly porcentajeProgreso = computed<number>(() => {
+    const servicios = this.serviciosRealizados();
+    if (servicios.length === 0) {
+      const est = this.ordenActiva()?.estado;
+      if (est === 'finalizado' || est === 'entregado') return 100;
+      if (est === 'en_proceso') return 50;
+      if (est === 'aprobado') return 25;
+      return 10;
     }
-  ]);
+    const completados = servicios.filter(s => s.completado).length;
+    return Math.round((completados / servicios.length) * 100);
+  });
+
+  cargarItemsDeOrden(ordenId: string): void {
+    if (!ordenId) {
+      this.itemsPresupuesto.set([]);
+      return;
+    }
+    this.cargandoItems.set(true);
+    this.ordenService.obtenerItemsPresupuesto(ordenId).subscribe({
+      next: (items) => {
+        this.itemsPresupuesto.set(items || []);
+        this.cargandoItems.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar items de presupuesto:', err);
+        this.itemsPresupuesto.set([]);
+        this.cargandoItems.set(false);
+      }
+    });
+  }
+
+  onItemsActualizados(items: ItemPresupuesto[]): void {
+    this.itemsPresupuesto.set(items || []);
+    if (this.ordenActiva()) {
+      this.ordenService.obtenerOrdenPorId(this.ordenActiva()!.id).subscribe({
+        next: (ordenActualizada: OrdenResponse) => {
+          this.ordenSeleccionada.set(ordenActualizada);
+          this.listaOrdenes.update(lista =>
+            lista.map(o => o.id === ordenActualizada.id ? ordenActualizada : o)
+          );
+        },
+        error: () => {}
+      });
+    }
+  }
+
+  toggleCompletadoItem(item: ItemPresupuesto): void {
+    if (!this.ordenActiva() || !item.id) return;
+    const nuevoEstado = !item.completado;
+    this.itemsPresupuesto.update(items =>
+      items.map(i => i.id === item.id ? { ...i, completado: nuevoEstado } : i)
+    );
+    this.ordenService.marcarItemCompletado(this.ordenActiva()!.id, item.id, nuevoEstado).subscribe({
+      error: () => {
+        this.itemsPresupuesto.update(items =>
+          items.map(i => i.id === item.id ? { ...i, completado: !nuevoEstado } : i)
+        );
+      }
+    });
+  }
+
+  normalizarUrl(url?: string | null): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = environment.apiUrl.replace(/\/api\/?$/, '');
+    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+
+  finalizarOrden(): void {
+    const orden = this.ordenActiva();
+    if (!orden) return;
+    if (!confirm(`¿Confirmas finalizar la orden #${orden.numero_ot || orden.id} y pasarla a control de calidad?`)) {
+      return;
+    }
+    this.ordenService.actualizarEstado(orden.id, 'finalizado', 'Orden finalizada desde el expediente y lista para control').subscribe({
+      next: () => {
+        alert('Orden finalizada con éxito y pasada a control de calidad.');
+        this.cargarOrdenes(this.paginaActual());
+      },
+      error: (err) => {
+        console.error('Error al finalizar orden:', err);
+        const msg = err.error?.error || err.error?.detail || 'No se pudo finalizar la orden. Verifica que esté en proceso.';
+        alert(msg);
+      }
+    });
+  }
 
   setTab(tab: OrderTab): void {
     this.activeTab.set(tab);
-  }
-
-  toggleTask(id: number): void {
-    this.tareasServicio.update(tasks =>
-      tasks.map(t => t.id === id ? { ...t, completada: !t.completada } : t)
-    );
   }
 
   logout(): void {

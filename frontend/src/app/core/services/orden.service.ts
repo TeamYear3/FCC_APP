@@ -29,9 +29,10 @@ export interface OrdenResponse {
   vehiculo_patente?: string;
   vehiculo_marca_modelo?: string;
   cliente_nombre?: string;
+  cliente_telefono?: string;
   cliente_documento?: string;
   cliente_dni_cuit?: string;
-  monto_total?: number;
+  monto_total?: number | string;
 }
 
 export interface OrdenFiltros {
@@ -80,6 +81,7 @@ export interface ItemPresupuesto {
   precio_unitario: number;
   subtotal?: number;
   completado?: boolean;
+  adjuntos?: AdjuntoDiagnostico[];
   creado_en?: string;
   actualizado_en?: string;
 }
@@ -87,6 +89,9 @@ export interface ItemPresupuesto {
 export interface AdjuntoDiagnostico {
   id: string;
   orden_trabajo: string;
+  item_presupuesto?: string | null;
+  item_presupuesto_id?: string | null;
+  item_presupuesto_descripcion?: string | null;
   url_secure: string;
   public_id: string;
   nombre_archivo: string;
@@ -103,6 +108,13 @@ export interface AdjuntoDiagnostico {
 export class OrdenService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/ordenes/`;
+
+  /**
+   * Obtiene el detalle de una orden de trabajo por ID (GET /api/ordenes/<id>/)
+   */
+  obtenerOrdenPorId(id: string): Observable<OrdenResponse> {
+    return this.http.get<OrdenResponse>(`${this.apiUrl}${id}/`);
+  }
 
   /**
    * Crea una nueva orden de trabajo (POST /api/ordenes/)
@@ -148,11 +160,14 @@ export class OrdenService {
   }
 
   /**
-   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053)
+   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053 / TK123)
    */
-  subirAdjuntoDiagnostico(ordenId: string, archivo: File): Observable<AdjuntoDiagnostico> {
+  subirAdjuntoDiagnostico(ordenId: string, archivo: File, itemPresupuestoId?: string | null): Observable<AdjuntoDiagnostico> {
     const formData = new FormData();
     formData.append('archivo', archivo);
+    if (itemPresupuestoId) {
+      formData.append('item_presupuesto_id', itemPresupuestoId);
+    }
     return this.http.post<AdjuntoDiagnostico>(`${this.apiUrl}${ordenId}/adjuntos/`, formData);
   }
 
@@ -206,5 +221,15 @@ export class OrdenService {
   eliminarItemPresupuesto(ordenId: string, itemId: string): Observable<{ message: string; monto_total: number }> {
     return this.http.delete<{ message: string; monto_total: number }>(`${this.apiUrl}${ordenId}/items/${itemId}/`);
   }
+
+  /**
+   * Descargar reporte de la Orden de Trabajo en formato PDF (GET /api/ordenes/<id>/pdf/) (TK121)
+   */
+  descargarOrdenPDF(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}${id}/pdf/`, {
+      responseType: 'blob'
+    });
+  }
 }
+
 

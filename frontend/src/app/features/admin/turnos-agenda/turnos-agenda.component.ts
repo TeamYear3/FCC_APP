@@ -1,16 +1,19 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { FullCalendarModule } from '@fullcalendar/angular';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+// @ts-ignore
 import esLocale from '@fullcalendar/core/locales/es';
 import { forkJoin } from 'rxjs';
 
 import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
 import { VehiculoService, VehiculoResponse } from '../../../core/services/vehiculo.service';
+import { OrdenService, OrdenResponse } from '../../../core/services/orden.service';
 
 @Component({
   selector: 'app-turnos-agenda',
@@ -24,9 +27,12 @@ export class TurnosAgendaComponent implements OnInit {
   private readonly turnoService = inject(TurnoService);
   private readonly clienteService = inject(ClienteService);
   private readonly vehiculoService = inject(VehiculoService);
+  private readonly ordenService = inject(OrdenService);
+  private readonly router = inject(Router);
 
   cargando = signal(false);
   turnos = signal<TurnoResponse[]>([]);
+  ordenes = signal<OrdenResponse[]>([]);
   clientes = signal<ClienteResponse[]>([]);
   vehiculosFiltrados = signal<VehiculoResponse[]>([]);
 
@@ -103,16 +109,19 @@ export class TurnosAgendaComponent implements OnInit {
   cargarDatos(): void {
     this.cargando.set(true);
 
-    // Cargar en paralelo solo clientes y turnos (los vehículos se piden bajo demanda al elegir cliente)
+    // Cargar en paralelo clientes, turnos y órdenes de trabajo (TK122 & TK078)
     forkJoin({
       clientes: this.clienteService.obtenerClientes(),
-      turnos: this.turnoService.obtenerTurnos()
+      turnos: this.turnoService.obtenerTurnos(),
+      ordenesRes: this.ordenService.obtenerOrdenes({}, 1, 100)
     }).subscribe({
       next: (res) => {
         this.clientes.set(res.clientes);
         this.turnos.set(res.turnos);
+        const listaOrdenes = res.ordenesRes?.results || [];
+        this.ordenes.set(listaOrdenes);
 
-        this.mapearYRenderizarEventos(res.turnos);
+        this.mapearYRenderizarEventos(res.turnos, listaOrdenes);
         this.cargando.set(false);
       },
       error: (err) => {
@@ -123,38 +132,23 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   cargarTurnosEnCalendario(): void {
-    this.cargando.set(true);
-    this.turnoService.obtenerTurnos().subscribe({
-      next: (data) => {
-        this.turnos.set(data);
-        this.mapearYRenderizarEventos(data);
-        this.cargando.set(false);
-      },
-      error: (err) => {
-        console.error('Error al obtener turnos:', err);
-        this.cargando.set(false);
-      }
-    });
+    this.cargarDatos();
   }
 
-  mapearYRenderizarEventos(data: TurnoResponse[]): void {
-    const eventos = data.map((t) => {
-      // Obtener datos legibles desde la respuesta enriquecida o helpers
+  mapearYRenderizarEventos(turnos: TurnoResponse[], ordenes: OrdenResponse[] = []): void {
+    // 1. Mapear turnos agendados
+    const eventosTurnos = turnos.map((t) => {
       const nombreCliente = t.cliente_nombre || this.getNombreCliente(t.cliente);
       const datosVehiculo = t.vehiculo_info || this.getDatosVehiculo(t.vehiculo);
       
-      // Formatear hora de inicio a partir de fecha_hora
       const dateObj = new Date(t.fecha_hora);
       const hh = String(dateObj.getHours()).padStart(2, '0');
       const mm = String(dateObj.getMinutes()).padStart(2, '0');
       const horaStr = `${hh}:${mm} hs`;
 
-      // Formatear título descriptivo premium
-      const eventTitle = `${horaStr} | ${nombreCliente} - ${datosVehiculo} - M: ${t.motivo}`;
+      const eventTitle = `🗓 TURNO ${horaStr} | ${nombreCliente} - ${datosVehiculo} - M: ${t.motivo}`;
 
-      // Configurar clase de estilos CSS según estado del turno
       let estadoClass = 'evento-turno-default';
-
       if (t.estado === 'pendiente') {
         estadoClass = 'evento-turno-pendiente';
       } else if (t.estado === 'completado') {
@@ -164,13 +158,44 @@ export class TurnosAgendaComponent implements OnInit {
       }
 
       return {
-        id: t.id,
+        id: `turno-${t.id}`,
         title: eventTitle,
         start: t.fecha_hora,
         className: estadoClass,
-        extendedProps: { ...t }
+        extendedProps: { tipoItem: 'turno', turno: t }
       };
     });
+
+    // 2. Mapear órdenes de trabajo activas y actividades del día (TK122)
+    const eventosOrdenes = ordenes.map((o) => {
+      const otNumero = o.numero_ot || o.id.slice(0, 8);
+      const patente = o.vehiculo_patente || 'S/D';
+      const cliente = o.cliente_nombre || 'Cliente General';
+      const estado = o.estado.toUpperCase().replace('_', ' ');
+      const eventTitle = `📋 OT #${otNumero} | ${patente} - ${estado} (${cliente})`;
+
+      let estadoClass = 'evento-orden-default';
+      if (o.estado === 'en_proceso') {
+        estadoClass = 'evento-orden-proceso';
+      } else if (o.estado === 'ingresado' || o.estado === 'en_presupuesto') {
+        estadoClass = 'evento-orden-ingresado';
+      } else if (o.estado === 'en_pausa') {
+        estadoClass = 'evento-orden-pausa';
+      } else if (o.estado === 'finalizado' || o.estado === 'entregado') {
+        estadoClass = 'evento-orden-finalizado';
+      }
+
+      return {
+        id: `orden-${o.id}`,
+        title: eventTitle,
+        start: o.fecha_ingreso,
+        allDay: true,
+        className: estadoClass,
+        extendedProps: { tipoItem: 'orden', orden: o }
+      };
+    });
+
+    const eventos = [...eventosTurnos, ...eventosOrdenes];
 
     this.calendarOptions.update((options) => ({
       ...options,
@@ -220,7 +245,19 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   handleEventClick(arg: any): void {
-    const turno = arg.event.extendedProps as TurnoResponse;
+    const tipoItem = arg.event.extendedProps?.tipoItem;
+
+    // Si el usuario hace clic en una Orden de Trabajo, navegar al expediente (TK122)
+    if (tipoItem === 'orden') {
+      const orden = arg.event.extendedProps?.orden as OrdenResponse;
+      const targetId = orden?.id || arg.event.id.replace('orden-', '');
+      const ruta = this.router.url.startsWith('/admin') ? '/admin/ordenes' : '/ordenes';
+      this.router.navigate([ruta], { queryParams: { ot: targetId } });
+      return;
+    }
+
+    // Si es un Turno, abrir modal con el detalle correspondiente
+    const turno = (arg.event.extendedProps?.turno || arg.event.extendedProps) as TurnoResponse;
     this.turnoSeleccionado.set(turno);
     this.modoEdicion.set(false);
     this.mensajeError.set('');

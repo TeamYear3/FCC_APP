@@ -199,251 +199,699 @@
       </div>
     </div>
 
-    <!-- Tarjeta Principal de Resumen de Orden Activa (Order Work Card - Página 4) -->
+    <!-- Grilla / Listado Dinámico de Órdenes de Trabajo (TK120) -->
     <div
-      class="bg-color-surface-container border border-color-primary-accent/40 rounded-card p-md sm:p-lg mb-lg shadow-2xl"
+      class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4"
     >
-      <!-- Extremo Superior Izquierdo: Número de orden e información del vehículo / Extremo Superior Derecho: Badge Semántico -->
-      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-md">
-        <div>
-          <div class="flex items-center gap-3">
-            <span class="typography-h1-display text-color-primary-accent tracking-tight"
-              >#OT-{{ (ordenActiva()?.numero_ot || '0000').replace('OT-', '').replace('#', '') }}</span
-            >
-            <!-- Badge Semántico Dinámico -->
-            <span
-              class="px-3 py-1 rounded-pill text-xs font-bold uppercase tracking-wider shadow inline-flex items-center"
-              [ngClass]="obtenerClaseEstado(ordenActiva()?.estado)"
-            >
-              {{ obtenerTextoEstado(ordenActiva()?.estado) }}
-            </span>
-          </div>
-          <h2 class="typography-h2-section text-white mt-1">
-            {{ ordenActiva()?.vehiculo_marca_modelo || 'Vehículo en taller' }}
-          </h2>
-          <p class="typography-body-main text-color-text-secondary mt-0.5">
-            Patente: <strong class="text-white">{{ ordenActiva()?.vehiculo_patente || 'S/D' }}</strong> · 
-            Motivo: <span class="text-white/80">{{ ordenActiva()?.descripcion_problema || 'Sin descripción' }}</span>
-          </p>
-        </div>
-
-        <!-- Acciones Rápidas del Mecánico -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
         <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="px-3 py-2 rounded-card bg-black/60 border border-white/10 hover:border-color-primary-accent text-color-text-secondary hover:text-white typography-caption flex items-center gap-1.5 transition-all"
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 text-color-primary-accent"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4 text-color-primary-accent"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
-            </svg>
-            <span>Imprimir OT</span>
-          </button>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+            />
+          </svg>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider">
+            Listado de Órdenes de Trabajo
+          </h2>
+          <span
+            class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
+          >
+            {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
+          </span>
         </div>
+        <p class="text-xs text-zinc-400">
+          💡 <span class="text-zinc-300">Tip:</span> Haz clic para seleccionar o <strong class="text-color-primary-accent">doble clic</strong> para enfocar el expediente.
+        </p>
       </div>
 
-      <!-- Zona Inferior: Datos del Cliente, Fecha técnica y Presupuesto divididos por línea horizontal gris oscuro -->
-      <div class="pt-md border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div>
-          <span
-            class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
-            >Titular / Cliente</span
+      <!-- Estado Cargando -->
+      @if (cargando()) {
+        <div class="py-12 flex flex-col items-center justify-center gap-3 text-zinc-400">
+          <svg
+            class="animate-spin h-8 w-8 text-color-primary-accent"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
           >
-          <p class="typography-body-highlight text-white mt-0.5">{{ ordenActiva()?.cliente_nombre || 'Cliente Registrado' }}</p>
-          <p class="typography-caption text-color-text-secondary">{{ ordenActiva()?.cliente_documento || ('Documento: ' + (ordenActiva()?.cliente_dni_cuit || 'S/D')) }}</p>
+            <circle
+              class="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          <span class="text-xs uppercase tracking-wider font-semibold">Cargando órdenes del taller...</span>
         </div>
-        <div>
-          <span
-            class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
-            >Ingreso Técnico</span
-          >
-          <p class="typography-body-highlight text-white mt-0.5">{{ ordenActiva()?.fecha_ingreso | date: 'dd MMM yyyy' }}</p>
-          <p class="typography-caption text-color-text-secondary">Técnico: {{ ordenActiva()?.tecnico || 'Asignado en taller' }}</p>
-        </div>
-        <div class="sm:text-right">
-          <span
-            class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
-            >Presupuesto Estimado</span
-          >
-          <p class="typography-h2-section text-color-primary-accent mt-0.5 font-extrabold">
-            $ {{ (ordenActiva()?.monto_total || 0) | number: '1.2-2' }}
+      } @else if (listaOrdenes().length === 0) {
+        <!-- Estado Vacío -->
+        <div class="py-12 text-center space-y-3">
+          <div class="w-12 h-12 rounded-full bg-white/5 mx-auto flex items-center justify-center text-zinc-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <p class="text-sm font-semibold text-white">No se encontraron órdenes registradas</p>
+          <p class="text-xs text-zinc-400 max-w-sm mx-auto">
+            No existen órdenes que coincidan con los filtros aplicados o aún no se ha generado ninguna orden de trabajo.
           </p>
-          <p class="typography-caption text-color-text-secondary">IVA y mano de obra incluidos</p>
+          <div class="pt-2 flex justify-center gap-2">
+            <button
+              type="button"
+              (click)="limpiarFiltros()"
+              class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer"
+            >
+              Restablecer Filtros
+            </button>
+            <a
+              [routerLink]="nuevaOrdenUrl()"
+              class="px-3 py-1.5 rounded-lg bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer decoration-none inline-flex items-center gap-1"
+            >
+              + Nueva Orden
+            </a>
+          </div>
         </div>
-      </div>
+      } @else {
+        <!-- Tabla Responsive de Órdenes -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-white/10 text-zinc-400 font-semibold uppercase tracking-wider text-[11px]">
+                <th class="py-3 px-3">OT #</th>
+                <th class="py-3 px-3">Vehículo / Patente</th>
+                <th class="py-3 px-3">Titular / Cliente</th>
+                <th class="py-3 px-3">Fecha Ingreso</th>
+                <th class="py-3 px-3">Complejidad</th>
+                <th class="py-3 px-3">Estado</th>
+                <th class="py-3 px-3 text-right">Presupuesto</th>
+                <th class="py-3 px-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              @for (orden of listaOrdenes(); track orden.id) {
+                <tr
+                  (click)="seleccionarOrden(orden)"
+                  (dblclick)="seleccionarOrden(orden, true)"
+                  class="transition-colors cursor-pointer group"
+                  [ngClass]="{
+                    'bg-color-primary-accent/10 border-l-4 border-color-primary-accent font-medium': orden.id === ordenActiva()?.id,
+                    'hover:bg-white/5': orden.id !== ordenActiva()?.id
+                  }"
+                >
+                  <!-- Columna N° OT -->
+                  <td class="py-3 px-3 whitespace-nowrap">
+                    <span
+                      class="px-2 py-0.5 rounded font-mono font-bold text-xs"
+                      [ngClass]="{
+                        'bg-color-primary-accent text-black': orden.id === ordenActiva()?.id,
+                        'bg-white/10 text-color-primary-accent': orden.id !== ordenActiva()?.id
+                      }"
+                    >
+                      #{{ orden.numero_ot || orden.id.slice(0, 8) }}
+                    </span>
+                  </td>
+
+                  <!-- Columna Vehículo / Patente -->
+                  <td class="py-3 px-3">
+                    <div class="font-bold text-white text-xs">
+                      {{ orden.vehiculo_marca_modelo || 'Vehículo ' + (orden.vehiculo_patente || '') }}
+                    </div>
+                    <div class="font-mono text-[11px] text-zinc-400 flex items-center gap-1.5 mt-0.5">
+                      <span class="px-1.5 py-0.2 rounded bg-black/50 border border-white/10 text-white font-bold tracking-wider">
+                        {{ orden.vehiculo_patente || 'S/D' }}
+                      </span>
+                    </div>
+                  </td>
+
+                  <!-- Columna Titular / Cliente -->
+                  <td class="py-3 px-3 whitespace-nowrap">
+                    <div class="text-white font-medium">{{ orden.cliente_nombre || 'Cliente General' }}</div>
+                    <div class="text-zinc-400 text-[11px]">{{ orden.cliente_telefono || 'Sin teléfono' }}</div>
+                  </td>
+
+                  <!-- Columna Fecha Ingreso -->
+                  <td class="py-3 px-3 whitespace-nowrap text-zinc-300">
+                    {{ orden.fecha_ingreso | date:'dd/MM/yyyy' }}
+                  </td>
+
+                  <!-- Columna Complejidad -->
+                  <td class="py-3 px-3 whitespace-nowrap">
+                    <span
+                      class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                      [ngClass]="getComplejidadBadgeClass(orden.complejidad)"
+                    >
+                      {{ orden.complejidad || 'Media' }}
+                    </span>
+                  </td>
+
+                  <!-- Columna Estado -->
+                  <td class="py-3 px-3 whitespace-nowrap">
+                    <span
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide inline-block"
+                      [ngClass]="getEstadoBadgeClass(orden.estado)"
+                    >
+                      {{ orden.estado.replace('_', ' ') }}
+                    </span>
+                  </td>
+
+                  <!-- Columna Presupuesto -->
+                  <td class="py-3 px-3 text-right whitespace-nowrap font-mono font-bold text-white">
+                    $ {{ (orden.monto_total || 0) | number:'1.2-2' }}
+                  </td>
+
+                  <!-- Columna Acciones Rápidas -->
+                  <td class="py-3 px-3 text-center whitespace-nowrap">
+                    <div class="inline-flex items-center gap-1" (click)="$event.stopPropagation()">
+                      <!-- Botón Ver Expediente -->
+                      <button
+                        type="button"
+                        (click)="seleccionarOrden(orden, true)"
+                        title="Ver Expediente"
+                        class="p-1.5 rounded-lg bg-white/5 hover:bg-color-primary-accent hover:text-black text-zinc-300 transition-colors border-0 cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+
+                      <!-- Botón Cambiar Estado -->
+                      <button
+                        type="button"
+                        (click)="abrirModalEstado(orden)"
+                        title="Cambiar Estado de la Orden"
+                        class="p-1.5 rounded-lg bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+
+                      <!-- Botón Imprimir PDF -->
+                      <button
+                        type="button"
+                        (click)="imprimirOT(orden)"
+                        title="Descargar Comprobante PDF"
+                        class="p-1.5 rounded-lg bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                      </button>
+
+                      <!-- Botón Pausa / Reanudar -->
+                      @if (orden.estado === 'en_proceso' || orden.estado === 'en_pausa') {
+                        <button
+                          type="button"
+                          (click)="pausarOReanudarOrden(orden)"
+                          [title]="orden.estado === 'en_proceso' ? 'Pausar Orden' : 'Reanudar Orden'"
+                          class="p-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 transition-colors border-0 cursor-pointer"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            @if (orden.estado === 'en_proceso') {
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            } @else {
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            }
+                          </svg>
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación Dinámica -->
+        <div class="flex items-center justify-between border-t border-white/5 pt-3 text-xs text-zinc-400">
+          <div>
+            Mostrando página <strong class="text-white">{{ paginaActual() }}</strong> de <strong class="text-white">{{ totalPaginas() }}</strong>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              (click)="cambiarPagina(paginaActual() - 1)"
+              [disabled]="paginaActual() <= 1"
+              class="px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-zinc-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              ← Anterior
+            </button>
+            <span class="font-mono text-zinc-300 font-semibold px-2">
+              {{ paginaActual() }} / {{ totalPaginas() }}
+            </span>
+            <button
+              type="button"
+              (click)="cambiarPagina(paginaActual() + 1)"
+              [disabled]="paginaActual() >= totalPaginas()"
+              class="px-3 py-1.5 rounded-lg bg-black/40 border border-white/10 text-zinc-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            >
+              Siguiente →
+            </button>
+          </div>
+        </div>
+      }
     </div>
 
-    <!-- Patrón A: Estructura de Navegación por Pestañas Internas (Tabbed Menu Layout - Página 5) -->
+    <!-- Expediente de la Orden de Trabajo Activa (TK120) -->
+    <div id="expediente-activo" class="scroll-mt-6">
+      @if (ordenActiva()) {
+        <!-- Tarjeta Principal de Resumen de Orden Activa Dinámica -->
+        <div
+          class="bg-color-surface-container border border-color-primary-accent/40 rounded-card p-md sm:p-lg mb-lg shadow-2xl transition-all"
+        >
+          <!-- Extremo Superior Izquierdo: Número de orden e información del vehículo / Extremo Superior Derecho: Badge Semántico -->
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-md">
+            <div>
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="typography-h1-display text-color-primary-accent tracking-tight font-mono">
+                  #{{ ordenActiva()?.numero_ot || ('OT-' + ordenActiva()?.id?.slice(0, 8)) }}
+                </span>
+                <!-- Badge Semántico Dinámico -->
+                <span
+                  class="px-3 py-1 rounded-badge text-black typography-caption font-extrabold uppercase tracking-wide shadow"
+                  [ngClass]="getEstadoBadgeClass(ordenActiva()!.estado)"
+                >
+                  {{ ordenActiva()?.estado?.replace('_', ' ') }}
+                </span>
+                <!-- Badge Complejidad -->
+                <span
+                  class="px-2.5 py-0.5 rounded-badge text-[11px] font-bold uppercase tracking-wider"
+                  [ngClass]="getComplejidadBadgeClass(ordenActiva()?.complejidad)"
+                >
+                  Complejidad {{ ordenActiva()?.complejidad || 'Media' }}
+                </span>
+              </div>
+              <h2 class="typography-h2-section text-white mt-1">
+                {{ ordenActiva()?.vehiculo_marca_modelo || 'Vehículo ' + (ordenActiva()?.vehiculo_patente || 'Registrado') }}
+              </h2>
+              <p class="typography-body-main text-color-text-secondary mt-0.5 flex items-center gap-2">
+                Patente:
+                <strong class="text-white font-mono px-2 py-0.5 rounded bg-black/60 border border-white/15">
+                  {{ ordenActiva()?.vehiculo_patente || 'S/D' }}
+                </strong>
+                @if (ordenActiva()?.cliente_dni_cuit) {
+                  · CUIT/DNI: <span class="font-mono text-xs text-zinc-300">{{ ordenActiva()?.cliente_dni_cuit }}</span>
+                }
+              </p>
+            </div>
+
+            <!-- Acciones Rápidas del Mecánico -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                (click)="imprimirOT()"
+                class="px-3 py-2 rounded-card bg-black/60 border border-white/10 hover:border-color-primary-accent text-color-text-secondary hover:text-white typography-caption flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4 text-color-primary-accent"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
+                </svg>
+                <span>Imprimir OT</span>
+              </button>
+
+              <button
+                type="button"
+                (click)="abrirModalEstado(ordenActiva()!)"
+                class="px-3 py-2 rounded-card bg-color-primary-accent/15 border border-color-primary-accent/40 text-color-primary-accent hover:bg-color-primary-accent hover:text-black typography-caption font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Cambiar Estado</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Zona Inferior: Datos del Cliente, Fecha técnica y Presupuesto -->
+          <div class="pt-md border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <span
+                class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
+                >Titular / Cliente</span
+              >
+              <p class="typography-body-highlight text-white mt-0.5">{{ ordenActiva()?.cliente_nombre || 'Cliente General' }}</p>
+              <p class="typography-caption text-color-text-secondary">Tel: {{ ordenActiva()?.cliente_telefono || 'No registrado' }}</p>
+            </div>
+            <div>
+              <span
+                class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
+                >Ingreso Técnico</span
+              >
+              <p class="typography-body-highlight text-white mt-0.5">
+                {{ ordenActiva()?.fecha_ingreso | date:'dd MMM yyyy' }}
+              </p>
+              <p class="typography-caption text-color-text-secondary">
+                Diagnóstico inicial: <span class="text-zinc-300 italic line-clamp-1">{{ ordenActiva()?.descripcion_problema || 'Inspección técnica general' }}</span>
+              </p>
+            </div>
+            <div class="sm:text-right">
+              <span
+                class="typography-caption block text-color-text-secondary uppercase tracking-wider font-semibold"
+                >Presupuesto Estimado</span
+              >
+              <p class="typography-h2-section text-color-primary-accent mt-0.5 font-extrabold">
+                $ {{ (ordenActiva()?.monto_total || 0) | number:'1.2-2' }}
+              </p>
+              <p class="typography-caption text-color-text-secondary">IVA y mano de obra incluidos</p>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- Estado Vacío del Expediente -->
+        <div class="bg-color-surface-container border border-white/10 rounded-card p-8 mb-lg text-center">
+          <p class="text-zinc-400 text-sm font-medium">Seleccione una orden del listado superior para consultar su expediente técnico.</p>
+        </div>
+      }
+    </div>
+
+
+    <!-- Estructura de Navegación por Pestañas Internas (3 Pestañas Definitivas) -->
     <div class="border-b border-white/10 mb-md flex overflow-x-auto gap-1 sm:gap-4">
       @for (tab of tabs; track tab) {
         <button
           type="button"
           (click)="setTab(tab)"
-          class="pb-3 px-3 sm:px-4 text-sm font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap relative"
+          class="pb-3 px-3 sm:px-4 text-sm font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap relative flex items-center gap-2"
           [ngClass]="{
             'border-b-2 border-color-primary-accent text-color-primary-accent': activeTab() === tab,
-            'text-color-text-secondary hover:text-white': activeTab() !== tab,
+            'text-color-text-secondary hover:text-white': activeTab() !== tab
           }"
         >
-          {{ tab }}
-          @if (tab === 'Servicios') {
+          <span>{{ tab }}</span>
+          @if (tab === 'Resumen') {
             <span
-              class="ml-1 px-1.5 py-0.5 rounded-badge bg-color-primary-accent/20 text-color-primary-accent text-[10px]"
+              class="px-2 py-0.5 rounded-badge bg-color-primary-accent/20 text-color-primary-accent text-[10px] font-mono"
             >
-              4
+              {{ porcentajeProgreso() }}%
+            </span>
+          }
+          @if (tab === 'Carga de Mano de Obra y Repuestos') {
+            <span
+              class="px-2 py-0.5 rounded-badge bg-white/10 text-zinc-300 text-[10px] font-mono"
+            >
+              {{ itemsPresupuesto().length }} {{ itemsPresupuesto().length === 1 ? 'ítem' : 'ítems' }}
             </span>
           }
         </button>
       }
     </div>
 
-    <!-- Contenido Pestaña SERVICIOS: Patrón B (Listado de Control de Tareas - Checkbox Service List Pattern - Página 5) -->
-    @if (activeTab() === 'Servicios') {
-      <div
-        class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg mb-lg shadow-xl"
-      >
-        <div class="flex items-center justify-between mb-md pb-sm border-b border-white/10">
-          <div>
-            <h3 class="typography-h2-section text-white">
-              Listado de Control de Tareas (Service Checkbox Pattern)
-            </h3>
-            <p class="typography-caption text-color-text-secondary">
-              Marca cada tarea al completar el diagnóstico o reemplazo físico de piezas.
-            </p>
+    <!-- PESTAÑA 1: RESUMEN -->
+    @if (activeTab() === 'Resumen') {
+      <div class="space-y-6 mb-lg">
+        <!-- Ficha Técnica y Estado General -->
+        <div class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg shadow-xl space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <h3 class="typography-h2-section text-white flex items-center gap-2">
+                <span>Expediente Técnico del Vehículo</span>
+                <span class="font-mono text-xs px-2 py-0.5 rounded bg-color-primary-accent/20 text-color-primary-accent">
+                  #{{ ordenActiva()?.numero_ot || ('OT-' + ordenActiva()?.id?.slice(0, 8)) }}
+                </span>
+              </h3>
+              <p class="typography-caption text-color-text-secondary mt-0.5">
+                Seguimiento global, diagnóstico inicial y estado de avance de servicios mecánicos.
+              </p>
+            </div>
+            <!-- Barra de Progreso de Tareas Realizadas -->
+            <div class="sm:min-w-[220px] bg-black/40 border border-white/10 rounded-xl p-3">
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-zinc-400 font-semibold uppercase text-[10px]">Progreso de Mano de Obra</span>
+                <span class="font-bold text-color-primary-accent">{{ porcentajeProgreso() }}%</span>
+              </div>
+              <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                <div
+                  class="bg-color-primary-accent h-2 rounded-full transition-all duration-500"
+                  [style.width.%]="porcentajeProgreso()"
+                ></div>
+              </div>
+            </div>
           </div>
-          <span class="typography-body-highlight text-color-primary-accent"> 2/4 completadas </span>
-        </div>
-        <!-- Tareas Asignadas expuestas verticalmente con Checkbox MD3 (Página 5) -->
-        <div class="flex flex-col gap-sm">
-          @for (tarea of tareasServicio(); track tarea) {
-            <div
-              (click)="toggleTask(tarea.id)"
-              class="p-md rounded-card border transition-all duration-200 cursor-pointer flex items-start justify-between gap-4"
-              [ngClass]="{
-                'bg-black/40 border-color-status-review/60': tarea.completada,
-                'bg-black/20 border-white/10 hover:border-color-primary-accent/40':
-                  !tarea.completada,
-              }"
-            >
-              <div class="flex-1">
-                <div class="flex items-center gap-2">
-                  <span
-                    class="typography-body-highlight"
-                    [ngClass]="{
-                      'text-color-status-review line-through': tarea.completada,
-                      'text-white': !tarea.completada,
-                    }"
-                  >
-                    {{ tarea.titulo }}
-                  </span>
-                  <span
-                    class="px-2 py-0.5 rounded-badge text-[10px] font-mono border"
-                    [ngClass]="{
-                      'bg-color-status-review/10 border-color-status-review/30 text-color-status-review':
-                        tarea.completada,
-                      'bg-white/5 border-white/10 text-color-text-secondary': !tarea.completada,
-                    }"
-                  >
-                    ⏱ {{ tarea.tiempoEstimado }}
-                  </span>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Problema / Diagnóstico Reportado -->
+            <div class="bg-black/30 border border-white/10 rounded-xl p-4 space-y-2">
+              <span class="text-xs uppercase tracking-wider text-color-primary-accent font-bold">Diagnóstico / Problema Reportado</span>
+              <p class="text-sm text-white font-medium whitespace-pre-line">
+                {{ ordenActiva()?.descripcion_problema || 'Sin descripción ingresada al momento de la admisión.' }}
+              </p>
+            </div>
+
+            <!-- Estado Operativo -->
+            <div class="bg-black/30 border border-white/10 rounded-xl p-4 space-y-3">
+              <span class="text-xs uppercase tracking-wider text-zinc-400 font-bold">Estado del Taller</span>
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
+                  [ngClass]="getEstadoBadgeClass(ordenActiva()?.estado || '')"
+                >
+                  {{ ordenActiva()?.estado?.replace('_', ' ') }}
+                </span>
+                <span
+                  class="px-2 py-0.5 rounded-full text-xs font-bold uppercase"
+                  [ngClass]="getComplejidadBadgeClass(ordenActiva()?.complejidad)"
+                >
+                  {{ ordenActiva()?.complejidad || 'Media' }}
+                </span>
+              </div>
+
+              @if (ordenActiva()?.motivo_pausa) {
+                <div class="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                  <strong>Motivo de pausa:</strong> {{ ordenActiva()?.motivo_pausa }}
                 </div>
-                <p class="typography-body-main text-color-text-secondary mt-1">
-                  {{ tarea.descripcion }}
-                </p>
-              </div>
-              <!-- Checkbox cuadrado MD3 reactivo de activación explícita (Página 5) -->
-              <div
-                class="w-6 h-6 rounded-badge flex items-center justify-center flex-shrink-0 transition-all duration-200"
-                [ngClass]="{
-                  'bg-color-status-review text-white shadow-[0_0_12px_rgba(0,135,90,0.5)]':
-                    tarea.completada,
-                  'border-2 border-color-text-secondary bg-transparent hover:border-color-primary-accent':
-                    !tarea.completada,
-                }"
+              }
+
+              @if (ordenActiva()?.comentario_rechazo) {
+                <div class="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-200 text-xs">
+                  <strong>Motivo de rechazo:</strong> {{ ordenActiva()?.comentario_rechazo }}
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección de Servicios Realizados (Mano de Obra Real de la BD) -->
+        <div class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h3 class="typography-h2-section text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-color-primary-accent text-xl">home_repair_service</span>
+                Servicios y Mano de Obra Realizados
+              </h3>
+              <p class="typography-caption text-color-text-secondary">
+                Tareas técnicas asignadas a la orden. Haz clic en el casillero para marcar como completada.
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="setTab('Carga de Mano de Obra y Repuestos')"
+              class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-sm text-color-primary-accent">add</span>
+              Cargar Servicio
+            </button>
+          </div>
+
+          @if (cargandoItems()) {
+            <div class="py-8 text-center text-zinc-500 text-xs flex items-center justify-center gap-2">
+              <div class="w-4 h-4 border-2 border-color-primary-accent border-t-transparent rounded-full animate-spin"></div>
+              Cargando servicios de la orden...
+            </div>
+          } @else if (serviciosRealizados().length === 0) {
+            <div class="py-8 text-center text-zinc-400 bg-black/20 border border-dashed border-white/10 rounded-xl space-y-2">
+              <span class="material-symbols-outlined text-3xl text-zinc-600">build_circle</span>
+              <p class="text-sm font-semibold text-white">No hay servicios de mano de obra registrados</p>
+              <p class="text-xs text-zinc-400 max-w-sm mx-auto">
+                Dirígete a la pestaña "Carga de Mano de Obra y Repuestos" para agregar las tareas mecánicas correspondientes.
+              </p>
+              <button
+                type="button"
+                (click)="setTab('Carga de Mano de Obra y Repuestos')"
+                class="mt-2 px-4 py-2 rounded-xl bg-color-primary-accent text-black text-xs font-bold hover:bg-color-primary-accent/90 transition-all cursor-pointer"
               >
-                @if (tarea.completada) {
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="w-4 h-4 stroke-[3dp]"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                + Cargar Mano de Obra
+              </button>
+            </div>
+          } @else {
+            <div class="space-y-3">
+              @for (servicio of serviciosRealizados(); track servicio.id) {
+                <div
+                  (click)="toggleCompletadoItem(servicio)"
+                  class="p-4 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-between gap-4"
+                  [ngClass]="{
+                    'bg-color-status-review/10 border-color-status-review/40': servicio.completado,
+                    'bg-black/25 border-white/10 hover:border-color-primary-accent/40': !servicio.completado
+                  }"
+                >
+                  <div class="flex items-center gap-3 flex-1">
+                    <!-- Checkbox interactivo -->
+                    <div
+                      class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                      [ngClass]="{
+                        'bg-color-status-review text-white shadow-[0_0_10px_rgba(0,135,90,0.4)]': servicio.completado,
+                        'border-2 border-zinc-600 hover:border-color-primary-accent bg-transparent': !servicio.completado
+                      }"
+                    >
+                      @if (servicio.completado) {
+                        <span class="material-symbols-outlined text-sm font-bold">check</span>
+                      }
+                    </div>
+
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="font-bold text-sm"
+                          [ngClass]="{
+                            'line-through text-zinc-400': servicio.completado,
+                            'text-white': !servicio.completado
+                          }"
+                        >
+                          {{ servicio.descripcion }}
+                        </span>
+                        <span
+                          class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                          [ngClass]="servicio.completado ? 'bg-color-status-review/20 text-color-status-review' : 'bg-amber-500/20 text-amber-300'"
+                        >
+                          {{ servicio.completado ? 'Completado' : 'Pendiente' }}
+                        </span>
+                      </div>
+                      <p class="text-xs text-zinc-400 mt-0.5">
+                        Precio: <strong class="text-color-primary-accent font-mono">${{ servicio.precio_unitario | number:'1.2-2' }}</strong>
+                        @if (servicio.cantidad > 1) {
+                          · Cant: {{ servicio.cantidad }} · Subtotal: <strong class="text-white font-mono">${{ servicio.subtotal | number:'1.2-2' }}</strong>
+                        }
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    (click)="$event.stopPropagation(); setTab('Imágenes')"
+                    class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white text-xs flex items-center gap-1 transition-colors"
+                    title="Ver evidencias fotográficas"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                }
-              </div>
+                    <span class="material-symbols-outlined text-sm text-color-primary-accent">photo_camera</span>
+                    <span>Fotos</span>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Sección de Repuestos Utilizados -->
+        <div class="bg-color-surface-container border border-white/10 rounded-card p-md sm:p-lg shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h3 class="typography-h2-section text-white flex items-center gap-2">
+                <span class="material-symbols-outlined text-[#FFCC00] text-xl">inventory_2</span>
+                Repuestos e Insumos Utilizados
+              </h3>
+              <p class="typography-caption text-color-text-secondary">
+                Materiales y piezas reemplazadas asociadas a la orden.
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="setTab('Carga de Mano de Obra y Repuestos')"
+              class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-sm text-color-primary-accent">add</span>
+              Agregar Repuesto
+            </button>
+          </div>
+
+          @if (repuestosUtilizados().length === 0) {
+            <p class="text-xs text-zinc-500 py-3 italic text-center">
+              No se han cargado repuestos adicionales en esta orden.
+            </p>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-white/10 text-zinc-400 uppercase font-semibold text-[11px]">
+                    <th class="py-2.5 px-3">Descripción de la Pieza</th>
+                    <th class="py-2.5 px-3 text-center">Cantidad</th>
+                    <th class="py-2.5 px-3 text-right">Precio Unitario</th>
+                    <th class="py-2.5 px-3 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                  @for (repuesto of repuestosUtilizados(); track repuesto.id) {
+                    <tr class="hover:bg-white/5 transition-colors">
+                      <td class="py-2.5 px-3 text-white font-medium">{{ repuesto.descripcion }}</td>
+                      <td class="py-2.5 px-3 text-center text-zinc-300 font-mono">{{ repuesto.cantidad }}</td>
+                      <td class="py-2.5 px-3 text-right text-zinc-300 font-mono">${{ repuesto.precio_unitario | number:'1.2-2' }}</td>
+                      <td class="py-2.5 px-3 text-right text-color-primary-accent font-mono font-bold">${{ repuesto.subtotal | number:'1.2-2' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
           }
         </div>
       </div>
     }
 
-    <!-- Contenido Pestaña FOTOS Y DIAGNÓSTICO -->
-    @if (activeTab() === 'Fotos y Diagnóstico') {
+    <!-- PESTAÑA 2: CARGA DE MANO DE OBRA Y REPUESTOS -->
+    @if (activeTab() === 'Carga de Mano de Obra y Repuestos') {
       <div class="mb-lg">
-        <app-diagnostico-fotos [ordenId]="ordenIdActiva"></app-diagnostico-fotos>
+        <app-presupuesto-form
+          [ordenId]="ordenIdActiva"
+          (itemsActualizados)="onItemsActualizados($event)"
+        ></app-presupuesto-form>
       </div>
     }
 
-    <!-- Contenido Pestaña PRESUPUESTO Y CHECKLIST -->
-    @if (activeTab() === 'Presupuesto y Checklist') {
+    <!-- PESTAÑA 3: IMÁGENES Y EVIDENCIAS -->
+    @if (activeTab() === 'Imágenes') {
       <div class="mb-lg">
-        <app-presupuesto-form [ordenId]="ordenIdActiva"></app-presupuesto-form>
+        <app-diagnostico-fotos
+          [ordenId]="ordenIdActiva"
+          [itemsPresupuesto]="itemsPresupuesto()"
+        ></app-diagnostico-fotos>
       </div>
     }
 
-    <!-- Contenido Pestañas Alternativas -->
-    @if (
-      activeTab() !== 'Servicios' &&
-      activeTab() !== 'Fotos y Diagnóstico' &&
-      activeTab() !== 'Presupuesto y Checklist'
-    ) {
-      <div
-        class="bg-color-surface-container border border-white/10 rounded-card p-lg mb-lg text-center py-16"
-      >
-        <div
-          class="w-12 h-12 rounded-full bg-white/5 mx-auto mb-3 flex items-center justify-center text-color-primary-accent"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-        </div>
-        <h3 class="typography-h2-section text-white uppercase">
-          Pestaña {{ activeTab() }} de Expediente
-        </h3>
-        <p class="typography-body-main text-color-text-secondary max-w-md mx-auto mt-1">
-          Los datos de {{ activeTab().toLowerCase() }} están sincronizados en tiempo real con la
-          base de datos de auditoría TK010.
-        </p>
-      </div>
-    }
-
-    <!-- Botón de Acción Principal (Pill Action Button - Página 4) -->
+    <!-- Botón de Acción Principal -->
     <div class="flex items-center justify-end">
       <button
         type="button"
+        (click)="finalizarOrden()"
         class="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-lg cursor-pointer"
       >
         <span>Finalizar Orden y Pasar a Control</span>

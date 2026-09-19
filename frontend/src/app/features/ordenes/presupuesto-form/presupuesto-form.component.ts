@@ -14,6 +14,7 @@ export class PresupuestoFormComponent implements OnInit {
   @Input({ required: true }) ordenId!: string;
   @Input() modoEjecucion: boolean = false; // true = Checklist de 'En Proceso', false = Carga de 'Presupuesto'
   @Output() totalActualizado = new EventEmitter<number>();
+  @Output() itemsActualizados = new EventEmitter<ItemPresupuesto[]>();
 
   private readonly ordenService = inject(OrdenService);
 
@@ -65,6 +66,7 @@ export class PresupuestoFormComponent implements OnInit {
         this.items.set(data);
         this.cargando.set(false);
         this.totalActualizado.emit(this.montoTotal());
+        this.itemsActualizados.emit(this.items());
       },
       error: (err) => {
         this.errorMessage.set('Error al cargar los ítems del presupuesto.');
@@ -111,6 +113,7 @@ export class PresupuestoFormComponent implements OnInit {
         this.guardando.set(false);
         this.successMessage.set('Ítem agregado exitosamente.');
         this.totalActualizado.emit(this.montoTotal());
+        this.itemsActualizados.emit(this.items());
         setTimeout(() => this.successMessage.set(''), 3000);
       },
       error: (err) => {
@@ -126,11 +129,13 @@ export class PresupuestoFormComponent implements OnInit {
 
     // Actualización optimista local
     this.items.update(list => list.map(i => i.id === item.id ? { ...i, completado: nuevoEstado } : i));
+    this.itemsActualizados.emit(this.items());
 
     this.ordenService.marcarItemCompletado(this.ordenId, item.id, nuevoEstado).subscribe({
       error: () => {
         // Revertir en caso de error
         this.items.update(list => list.map(i => i.id === item.id ? { ...i, completado: !nuevoEstado } : i));
+        this.itemsActualizados.emit(this.items());
         this.errorMessage.set('Error al actualizar el estado de la tarea.');
       }
     });
@@ -143,6 +148,7 @@ export class PresupuestoFormComponent implements OnInit {
       next: () => {
         this.items.update(list => list.filter(i => i.id !== item.id));
         this.totalActualizado.emit(this.montoTotal());
+        this.itemsActualizados.emit(this.items());
         this.successMessage.set('Ítem eliminado.');
         setTimeout(() => this.successMessage.set(''), 3000);
       },

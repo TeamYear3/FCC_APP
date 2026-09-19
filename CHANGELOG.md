@@ -6,7 +6,7 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
-## [Sin release] - 2026-08-14 ~ 2026-08-26 (Sprint 3 - En progreso)
+## [0.3.0] - 2026-09-19 (Sprint 3)
 
 ### Agregado
 
@@ -25,18 +25,47 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Mantenimientos programados de vehículos con alertas en el portal del cliente.
 - Máquina de estados para órdenes de trabajo con precondiciones de transición y notificación WebSocket.
 - Modificación y actualización de legajo de clientes registrados.
+- Campo `tipo_motor` (`nafta`, `diesel`, `hibrido`, `electrico`, `gnc`) en modelo `Vehiculo` con migración Django y selector en formulario de alta/edición (TK083, TK084).
+- Clasificación de complejidad (`baja`, `media`, `alta`) y nuevo estado `EN_PAUSA` con registro de motivo en Órdenes de Trabajo (TK101).
+- Conexión del Directorio de Clientes con API real y cálculo reactivo de métricas con Signals (TK085).
+- Buscador dinámico en vivo multi-criterio y filtros por estado con plantilla de estado vacío `@empty` (TK086).
+- Componente Modal / Drawer lateral de Expediente Clínico de Cliente con pestañas de titular, flota e historial de OTs (TK087).
+- Infraestructura global de notificaciones toast flotantes con `ToastService` y `ToastComponent` (TK088).
+- Alerta visual explícita mediante toast en `AuthInterceptor` ante expiración de sesión con código HTTP 401 (TK088).
+- Toggle interactivo ver/ocultar contraseña e indicador de fortaleza de clave en Mi Perfil (TK089).
+- Documentación técnica de persistencia híbrida NoSQL con MongoDB para auditoría, telemetría y eventos (TK107).
+- Plan Maestro de Pruebas de Software bajo norma IEEE 829 con 25 casos de prueba oficiales y Plan de Gestión de la Configuración en `docs/`.
+- Grilla interactiva de Órdenes de Trabajo con tabla responsive, paginación dinámica, badges semánticos y selección reactiva por clic y doble clic con foco en expediente (TK120).
+- Endpoint formal `GET /api/ordenes/<pk>/pdf/` para exportación e impresión del comprobante oficial de Orden de Trabajo mediante ReportLab con desglose de repuestos y mano de obra (TK121).
+- Integración de órdenes de trabajo activas y actividades diarias como eventos interactivos en la Agenda FullCalendar con navegación directa al expediente operativo (TK122).
+- Vinculación de evidencias fotográficas (`AdjuntoDiagnostico`) a ítems específicos de presupuesto o nivel general con clave foránea `item_presupuesto` y migración de base de datos (TK123).
+- Notificación en tiempo real vía WebSockets (`adjunto_actualizado`) para sincronización multidispositivo instantánea de fotos subidas y eliminadas entre teléfonos móviles y estaciones de escritorio (TK124).
+- Captura de fotos en vivo directamente en el navegador con `navigator.mediaDevices.getUserMedia`, retícula de encuadre, vista previa y selector de vinculación a servicios (TK125).
+- Modal visor de evidencias a pantalla completa con zoom interactivo al 175%, metadatos de autoría y fecha (TK125).
+- Reestructuración definitiva del expediente técnico en 3 pestañas operativas: `Resumen`, `Carga de Mano de Obra y Repuestos` e `Imágenes` (TK126).
+- Lista de servicios y repuestos reales sincronizados con base de datos en la pestaña Resumen con checkboxes de completado y barra de progreso porcentual (TK126).
+- Botón operativo "Finalizar Orden y Pasar a Control" conectado con confirmación y transición formal de estado (TK127).
+
+### Modificado
+
+- Erradicación definitiva de pestañas y tareas mock desvinculadas del expediente técnico (eliminación de Amarok hardcodeada, pestañas aisladas de repuestos, pagos y notas) (TK126).
+- Migración completa (100%) de plantillas y componentes Angular a la sintaxis moderna Control Flow de Angular 21 (`@if`, `@for`, `@switch`), erradicando directivas legadas `*ngIf` y `*ngFor` (TK117).
+- Estandarización de iconografía vectorial SVG nativa con Google Material Symbols Outlined y eliminación de emojis genéricos en la interfaz (TK100).
+- Desacople de vista estática de facturación en layout de administración para renderizar subrutas limpias de navegación.
+- Configuración de `SECRET_KEY` mediante variables de entorno dinámicas en `settings/test.py` (TK106).
+- Optimización de ancho de contenedores en todas las pantallas del sistema.
+- Fallback a SQLite3 en configuración de desarrollo local.
 
 ### Corregido
 
+- Configuración de `MEDIA_URL` y `MEDIA_ROOT` en Django y normalización de URLs relativas/absolutas en frontend para servir fotos de diagnóstico locales sin errores 404 (TK123).
+- Mensajes de error legibles y descriptivos en el modal de actualización de estado ante rechazo de transiciones inválidas (HTTP 400) por precondiciones de la máquina de estados (TK127).
+- Enrutamiento directo de subruta `/admin/facturacion` al componente de calendario tributario ARCA desacoplado (TK118).
+- Búsqueda flexible multi-criterio `OR` en `ListarCrearOrdenTrabajoView` y enriquecimiento de `OrdenTrabajoSerializer` con datos desnormalizados de patente, titular y contacto (TK119).
 - Imports opcionales de `daphne`, `channels` y `reportlab` para evitar errores en entornos sin esas dependencias.
 - Dependencias de FullCalendar alineadas a v6 con tipos en tsconfig.
 - Configuración de routing ASGI para WebSockets.
 - Envío de correo sincrónico en tests para aislar SQLite.
-
-### Modificado
-
-- Optimización de ancho de contenedores en todas las pantallas del sistema.
-- Fallback a SQLite3 en configuración de desarrollo local.
 
 ---
 

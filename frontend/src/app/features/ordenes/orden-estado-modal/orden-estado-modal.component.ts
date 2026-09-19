@@ -281,7 +281,7 @@ export class OrdenEstadoModalComponent implements OnChanges {
         error: (err) => {
           this.isSubmitting.set(false);
           this.mensajeError.set(
-            err.error?.detail || 'No se pudo actualizar el estado de la Orden.',
+            err.error?.error || err.error?.detail || 'No se pudo actualizar el estado de la Orden.',
           );
         },
       });

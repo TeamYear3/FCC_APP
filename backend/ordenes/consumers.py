@@ -41,3 +41,11 @@ class OrdenesConsumer(AsyncWebsocketConsumer):
             'type': 'orden_actualizada',
             'payload': payload
         }))
+
+    async def adjunto_actualizado(self, event):
+        payload = event.get('payload') or event.get('data', {})
+        await self.send(text_data=json.dumps({
+            'type': 'adjunto_actualizado',
+            'payload': payload
+        }))
+
