@@ -123,13 +123,16 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   cargarTurnosEnCalendario(): void {
+    this.cargando.set(true);
     this.turnoService.obtenerTurnos().subscribe({
       next: (data) => {
         this.turnos.set(data);
         this.mapearYRenderizarEventos(data);
+        this.cargando.set(false);
       },
       error: (err) => {
         console.error('Error al obtener turnos:', err);
+        this.cargando.set(false);
       }
     });
   }
@@ -258,8 +261,7 @@ export class TurnosAgendaComponent implements OnInit {
 
     this.turnoService.actualizarTurno(turnoId, { fecha_hora: fechaIso }).subscribe({
       next: () => {
-        this.cargando.set(false);
-        this.cargarDatos();
+        this.cargarTurnosEnCalendario();
       },
       error: (err) => {
         this.cargando.set(false);
@@ -325,7 +327,7 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoService.crearTurno(payload).subscribe({
       next: (res) => {
         this.cerrarModalCrear();
-        this.cargarDatos(); // Recargar todo para refrescar eventos mapeados
+        this.cargarTurnosEnCalendario();
       },
       error: (err) => {
         this.cargando.set(false);
@@ -362,7 +364,7 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoService.actualizarTurno(turno.id, payload).subscribe({
       next: (res) => {
         this.cerrarModalDetalle();
-        this.cargarDatos();
+        this.cargarTurnosEnCalendario();
       },
       error: (err) => {
         this.cargando.set(false);
@@ -399,7 +401,7 @@ export class TurnosAgendaComponent implements OnInit {
         next: () => {
           this.datosPendientesCrear.set(null);
           this.cerrarModalDetalle();
-          this.cargarDatos();
+          this.cargarTurnosEnCalendario();
         },
         error: (err) => {
           this.cargando.set(false);
@@ -413,7 +415,7 @@ export class TurnosAgendaComponent implements OnInit {
         next: () => {
           this.datosPendientesCrear.set(null);
           this.cerrarModalCrear();
-          this.cargarDatos();
+          this.cargarTurnosEnCalendario();
         },
         error: (err) => {
           this.cargando.set(false);
@@ -436,7 +438,7 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoService.actualizarTurno(turno.id, { estado: 'cancelado' }).subscribe({
       next: () => {
         this.cerrarModalDetalle();
-        this.cargarDatos(); // Recargar todo
+        this.cargarTurnosEnCalendario();
       },
       error: (err) => {
         this.cargando.set(false);
@@ -477,7 +479,7 @@ export class TurnosAgendaComponent implements OnInit {
       next: () => {
         this.cerrarModalEliminar();
         this.cerrarModalDetalle();
-        this.cargarDatos();
+        this.cargarTurnosEnCalendario();
       },
       error: (err) => {
         this.cargando.set(false);
