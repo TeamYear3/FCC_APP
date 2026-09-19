@@ -106,6 +106,13 @@ export class OrdenService {
   private readonly apiUrl = `${environment.apiUrl}/ordenes/`;
 
   /**
+   * Obtiene el detalle de una orden de trabajo por ID (GET /api/ordenes/<id>/)
+   */
+  obtenerOrdenPorId(id: string): Observable<OrdenResponse> {
+    return this.http.get<OrdenResponse>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
    * Crea una nueva orden de trabajo (POST /api/ordenes/)
    */
   crearOrden(payload: OrdenPayload): Observable<OrdenResponse> {

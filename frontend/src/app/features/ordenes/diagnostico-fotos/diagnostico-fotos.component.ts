@@ -234,7 +234,12 @@ export class DiagnosticoFotosComponent implements OnInit, OnDestroy, OnChanges {
     this.blobCapturado = null;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      this.errorMessage.set('Tu navegador no soporta acceso directo a la cámara. Usa la opción de subir archivo.');
+      const camInput = document.getElementById('inputCamaraNativa') as HTMLInputElement;
+      if (camInput) {
+        camInput.click();
+      } else {
+        this.errorMessage.set('Tu navegador no soporta acceso directo a la cámara. Usa la opción de subir archivo.');
+      }
       return;
     }
 
@@ -257,11 +262,18 @@ export class DiagnosticoFotosComponent implements OnInit, OnDestroy, OnChanges {
         const video = document.getElementById('videoCamara') as HTMLVideoElement;
         if (video && this.streamCamara) {
           video.srcObject = this.streamCamara;
-          await video.play();
+          video.onloadedmetadata = () => {
+            video.play().catch(e => console.warn('Error en play camara:', e));
+          };
+          try {
+            await video.play();
+          } catch {
+            // Espera a loadedmetadata
+          }
         }
       } catch (err: any) {
         console.error('Error al acceder a la cámara:', err);
-        this.errorCamara.set('No se pudo acceder a la cámara. Asegúrate de otorgar permisos al navegador o sube el archivo de imagen directamente.');
+        this.errorCamara.set('No se pudo acceder a la cámara (' + (err.name || err.message || 'permiso denegado') + '). Asegúrate de otorgar permisos al navegador o sube el archivo de imagen directamente.');
       }
     }, 150);
   }
