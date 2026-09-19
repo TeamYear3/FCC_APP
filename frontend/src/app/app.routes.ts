@@ -55,6 +55,8 @@ export const routes: Routes = [
       },
       {
         path: 'clientes/nuevo',
+        canActivate: [roleGuardFn],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./features/clientes/cliente-form/cliente-form.component').then(
             (m) => m.ClienteFormComponent
@@ -62,6 +64,8 @@ export const routes: Routes = [
       },
       {
         path: 'clientes/editar/:id',
+        canActivate: [roleGuardFn],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./features/clientes/cliente-form/cliente-form.component').then(
             (m) => m.ClienteFormComponent
@@ -106,6 +110,8 @@ export const routes: Routes = [
       },
       {
         path: 'vehiculos/nuevo',
+        canActivate: [roleGuardFn],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
             (m) => m.VehiculoFormComponent
@@ -113,6 +119,8 @@ export const routes: Routes = [
       },
       {
         path: 'vehiculos/editar/:id',
+        canActivate: [roleGuardFn],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
             (m) => m.VehiculoFormComponent
@@ -153,7 +161,7 @@ export const routes: Routes = [
   {
     path: 'clientes/editar/:id',
     canActivate: [roleGuardFn],
-    data: { roles: ['admin', 'tecnico'] },
+    data: { roles: ['admin'] },
     loadComponent: () =>
       import('./features/clientes/cliente-form/cliente-form.component').then(
         (m) => m.ClienteFormComponent
@@ -162,7 +170,7 @@ export const routes: Routes = [
   {
     path: 'clientes/nuevo',
     canActivate: [roleGuardFn],
-    data: { roles: ['admin', 'tecnico'] },
+    data: { roles: ['admin'] },
     loadComponent: () =>
       import('./features/clientes/cliente-form/cliente-form.component').then(
         (m) => m.ClienteFormComponent
@@ -180,7 +188,7 @@ export const routes: Routes = [
   {
     path: 'vehiculos/editar/:id',
     canActivate: [roleGuardFn],
-    data: { roles: ['admin', 'tecnico'] },
+    data: { roles: ['admin'] },
     loadComponent: () =>
       import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
         (m) => m.VehiculoFormComponent
@@ -198,7 +206,7 @@ export const routes: Routes = [
   {
     path: 'vehiculos/nuevo',
     canActivate: [roleGuardFn],
-    data: { roles: ['admin', 'tecnico'] },
+    data: { roles: ['admin'] },
     loadComponent: () =>
       import('./features/vehiculos/vehiculo-form/vehiculo-form.component').then(
         (m) => m.VehiculoFormComponent

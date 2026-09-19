@@ -58,25 +58,27 @@
         <p class="typography-caption text-color-text-secondary mt-1">Directorio consolidado con acceso rápido al historial de órdenes.</p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3">
-        <a
-          routerLink="/admin/clientes/nuevo"
-          class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-          </svg>
-          <span>Nuevo Cliente</span>
-        </a>
-        <a
-          routerLink="/admin/vehiculos/nuevo"
-          class="min-h-[48px] px-lg py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
-          <!-- Ícono de Auto / Vehículo -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8 17a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zM3 9l2-4h10l2 4h4v7h-2a3 3 0 01-6 0H9a3 3 0 01-6 0H1V9h2z" />
-          </svg>
-          <span>Nuevo Vehículo</span>
-        </a>
-      </div>
+      @if (userRole() !== 'tecnico') {
+        <div class="flex flex-wrap items-center gap-3">
+          <a
+            routerLink="/admin/clientes/nuevo"
+            class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            <span>Nuevo Cliente</span>
+          </a>
+          <a
+            routerLink="/admin/vehiculos/nuevo"
+            class="min-h-[48px] px-lg py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
+            <!-- Ícono de Auto / Vehículo -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 17a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zM3 9l2-4h10l2 4h4v7h-2a3 3 0 01-6 0H9a3 3 0 01-6 0H1V9h2z" />
+            </svg>
+            <span>Nuevo Vehículo</span>
+          </a>
+        </div>
+      }
     </div>
 
     <!-- Barra de Herramientas de Filtrado y Búsqueda Dinámica (TK086 - Figma Aligned) -->
@@ -237,15 +239,17 @@
                 <span>Expediente</span>
               </button>
               
-              <a
-                [routerLink]="['/admin/clientes/editar', cli.id]"
-                class="flex-1 min-h-[44px] rounded-pill bg-color-primary-accent hover:bg-color-primary-accent/90 text-black typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer decoration-none shadow-md"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                <span>Editar Legajo</span>
-              </a>
+              @if (userRole() !== 'tecnico') {
+                <a
+                  [routerLink]="['/admin/clientes/editar', cli.id]"
+                  class="flex-1 min-h-[44px] rounded-pill bg-color-primary-accent hover:bg-color-primary-accent/90 text-black typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer decoration-none shadow-md"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  <span>Editar Legajo</span>
+                </a>
+              }
             </div>
           </div>
         } @empty {
