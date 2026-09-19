@@ -8,6 +8,8 @@ export interface OrdenPayload {
   descripcion_problema: string;
   fecha_ingreso: string; // YYYY-MM-DD
   estado?: string;
+  complejidad?: 'baja' | 'media' | 'alta';
+  motivo_pausa?: string;
 }
 
 export interface OrdenResponse {
@@ -17,6 +19,8 @@ export interface OrdenResponse {
   descripcion_problema: string;
   fecha_ingreso: string;
   estado: string;
+  complejidad?: 'baja' | 'media' | 'alta';
+  motivo_pausa?: string | null;
   tecnico?: string | null;
   fecha_entrega?: string | null;
   comentario_rechazo?: string | null;
@@ -31,6 +35,7 @@ export interface OrdenFiltros {
   patente?: string;
   cliente?: string;
   estado?: string;
+  complejidad?: string;
   tecnico?: string;
   fecha_desde?: string;
   fecha_hasta?: string;

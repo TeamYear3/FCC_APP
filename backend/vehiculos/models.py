@@ -2,6 +2,13 @@ import uuid
 from django.db import models
 from clientes.models import Cliente
 
+class TipoMotor(models.TextChoices):
+    NAFTERO = "NAFTERO", "Naftero"
+    GASOLERO = "GASOLERO", "Gasolero"
+    GNC = "GNC", "GNC"
+    HIBRIDO_ELECTRICO = "HIBRIDO_ELECTRICO", "Híbrido/Eléctrico"
+
+
 class Vehiculo(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="vehiculos")
@@ -10,6 +17,11 @@ class Vehiculo(models.Model):
     marca = models.CharField(max_length=100)
     modelo = models.CharField(max_length=100)
     anio = models.PositiveIntegerField(null=True, blank=True)
+    tipo_motor = models.CharField(
+        max_length=20,
+        choices=TipoMotor.choices,
+        default=TipoMotor.NAFTERO
+    )
     kilometraje = models.PositiveIntegerField(default=0)
     kilometraje_actual = models.PositiveIntegerField(default=0)
     color = models.CharField(max_length=50, blank=True)

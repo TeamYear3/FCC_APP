@@ -8,8 +8,10 @@ import {
   HttpHandlerFn,
   HttpErrorResponse
 } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { ToastService } from '../services/toast.service';
 
 /**
  * AuthInterceptor adjunta el token JWT (si existe) en el encabezado Authorization
@@ -18,6 +20,8 @@ import { AuthService } from '../auth/auth.service';
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private readonly authService = inject(AuthService);
+  private readonly toastService = inject(ToastService);
+  private readonly router = inject(Router);
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     const token = this.authService.getToken();
@@ -42,6 +46,9 @@ export class AuthInterceptor implements HttpInterceptor {
                 });
                 return next.handle(retryReq);
               }
+              this.toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+              this.authService.logout();
+              this.router.navigate(['/autenticacion']);
               return throwError(() => error);
             })
           );
@@ -54,6 +61,8 @@ export class AuthInterceptor implements HttpInterceptor {
 
 export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
   const authService = inject(AuthService);
+  const toastService = inject(ToastService);
+  const router = inject(Router);
   const token = authService.getToken();
   let authReq = req;
   if (token) {
@@ -76,6 +85,9 @@ export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, 
               });
               return next(retryReq);
             }
+            toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+            authService.logout();
+            router.navigate(['/autenticacion']);
             return throwError(() => error);
           })
         );
@@ -84,3 +96,4 @@ export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, 
     })
   );
 };
+
