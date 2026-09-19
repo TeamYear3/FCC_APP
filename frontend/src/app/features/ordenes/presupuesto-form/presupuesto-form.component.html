@@ -77,22 +77,64 @@
             </button>
           </div>
         </div>
-        <!-- Descripción -->
-        <div class="form-group col-span-2">
-          <label class="form-label">Descripción</label>
-          <div class="input-icon-wrapper">
+        <!-- Descripción con Autocompletado Predictivo (TK104) -->
+        <div class="form-group col-span-2 relative">
+          <div class="flex items-center justify-between mb-1">
+            <label class="form-label mb-0">Descripción del Trabajo / Repuesto</label>
+            <span class="text-[10px] text-[#FFCC00]/80 font-medium">Sugerencias predictivas activas</span>
+          </div>
+          <div class="input-icon-wrapper relative">
             <span class="material-symbols-outlined input-icon text-zinc-400 text-sm"
               >description</span
             >
             <input
               type="text"
               class="form-control"
-              placeholder="Ej. Pastillas de freno delanteras Bosch"
+              placeholder="Ej. Pastillas de freno, Cambio de aceite..."
               [ngModel]="nuevaDescripcion()"
               (ngModelChange)="nuevaDescripcion.set($event)"
+              (focus)="onDescripcionFocus()"
+              (blur)="onDescripcionBlur()"
+              (keydown)="onKeyDown($event)"
               [disabled]="guardando()"
+              autocomplete="off"
             />
           </div>
+
+          <!-- Panel Desplegable de Sugerencias Predictivas -->
+          @if (mostrarSugerencias() && sugerenciasFiltradas().length > 0) {
+            <div
+              class="absolute left-0 right-0 top-full mt-1.5 z-40 bg-[#1E1E1E] border border-[#FFCC00]/40 rounded-xl shadow-2xl max-h-60 overflow-y-auto divide-y divide-white/5 animate-fadeIn"
+            >
+              <div class="px-3 py-1.5 bg-black/40 text-[10px] font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Catálogo sugerido ({{ nuevoTipo() === 'mano_de_obra' ? 'Mano de Obra' : 'Repuesto' }})</span>
+                <span class="text-[9px] text-[#FFCC00]">Enter para autocompletar</span>
+              </div>
+              @for (sug of sugerenciasFiltradas(); track sug.descripcion; let i = $index) {
+                <button
+                  type="button"
+                  (mousedown)="seleccionarSugerencia(sug)"
+                  class="w-full text-left px-3 py-2.5 hover:bg-white/10 active:bg-white/15 flex items-center justify-between transition-colors cursor-pointer border-0 bg-transparent min-h-[44px]"
+                  [class.bg-[#FFCC00]/15]="indiceSugerenciaSeleccionada() === i"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[#FFCC00] text-sm shrink-0">
+                      {{ sug.tipo === 'mano_de_obra' ? 'handyman' : 'inventory_2' }}
+                    </span>
+                    <span class="text-xs text-white font-medium">{{ sug.descripcion }}</span>
+                    @if (sug.categoria) {
+                      <span class="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-zinc-400 border border-white/10">
+                        {{ sug.categoria }}
+                      </span>
+                    }
+                  </div>
+                  <span class="text-xs font-bold text-[#FFCC00] shrink-0 ml-2">
+                    ${{ sug.precioSugerido | number: '1.0-0' }}
+                  </span>
+                </button>
+              }
+            </div>
+          }
         </div>
         <!-- Cantidad -->
         <div class="form-group">
