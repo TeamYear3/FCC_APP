@@ -129,6 +129,37 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
 CrearOrdenTrabajoView = ListarCrearOrdenTrabajoView
 
 
+class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
+    """
+    TK095: Endpoint GET /api/ordenes/<uuid:id>/
+    Retorna el detalle completo de una Orden de Trabajo individual.
+    Restringe el acceso si el rol es 'cliente' y la OT no pertenece a sus vehículos.
+    """
+    serializer_class = OrdenTrabajoSerializer
+    lookup_field = 'id'
+    lookup_url_kwarg = 'id'
+
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+
+    def get_queryset(self):
+        return OrdenTrabajo.objects.select_related(
+            'vehiculo__cliente__usuario', 'tecnico'
+        ).prefetch_related(
+            'items_presupuesto', 'adjuntos_diagnostico', 'historial_estados'
+        ).all()
+
+    def check_object_permissions(self, request, obj):
+        user = request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            if not obj.vehiculo or not obj.vehiculo.cliente or obj.vehiculo.cliente.usuario_id != user.id:
+                raise PermissionDenied("No tiene autorización para consultar esta Orden de Trabajo.")
+        elif getattr(user, 'rol', None) in ('admin', 'tecnico'):
+            return
+        else:
+            raise PermissionDenied("No tiene permisos para realizar esta acción.")
+
+
 class AgregarManoDeObraView(APIView):
     permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
 
