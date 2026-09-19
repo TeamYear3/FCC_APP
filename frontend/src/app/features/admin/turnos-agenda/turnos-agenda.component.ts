@@ -32,7 +32,6 @@ export class TurnosAgendaComponent implements OnInit {
   cargando = signal(false);
   turnos = signal<TurnoResponse[]>([]);
   clientes = signal<ClienteResponse[]>([]);
-  vehiculos = signal<VehiculoResponse[]>([]);
   vehiculosFiltrados = signal<VehiculoResponse[]>([]);
 
   // Estados de Modales e Alertas
@@ -97,15 +96,13 @@ export class TurnosAgendaComponent implements OnInit {
   cargarDatos(): void {
     this.cargando.set(true);
 
-    // Cargar en paralelo para garantizar mapeos inmediatos
+    // Cargar en paralelo solo clientes y turnos (los vehículos se piden bajo demanda al elegir cliente)
     forkJoin({
       clientes: this.clienteService.obtenerClientes(),
-      vehiculos: this.vehiculoService.getVehiculos(),
       turnos: this.turnoService.obtenerTurnos()
     }).subscribe({
       next: (res) => {
         this.clientes.set(res.clientes);
-        this.vehiculos.set(res.vehiculos);
         this.turnos.set(res.turnos);
 
         this.mapearYRenderizarEventos(res.turnos);
@@ -132,9 +129,9 @@ export class TurnosAgendaComponent implements OnInit {
 
   mapearYRenderizarEventos(data: TurnoResponse[]): void {
     const eventos = data.map((t) => {
-      // Obtener datos legibles
-      const nombreCliente = this.getNombreCliente(t.cliente);
-      const datosVehiculo = this.getDatosVehiculo(t.vehiculo);
+      // Obtener datos legibles desde la respuesta enriquecida o helpers
+      const nombreCliente = t.cliente_nombre || this.getNombreCliente(t.cliente);
+      const datosVehiculo = t.vehiculo_info || this.getDatosVehiculo(t.vehiculo);
       
       // Formatear hora de inicio a partir de fecha_hora
       const dateObj = new Date(t.fecha_hora);
@@ -172,13 +169,22 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   onClienteChange(clienteId: string): void {
-    // Filtrar vehículos que pertenecen al cliente seleccionado
-    const vehs = this.vehiculos().filter(
-      (v) => v.cliente_id === clienteId || (v as any).cliente === clienteId
-    );
-    this.vehiculosFiltrados.set(vehs);
-    // Resetear el selector de vehículo
     this.turnoForm.get('vehiculo')?.setValue('');
+    if (!clienteId) {
+      this.vehiculosFiltrados.set([]);
+      return;
+    }
+
+    // Consulta bajo demanda (on-demand) de los vehículos de este cliente
+    this.vehiculoService.getVehiculos(clienteId).subscribe({
+      next: (vehs) => {
+        this.vehiculosFiltrados.set(vehs);
+      },
+      error: (err) => {
+        console.error('Error al cargar vehículos bajo demanda:', err);
+        this.vehiculosFiltrados.set([]);
+      }
+    });
   }
 
   handleDateClick(arg: any): void {
@@ -302,8 +308,8 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   getDatosVehiculo(vehiculoId: string): string {
-    const vehiculo = this.vehiculos().find(v => v.id === vehiculoId);
-    return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.patente})` : 'Cargando vehículo...';
+    const vehiculo = this.vehiculosFiltrados().find(v => v.id === vehiculoId);
+    return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.patente})` : 'Vehículo asignado';
   }
 
   cerrarAlertaSobrecupo(): void {

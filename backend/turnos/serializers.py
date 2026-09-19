@@ -7,13 +7,17 @@ from vehiculos.models import Vehiculo
 class TurnoSerializer(serializers.ModelSerializer):
     warning_overbooking = serializers.SerializerMethodField()
     force_booking = serializers.BooleanField(write_only=True, required=False, default=False)
+    cliente_nombre = serializers.SerializerMethodField()
+    vehiculo_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Turno
         fields = [
             "id",
             "cliente",
+            "cliente_nombre",
             "vehiculo",
+            "vehiculo_info",
             "fecha_hora",
             "motivo",
             "estado",
@@ -22,7 +26,17 @@ class TurnoSerializer(serializers.ModelSerializer):
             "warning_overbooking",
             "force_booking",
         ]
-        read_only_fields = ["id", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "cliente_nombre", "vehiculo_info", "creado_en", "actualizado_en"]
+
+    def get_cliente_nombre(self, obj):
+        if obj.cliente:
+            return f"{obj.cliente.nombre} {obj.cliente.apellido}".strip()
+        return "Cliente no asignado"
+
+    def get_vehiculo_info(self, obj):
+        if obj.vehiculo:
+            return f"{obj.vehiculo.marca} {obj.vehiculo.modelo} ({obj.vehiculo.patente})".strip()
+        return "Vehículo no asignado"
 
     def get_warning_overbooking(self, obj):
         if obj.estado == "cancelado":

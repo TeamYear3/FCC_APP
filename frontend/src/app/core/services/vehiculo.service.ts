@@ -75,10 +75,11 @@ export class VehiculoService {
   }
 
   /**
-   * Obtiene la lista de vehículos del backend (GET /api/vehiculos/)
+   * Obtiene la lista de vehículos del backend (GET /api/vehiculos/ o GET /api/vehiculos/?cliente=<id>)
    */
-  getVehiculos(): Observable<VehiculoResponse[]> {
-    return this.http.get<VehiculoResponse[]>(this.apiUrl);
+  getVehiculos(clienteId?: string): Observable<VehiculoResponse[]> {
+    const url = clienteId ? `${this.apiUrl}?cliente=${clienteId}` : this.apiUrl;
+    return this.http.get<VehiculoResponse[]>(url);
   }
 
   /**
