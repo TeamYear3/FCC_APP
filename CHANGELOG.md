@@ -38,9 +38,17 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Grilla interactiva de Órdenes de Trabajo con tabla responsive, paginación dinámica, badges semánticos y selección reactiva por clic y doble clic con foco en expediente (TK120).
 - Endpoint formal `GET /api/ordenes/<pk>/pdf/` para exportación e impresión del comprobante oficial de Orden de Trabajo mediante ReportLab con desglose de repuestos y mano de obra (TK121).
 - Integración de órdenes de trabajo activas y actividades diarias como eventos interactivos en la Agenda FullCalendar con navegación directa al expediente operativo (TK122).
+- Vinculación de evidencias fotográficas (`AdjuntoDiagnostico`) a ítems específicos de presupuesto o nivel general con clave foránea `item_presupuesto` y migración de base de datos (TK123).
+- Notificación en tiempo real vía WebSockets (`adjunto_actualizado`) para sincronización multidispositivo instantánea de fotos subidas y eliminadas entre teléfonos móviles y estaciones de escritorio (TK124).
+- Captura de fotos en vivo directamente en el navegador con `navigator.mediaDevices.getUserMedia`, retícula de encuadre, vista previa y selector de vinculación a servicios (TK125).
+- Modal visor de evidencias a pantalla completa con zoom interactivo al 175%, metadatos de autoría y fecha (TK125).
+- Reestructuración definitiva del expediente técnico en 3 pestañas operativas: `Resumen`, `Carga de Mano de Obra y Repuestos` e `Imágenes` (TK126).
+- Lista de servicios y repuestos reales sincronizados con base de datos en la pestaña Resumen con checkboxes de completado y barra de progreso porcentual (TK126).
+- Botón operativo "Finalizar Orden y Pasar a Control" conectado con confirmación y transición formal de estado (TK127).
 
 ### Modificado
 
+- Erradicación definitiva de pestañas y tareas mock desvinculadas del expediente técnico (eliminación de Amarok hardcodeada, pestañas aisladas de repuestos, pagos y notas) (TK126).
 - Migración completa (100%) de plantillas y componentes Angular a la sintaxis moderna Control Flow de Angular 21 (`@if`, `@for`, `@switch`), erradicando directivas legadas `*ngIf` y `*ngFor` (TK117).
 - Estandarización de iconografía vectorial SVG nativa con Google Material Symbols Outlined y eliminación de emojis genéricos en la interfaz (TK100).
 - Desacople de vista estática de facturación en layout de administración para renderizar subrutas limpias de navegación.
@@ -50,6 +58,8 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ### Corregido
 
+- Configuración de `MEDIA_URL` y `MEDIA_ROOT` en Django y normalización de URLs relativas/absolutas en frontend para servir fotos de diagnóstico locales sin errores 404 (TK123).
+- Mensajes de error legibles y descriptivos en el modal de actualización de estado ante rechazo de transiciones inválidas (HTTP 400) por precondiciones de la máquina de estados (TK127).
 - Enrutamiento directo de subruta `/admin/facturacion` al componente de calendario tributario ARCA desacoplado (TK118).
 - Búsqueda flexible multi-criterio `OR` en `ListarCrearOrdenTrabajoView` y enriquecimiento de `OrdenTrabajoSerializer` con datos desnormalizados de patente, titular y contacto (TK119).
 - Imports opcionales de `daphne`, `channels` y `reportlab` para evitar errores en entornos sin esas dependencias.
