@@ -1,6 +1,9 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from rest_framework.test import APIClient
+from rest_framework import status
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -618,6 +621,55 @@ class PerfilUsuarioAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.admin.refresh_from_db()
         self.assertTrue(self.admin.check_password("NewAdminPass456!"))
+
+
+class ListaUsuariosAdminAPITest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = User.objects.create_user(
+            email="admin_list@test.com",
+            password="AdminPass123!",
+            rol="admin",
+            nombre="Admin",
+            apellido="Principal"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_list@test.com",
+            password="TecnicoPass123!",
+            rol="tecnico",
+            nombre="Mecánico",
+            apellido="Taller"
+        )
+        self.cliente = User.objects.create_user(
+            email="cliente_list@test.com",
+            password="ClientePass123!",
+            rol="cliente",
+            nombre="Cliente",
+            apellido="Frecuente"
+        )
+        self.url = reverse("admin-usuarios-lista")
+
+    def test_admin_puede_listar_usuarios_y_metricas(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("metricas", response.data)
+        self.assertIn("usuarios", response.data)
+        self.assertEqual(response.data["metricas"]["total_usuarios"], 3)
+        self.assertEqual(response.data["metricas"]["administradores_count"], 1)
+        self.assertEqual(response.data["metricas"]["tecnicos_count"], 1)
+        self.assertEqual(response.data["metricas"]["clientes_count"], 1)
+        self.assertEqual(len(response.data["usuarios"]), 3)
+
+    def test_no_admin_prohibido_acceder_a_lista_usuarios(self):
+        self.client.force_authenticate(user=self.tecnico)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.client.force_authenticate(user=self.cliente)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 
 

@@ -63,6 +63,14 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
         rep = super().to_representation(instance)
         # Mapeamos vehiculo ForeignKey a vehiculo_id en la respuesta
         rep['vehiculo_id'] = str(instance.vehiculo.id) if instance.vehiculo else None
+        if instance.vehiculo:
+            rep['vehiculo_patente'] = instance.vehiculo.patente
+            rep['vehiculo_marca_modelo'] = f"{instance.vehiculo.marca} {instance.vehiculo.modelo}".strip()
+            if instance.vehiculo.cliente:
+                cli = instance.vehiculo.cliente
+                rep['cliente_nombre'] = f"{cli.nombre} {cli.apellido}".strip()
+                rep['cliente_documento'] = f"{cli.tipo_documento}: {cli.dni_cuit}" if cli.dni_cuit else ""
+                rep['cliente_dni_cuit'] = cli.dni_cuit
         return rep
 
 

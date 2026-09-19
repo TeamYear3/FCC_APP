@@ -15,7 +15,9 @@ export interface TurnoPayload {
 export interface TurnoResponse {
   id: string;
   cliente: string;
+  cliente_nombre?: string;
   vehiculo: string;
+  vehiculo_info?: string;
   fecha_hora: string;
   motivo: string;
   estado: 'pendiente' | 'completado' | 'cancelado';

@@ -1,6 +1,6 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenFiltros } from '../../core/services/orden.service';
@@ -38,6 +38,7 @@ export class OrdenesComponent implements OnInit {
   readonly authService = inject(AuthService);
   readonly ordenService = inject(OrdenService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly userRole = this.authService.userRoleSignal;
   readonly isAdminView = signal<boolean>(false);
@@ -55,17 +56,18 @@ export class OrdenesComponent implements OnInit {
   readonly fechaDesde = signal<string>('');
   readonly fechaHasta = signal<string>('');
 
-  // Estado de lista paginada
+  // Estado de lista paginada y orden activa
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
+  readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
+  readonly ordenActiva = computed(() => this.ordenSeleccionada() || this.listaOrdenes()[0] || null);
   readonly cargando = signal<boolean>(false);
   readonly paginaActual = signal<number>(1);
   readonly totalPaginas = signal<number>(1);
   readonly totalItems = signal<number>(0);
 
   get ordenIdActiva(): string {
-    return this.listaOrdenes()[0]?.id || '1';
+    return this.ordenActiva()?.id || this.listaOrdenes()[0]?.id || '1';
   }
-
 
   ngOnInit(): void {
     const isAdmin = this.router.url.startsWith('/admin');
@@ -76,15 +78,22 @@ export class OrdenesComponent implements OnInit {
       this.successOT.set(window.history.state.successOT);
       window.history.replaceState({}, '', isAdmin ? '/admin/ordenes' : '/ordenes');
     }
-    this.cargarOrdenes(1);
+
+    this.route.queryParams.subscribe(params => {
+      const targetBusqueda = params['busqueda'];
+      const targetId = params['id'];
+      if (targetBusqueda) {
+        this.busqueda.set(targetBusqueda);
+      }
+      this.cargarOrdenes(1, targetId, targetBusqueda);
+    });
   }
 
-  cargarOrdenes(page: number = 1): void {
+  cargarOrdenes(page: number = 1, targetId?: string, targetBusqueda?: string): void {
     this.cargando.set(true);
     const busq = this.busqueda().trim();
     const filtros: OrdenFiltros = {
-      patente: busq,
-      cliente: busq,
+      busqueda: busq,
       estado: this.estadoFiltro(),
       complejidad: this.complejidadFiltro(),
       fecha_desde: this.fechaDesde(),
@@ -93,10 +102,24 @@ export class OrdenesComponent implements OnInit {
 
     this.ordenService.obtenerOrdenes(filtros, page, 10).subscribe({
       next: (res) => {
-        this.listaOrdenes.set(res.results || []);
+        const results = res.results || [];
+        this.listaOrdenes.set(results);
         this.paginaActual.set(res.current_page || 1);
         this.totalPaginas.set(res.total_pages || 1);
         this.totalItems.set(res.total_items || 0);
+
+        if (targetId) {
+          const enc = results.find(o => String(o.id) === String(targetId) || o.numero_ot === targetId);
+          if (enc) this.ordenSeleccionada.set(enc);
+        } else if (targetBusqueda) {
+          const enc = results.find(o => 
+            o.numero_ot.toLowerCase().includes(targetBusqueda.toLowerCase()) ||
+            String(o.id) === String(targetBusqueda)
+          );
+          if (enc) this.ordenSeleccionada.set(enc);
+        } else if (results.length > 0 && (!this.ordenSeleccionada() || !results.some(r => r.id === this.ordenSeleccionada()?.id))) {
+          this.ordenSeleccionada.set(results[0]);
+        }
         this.cargando.set(false);
       },
       error: (err) => {
@@ -104,6 +127,67 @@ export class OrdenesComponent implements OnInit {
         this.cargando.set(false);
       }
     });
+  }
+
+  seleccionarOrden(orden: OrdenResponse): void {
+    this.ordenSeleccionada.set(orden);
+  }
+
+  obtenerClaseEstado(estado?: string | null): string {
+    const e = (estado || '').toLowerCase().trim();
+    switch (e) {
+      case 'en_proceso':
+      case 'en proceso':
+        return 'bg-color-primary-accent text-black';
+      case 'en_revision':
+      case 'en revisión':
+      case 'aprobado':
+      case 'entregado':
+        return 'bg-color-status-review text-white';
+      case 'facturado':
+      case 'facturado arca':
+      case 'finalizado':
+        return 'bg-color-status-pending text-white';
+      case 'en_presupuesto':
+      case 'en presupuesto':
+        return 'bg-color-status-process text-black';
+      case 'ingresado':
+      default:
+        return 'bg-zinc-700 text-white';
+    }
+  }
+
+  obtenerTextoEstado(estado?: string | null): string {
+    const e = (estado || '').toLowerCase().trim();
+    switch (e) {
+      case 'en_proceso':
+      case 'en proceso':
+        return 'En Proceso';
+      case 'en_revision':
+      case 'en revisión':
+        return 'En Revisión';
+      case 'aprobado':
+        return 'Aprobado';
+      case 'facturado':
+      case 'facturado arca':
+        return 'Facturado ARCA';
+      case 'finalizado':
+        return 'Finalizado';
+      case 'en_presupuesto':
+      case 'en presupuesto':
+        return 'En Presupuesto';
+      case 'ingresado':
+        return 'Ingresado';
+      case 'en_pausa':
+      case 'en pausa':
+        return 'En Pausa';
+      case 'cancelado':
+        return 'Cancelado';
+      case 'entregado':
+        return 'Entregado';
+      default:
+        return estado || 'Sin Estado';
+    }
   }
 
   onFiltroChange(): void {
