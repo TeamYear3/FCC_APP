@@ -77,6 +77,7 @@ export interface ItemPresupuesto {
   precio_unitario: number;
   subtotal?: number;
   completado?: boolean;
+  adjuntos?: AdjuntoDiagnostico[];
   creado_en?: string;
   actualizado_en?: string;
 }
@@ -84,6 +85,9 @@ export interface ItemPresupuesto {
 export interface AdjuntoDiagnostico {
   id: string;
   orden_trabajo: string;
+  item_presupuesto?: string | null;
+  item_presupuesto_id?: string | null;
+  item_presupuesto_descripcion?: string | null;
   url_secure: string;
   public_id: string;
   nombre_archivo: string;
@@ -142,11 +146,14 @@ export class OrdenService {
   }
 
   /**
-   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053)
+   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053 / TK123)
    */
-  subirAdjuntoDiagnostico(ordenId: string, archivo: File): Observable<AdjuntoDiagnostico> {
+  subirAdjuntoDiagnostico(ordenId: string, archivo: File, itemPresupuestoId?: string | null): Observable<AdjuntoDiagnostico> {
     const formData = new FormData();
     formData.append('archivo', archivo);
+    if (itemPresupuestoId) {
+      formData.append('item_presupuesto_id', itemPresupuestoId);
+    }
     return this.http.post<AdjuntoDiagnostico>(`${this.apiUrl}${ordenId}/adjuntos/`, formData);
   }
 
