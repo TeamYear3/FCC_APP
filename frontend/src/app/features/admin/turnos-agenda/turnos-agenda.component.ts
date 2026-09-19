@@ -43,9 +43,11 @@ export class TurnosAgendaComponent implements OnInit {
 
   // Datos temporales para la operación de forzado (bypass)
   datosPendientesCrear = signal<any>(null);
+  modoEdicion = signal<boolean>(false);
 
-  // Formulario
+  // Formularios
   turnoForm!: FormGroup;
+  detalleForm!: FormGroup;
 
   calendarOptions = signal<any>({
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -83,6 +85,12 @@ export class TurnosAgendaComponent implements OnInit {
     this.turnoForm = this.fb.group({
       cliente: ['', Validators.required],
       vehiculo: ['', Validators.required],
+      fecha_hora: ['', Validators.required],
+      motivo: ['', [Validators.required, Validators.maxLength(255)]],
+      estado: ['pendiente', Validators.required]
+    });
+
+    this.detalleForm = this.fb.group({
       fecha_hora: ['', Validators.required],
       motivo: ['', [Validators.required, Validators.maxLength(255)]],
       estado: ['pendiente', Validators.required]
@@ -208,8 +216,35 @@ export class TurnosAgendaComponent implements OnInit {
   handleEventClick(arg: any): void {
     const turno = arg.event.extendedProps as TurnoResponse;
     this.turnoSeleccionado.set(turno);
+    this.modoEdicion.set(false);
     this.mensajeError.set('');
     this.mostrarModalDetalle.set(true);
+  }
+
+  habilitarEdicion(): void {
+    const turno = this.turnoSeleccionado();
+    if (!turno) return;
+
+    const d = new Date(turno.fecha_hora);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const fechaIso = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+
+    this.detalleForm.patchValue({
+      fecha_hora: fechaIso,
+      motivo: turno.motivo,
+      estado: turno.estado
+    });
+    this.modoEdicion.set(true);
+    this.mensajeError.set('');
+  }
+
+  cancelarEdicion(): void {
+    this.modoEdicion.set(false);
+    this.mensajeError.set('');
   }
 
   guardarTurno(): void {
@@ -249,6 +284,41 @@ export class TurnosAgendaComponent implements OnInit {
     });
   }
 
+  guardarEdicion(): void {
+    if (this.detalleForm.invalid) return;
+    const turno = this.turnoSeleccionado();
+    if (!turno) return;
+
+    const payload = this.detalleForm.value;
+    const fechaObj = new Date(payload.fecha_hora);
+    if (fechaObj.getDay() === 0) {
+      this.mensajeError.set('El taller no atiende los días domingos. Por favor seleccione una fecha de lunes a sábado.');
+      return;
+    }
+
+    this.cargando.set(true);
+    this.mensajeError.set('');
+
+    this.turnoService.actualizarTurno(turno.id, payload).subscribe({
+      next: (res) => {
+        this.cerrarModalDetalle();
+        this.cargarDatos();
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        const errorData = err.error;
+        if (errorData && errorData.warning_overbooking) {
+          // Guardamos datos para forzar edición
+          this.datosPendientesCrear.set({ ...payload, esEdicion: true, turnoId: turno.id });
+          this.mostrarAlertaSobrecupo.set(true);
+        } else {
+          const msg = errorData?.detail || errorData?.fecha_hora || 'Ocurrió un error al actualizar el turno.';
+          this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+      }
+    });
+  }
+
   guardarTurnoForzado(): void {
     const payload = this.datosPendientesCrear();
     if (!payload) return;
@@ -257,22 +327,41 @@ export class TurnosAgendaComponent implements OnInit {
     this.mostrarAlertaSobrecupo.set(false);
     this.mensajeError.set('');
 
-    // Inyectamos la bandera de bypass force_booking
     const payloadForzado = { ...payload, force_booking: true };
+    const esEdicion = payload.esEdicion;
+    const turnoId = payload.turnoId;
+    delete payloadForzado.esEdicion;
+    delete payloadForzado.turnoId;
 
-    this.turnoService.crearTurno(payloadForzado).subscribe({
-      next: (res) => {
-        this.datosPendientesCrear.set(null);
-        this.cerrarModalCrear();
-        this.cargarDatos(); // Recargar todo
-      },
-      error: (err) => {
-        this.cargando.set(false);
-        const errorData = err.error;
-        const msg = errorData?.detail || 'Ocurrió un error al forzar la reserva del turno.';
-        this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
-      }
-    });
+    if (esEdicion && turnoId) {
+      this.turnoService.actualizarTurno(turnoId, payloadForzado).subscribe({
+        next: () => {
+          this.datosPendientesCrear.set(null);
+          this.cerrarModalDetalle();
+          this.cargarDatos();
+        },
+        error: (err) => {
+          this.cargando.set(false);
+          const errorData = err.error;
+          const msg = errorData?.detail || 'Ocurrió un error al forzar la reprogramación del turno.';
+          this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+      });
+    } else {
+      this.turnoService.crearTurno(payloadForzado).subscribe({
+        next: () => {
+          this.datosPendientesCrear.set(null);
+          this.cerrarModalCrear();
+          this.cargarDatos();
+        },
+        error: (err) => {
+          this.cargando.set(false);
+          const errorData = err.error;
+          const msg = errorData?.detail || 'Ocurrió un error al forzar la reserva del turno.';
+          this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+      });
+    }
   }
 
   cancelarTurno(): void {
