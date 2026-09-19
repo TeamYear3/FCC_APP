@@ -97,6 +97,7 @@
             <input
               type="datetime-local"
               formControlName="fecha_hora"
+              [min]="fechaMinima()"
               class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent"
             />
           </div>

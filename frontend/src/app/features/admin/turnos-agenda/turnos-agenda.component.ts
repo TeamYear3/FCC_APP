@@ -40,6 +40,7 @@ export class TurnosAgendaComponent implements OnInit {
   mostrarModalDetalle = signal(false);
   mostrarAlertaSobrecupo = signal(false);
   fechaSeleccionada = signal<string>('');
+  fechaMinima = signal<string>('');
   mensajeError = signal<string>('');
   
   // Turno seleccionado para ver detalle
@@ -76,6 +77,14 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   inicializarFormulario(): void {
+    const ahora = new Date();
+    const yyyy = ahora.getFullYear();
+    const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dd = String(ahora.getDate()).padStart(2, '0');
+    const hh = String(ahora.getHours()).padStart(2, '0');
+    const min = String(ahora.getMinutes()).padStart(2, '0');
+    this.fechaMinima.set(`${yyyy}-${mm}-${dd}T${hh}:${min}`);
+
     this.turnoForm = this.fb.group({
       cliente: ['', Validators.required],
       vehiculo: ['', Validators.required],
