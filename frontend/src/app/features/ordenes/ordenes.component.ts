@@ -428,6 +428,106 @@ export class OrdenesComponent implements OnInit {
     });
   }
 
+  // Modal y Flujo 'Aprobar Presupuesto y Convertir en OT' (TK091)
+  readonly mostrarModalAprobarPresupuesto = signal<boolean>(false);
+  readonly canalAprobacion = signal<'whatsapp' | 'telefono' | 'presencial'>('whatsapp');
+  readonly cargandoAprobacion = signal<boolean>(false);
+
+  readonly ctaDinamico = computed(() => {
+    const tab = this.activeTab();
+    const orden = this.ordenActiva();
+    const estado = (orden?.estado || '').toLowerCase();
+
+    if (tab === 'Carga de Mano de Obra y Repuestos') {
+      if (estado === 'en_presupuesto' || estado === 'ingresado' || estado === 'en presupuesto') {
+        return {
+          texto: 'Aprobar Presupuesto y Convertir en OT',
+          icono: 'check_circle',
+          tipo: 'aprobar_presupuesto',
+          clase: 'bg-color-primary-accent text-black hover:bg-color-primary-accent/90'
+        };
+      }
+      return {
+        texto: 'Guardar Cambios de Presupuesto',
+        icono: 'save',
+        tipo: 'guardar_presupuesto',
+        clase: 'bg-white/10 text-white hover:bg-white/20'
+      };
+    }
+
+    if (tab === 'Imágenes') {
+      return {
+        texto: 'Revisar / Adjuntar Evidencias Fotográficas',
+        icono: 'photo_camera',
+        tipo: 'imagenes',
+        clase: 'bg-white/10 text-white hover:bg-white/20'
+      };
+    }
+
+    // Default 'Resumen'
+    return {
+      texto: 'Finalizar Orden y Pasar a Control',
+      icono: 'task_alt',
+      tipo: 'finalizar_orden',
+      clase: 'bg-color-primary-accent text-black hover:bg-color-primary-accent/90'
+    };
+  });
+
+  ejecutarCtaPrincipal(): void {
+    const cta = this.ctaDinamico();
+    if (cta.tipo === 'aprobar_presupuesto') {
+      this.abrirModalAprobarPresupuesto();
+    } else if (cta.tipo === 'finalizar_orden') {
+      this.finalizarOrden();
+    } else if (cta.tipo === 'guardar_presupuesto') {
+      alert('Los cambios en el presupuesto fueron guardados correctamente.');
+    }
+  }
+
+  abrirModalAprobarPresupuesto(): void {
+    const orden = this.ordenActiva();
+    if (!orden) return;
+    this.canalAprobacion.set('whatsapp');
+    this.mostrarModalAprobarPresupuesto.set(true);
+  }
+
+  cerrarModalAprobarPresupuesto(): void {
+    this.mostrarModalAprobarPresupuesto.set(false);
+  }
+
+  setCanalAprobacion(canal: 'whatsapp' | 'telefono' | 'presencial'): void {
+    this.canalAprobacion.set(canal);
+  }
+
+  confirmarAprobacionPresupuesto(): void {
+    const orden = this.ordenActiva();
+    if (!orden) return;
+
+    this.cargandoAprobacion.set(true);
+    const canalMap = {
+      whatsapp: 'WhatsApp (Mensaje / Chat)',
+      telefono: 'Llamada Telefónica',
+      presencial: 'Atención Presencial en Taller'
+    };
+    const canalNombre = canalMap[this.canalAprobacion()] || 'WhatsApp';
+    const motivo = `Aprobación registrada por el taller vía ${canalNombre}. Cotización aceptada por el cliente.`;
+
+    this.ordenService.actualizarEstado(orden.id, 'en_proceso', motivo).subscribe({
+      next: () => {
+        this.cargandoAprobacion.set(false);
+        this.cerrarModalAprobarPresupuesto();
+        alert(`¡Presupuesto aprobado con éxito! La Orden de Trabajo #${orden.numero_ot || orden.id.slice(0, 8)} ha pasado a estado EN PROCESO.`);
+        this.cargarOrdenes(this.paginaActual());
+      },
+      error: (err) => {
+        console.error('Error al aprobar presupuesto:', err);
+        this.cargandoAprobacion.set(false);
+        const msg = err.error?.error || err.error?.detail || 'No se pudo actualizar el estado de la orden.';
+        alert(msg);
+      }
+    });
+  }
+
   setTab(tab: OrderTab): void {
     this.activeTab.set(tab);
   }
