@@ -1,3 +1,4 @@
+import { describe, beforeEach, it, expect, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PresupuestoFormComponent } from './presupuesto-form.component';
 import { OrdenService, ItemPresupuesto } from '../../../core/services/orden.service';
@@ -99,12 +100,21 @@ describe('PresupuestoFormComponent', () => {
     expect(ordenServiceMock.marcarItemCompletado).toHaveBeenCalledWith('orden-123', 'item-2', true);
   });
 
-  it('debe eliminar un ítem del presupuesto', () => {
+  it('debe eliminar un ítem del presupuesto y actualizar reactivamente el monto total', () => {
     fixture.detectChanges();
+    expect(component.items().length).toBe(2);
+    expect(component.montoTotal()).toBe(20000);
 
-    const itemTarget = itemsMock[0]; // item-1
+    const spyTotal = vi.spyOn(component.totalActualizado, 'emit');
+    const spyItems = vi.spyOn(component.itemsActualizados, 'emit');
+
+    const itemTarget = itemsMock[0]; // item-1 ($8000)
     component.eliminarItem(itemTarget);
 
     expect(ordenServiceMock.eliminarItemPresupuesto).toHaveBeenCalledWith('orden-123', 'item-1');
+    expect(component.items().length).toBe(1);
+    expect(component.montoTotal()).toBe(12000);
+    expect(spyTotal).toHaveBeenCalledWith(12000);
+    expect(spyItems).toHaveBeenCalled();
   });
 });
