@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 from .models import Turno
 from clientes.models import Cliente
@@ -27,7 +28,7 @@ class TurnoSerializer(serializers.ModelSerializer):
         if obj.estado == "cancelado":
             return False
         
-        fecha = obj.fecha_hora.date()
+        fecha = timezone.localtime(obj.fecha_hora).date()
         # Contamos cuántos turnos activos (excluyendo cancelados) existen ese día
         turnos_dia = Turno.objects.filter(fecha_hora__date=fecha).exclude(estado="cancelado")
         if obj.pk:
@@ -57,10 +58,20 @@ class TurnoSerializer(serializers.ModelSerializer):
                 "vehiculo": "El vehículo seleccionado no pertenece al cliente especificado."
             })
 
+        # Validación de fecha pasada (solo en creación o si se modifica la fecha_hora)
+        if fecha_hora:
+            is_new = not self.instance
+            date_changed = self.instance and self.instance.fecha_hora != fecha_hora
+            if (is_new or date_changed) and fecha_hora < timezone.now():
+                raise serializers.ValidationError({
+                    "fecha_hora": "No es posible agendar turnos con fecha u hora en el pasado."
+                })
+
         # Validación 2: Regla de sobre-cupo diario (>2 turnos/día)
         # Solo se valida si el turno no es cancelado
         if estado != "cancelado" and fecha_hora:
-            fecha = fecha_hora.date()
+            fecha_local = timezone.localtime(fecha_hora)
+            fecha = fecha_local.date()
             turnos_dia = Turno.objects.filter(fecha_hora__date=fecha).exclude(estado="cancelado")
             
             # Excluimos el turno actual en caso de edición
