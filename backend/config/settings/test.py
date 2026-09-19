@@ -1,8 +1,9 @@
 import os
 from .base import *
 
-DEBUG = True
-# Hereda SECRET_KEY desde variables de entorno (.env) o desde base.py
+DEBUG = False
+
+# Carga la clave secreta dinámicamente desde variables de entorno (.env) o fallback heredado
 SECRET_KEY = os.getenv("SECRET_KEY", SECRET_KEY)
 
 # Usar SQLite en memoria para la suite de pruebas cuando no hay PostgreSQL local corriendo
