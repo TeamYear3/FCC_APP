@@ -606,3 +606,55 @@ class ExportarOrdenPDFView(APIView):
         response['Content-Disposition'] = f'inline; filename="{filename}"'
         return response
 
+
+class RegistrarPagoOrdenView(APIView):
+    """
+    TK103: Endpoint POST /api/ordenes/<uuid:id>/registrar-pago/
+    Permite asentar el cobro de la orden de trabajo de manera desacoplada de ARCA
+    (Efectivo, Transferencia, Débito, Crédito) y opcionalmente transicionar a 'entregado'.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+
+    def post(self, request, id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo, id=id)
+        from .serializers import RegistrarPagoSerializer, OrdenTrabajoSerializer
+        serializer = RegistrarPagoSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        metodo_pago = serializer.validated_data['metodo_pago']
+        comentario = serializer.validated_data.get('comentario', '')
+        entregar_orden = serializer.validated_data.get('entregar_orden', False)
+
+        orden.estado_cobro = EstadoCobro.COBRADO
+        orden.metodo_pago = metodo_pago
+        orden.fecha_cobro = timezone.now()
+        orden.save(update_fields=['estado_cobro', 'metodo_pago', 'fecha_cobro', 'actualizado_en'])
+
+        # Si se solicitó entregar la orden y está finalizada, transicionar
+        if entregar_orden and orden.estado == EstadoOrden.FINALIZADO:
+            try:
+                orden.transicionar_a(
+                    EstadoOrden.ENTREGADO,
+                    usuario=request.user,
+                    comentario=comentario or f"Orden entregada y cobrada mediante {metodo_pago}"
+                )
+            except Exception as e:
+                return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Registrar historial de cobro
+        HistorialEstadoOrden.objects.create(
+            orden_trabajo=orden,
+            estado_anterior=orden.estado,
+            estado_nuevo=orden.estado,
+            usuario=request.user if request.user.is_authenticated else None,
+            comentario=f"Cobro registrado exitosamente: {metodo_pago.upper()}. {comentario}".strip()
+        )
+
+        # Retornar datos actualizados de la orden
+        response_serializer = OrdenTrabajoSerializer(orden, context={'request': request})
+        return Response({
+            'message': 'Cobro registrado exitosamente.',
+            'orden': response_serializer.data
+        }, status=status.HTTP_200_OK)
+

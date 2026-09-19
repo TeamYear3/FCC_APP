@@ -2,8 +2,8 @@ from decimal import Decimal
 from rest_framework import serializers
 from vehiculos.models import Vehiculo
 from .models import (
-    OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem,
-    HistorialEstadoOrden, AdjuntoDiagnostico
+    OrdenTrabajo, EstadoOrden, EstadoCobro, MetodoPago,
+    ItemPresupuesto, TipoItem, HistorialEstadoOrden, AdjuntoDiagnostico
 )
 
 class OrdenTrabajoSerializer(serializers.ModelSerializer):
@@ -13,6 +13,16 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
     estado = serializers.ChoiceField(
         choices=EstadoOrden.choices,
         default=EstadoOrden.INGRESADO,
+        required=False
+    )
+    estado_cobro = serializers.ChoiceField(
+        choices=EstadoCobro.choices,
+        default=EstadoCobro.PENDIENTE,
+        required=False
+    )
+    metodo_pago = serializers.ChoiceField(
+        choices=MetodoPago.choices,
+        allow_null=True,
         required=False
     )
 
@@ -32,6 +42,9 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'fecha_entrega',
             'comentario_rechazo',
             'monto_total',
+            'estado_cobro',
+            'metodo_pago',
+            'fecha_cobro',
             'creado_en',
             'actualizado_en'
         ]
@@ -43,6 +56,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'fecha_entrega',
             'comentario_rechazo',
             'monto_total',
+            'fecha_cobro',
             'creado_en',
             'actualizado_en'
         ]
@@ -272,6 +286,13 @@ class HistorialEstadoOrdenSerializer(serializers.ModelSerializer):
 class ActualizarEstadoOrdenSerializer(serializers.Serializer):
     estado = serializers.ChoiceField(choices=EstadoOrden.choices, required=True)
     comentario = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class RegistrarPagoSerializer(serializers.Serializer):
+    metodo_pago = serializers.ChoiceField(choices=MetodoPago.choices, required=True)
+    monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    comentario = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    entregar_orden = serializers.BooleanField(required=False, default=False)
 
 
 
