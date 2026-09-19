@@ -65,10 +65,62 @@ class TurnoAPITests(APITestCase):
             modelo="Onix"
         )
 
-        # Definir una fecha base de pruebas (Zonas horarias correctas)
-        self.fecha_base = datetime.combine(datetime(2026, 8, 25), time(10, 0))
-        # Hacerla timezone-aware
-        self.fecha_base = timezone.make_aware(self.fecha_base)
+        # Definir una fecha base de pruebas futura en día hábil (Martes a las 10:00 hs)
+        ahora = timezone.now()
+        # Buscamos el próximo martes a futuro
+        dias_hasta_martes = (1 - ahora.weekday() + 7) % 7
+        if dias_hasta_martes == 0:
+            dias_hasta_martes = 7
+        fecha_martes = (ahora + timezone.timedelta(days=dias_hasta_martes)).date()
+        self.fecha_base = timezone.make_aware(datetime.combine(fecha_martes, time(10, 0)))
+
+    def test_rechazo_turno_en_el_pasado(self):
+        """Prueba que no permite crear un turno con fecha u hora en el pasado (TK077)."""
+        self.client.force_authenticate(user=self.admin_user)
+        fecha_pasada = timezone.now() - timezone.timedelta(days=1)
+        payload = {
+            "cliente": str(self.cliente_a.id),
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": fecha_pasada.isoformat(),
+            "motivo": "Turno en el pasado"
+        }
+        response = self.client.post("/api/turnos/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("fecha_hora", response.data)
+        self.assertIn("pasado", str(response.data["fecha_hora"]))
+
+    def test_normalizacion_timezone_nocturno_argentina(self):
+        """Prueba que un turno a las 22:00 hs en Argentina cuenta para la fecha local y no el día siguiente UTC (TK077)."""
+        self.client.force_authenticate(user=self.admin_user)
+        # 22:00 hs hora local Argentina de la fecha_base
+        fecha_nocturna = timezone.make_aware(datetime.combine(self.fecha_base.date(), time(22, 0)))
+        
+        # Turno 1 a las 10:00 hs
+        Turno.objects.create(
+            cliente=self.cliente_a,
+            vehiculo=self.vehiculo_a,
+            fecha_hora=self.fecha_base,
+            motivo="Turno Mañana"
+        )
+        # Turno 2 a las 14:00 hs
+        Turno.objects.create(
+            cliente=self.cliente_b,
+            vehiculo=self.vehiculo_b,
+            fecha_hora=timezone.make_aware(datetime.combine(self.fecha_base.date(), time(14, 0))),
+            motivo="Turno Tarde"
+        )
+        
+        # Intentar crear un tercer turno a las 22:00 hs (en UTC sería el día siguiente)
+        payload = {
+            "cliente": str(self.cliente_a.id),
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": fecha_nocturna.isoformat(),
+            "motivo": "Turno Noche Excedente"
+        }
+        response = self.client.post("/api/turnos/", payload, format="json")
+        # Debe detectar sobrecupo en el día local
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(response.data["warning_overbooking"])
 
     def test_crud_turno_como_admin(self):
         """Prueba de flujo CRUD básico de Turno realizado por el Administrador."""
