@@ -44,6 +44,18 @@ export class ToastService {
     this.mostrar(mensaje, 'info', duracionMs);
   }
 
+  info(mensaje: string, duracionMs: number = 4000): void {
+    this.mostrar(mensaje, 'info', duracionMs);
+  }
+
+  exito(mensaje: string, duracionMs: number = 4000): void {
+    this.mostrar(mensaje, 'exito', duracionMs);
+  }
+
+  error(mensaje: string, duracionMs: number = 5000): void {
+    this.mostrar(mensaje, 'error', duracionMs);
+  }
+
   remover(id: string): void {
     this.toasts.update((actuales) => actuales.filter((t) => t.id !== id));
   }

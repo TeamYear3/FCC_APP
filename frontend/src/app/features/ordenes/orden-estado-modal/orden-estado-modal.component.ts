@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output, inject, signal, OnChanges } from '@angular/core';
-
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { ToastService } from '../../../core/services/toast.service';
 import {
   OrdenService,
   OrdenResponse,
@@ -211,6 +212,8 @@ import {
 })
 export class OrdenEstadoModalComponent implements OnChanges {
   private readonly ordenService = inject(OrdenService);
+  private readonly router = inject(Router);
+  private readonly toastService = inject(ToastService);
 
   @Input() mostrar = false;
   @Input() orden: OrdenResponse | null = null;
@@ -251,11 +254,20 @@ export class OrdenEstadoModalComponent implements OnChanges {
   }
 
   agendarTurno(): void {
-    alert(`Redirigiendo a la agenda de turnos para la OT ${this.orden?.numero_ot}...`);
+    this.cerrarModal();
+    const ruta = this.router.url.startsWith('/admin') ? '/admin/turnos' : '/turnos';
+    this.router.navigate([ruta], {
+      queryParams: {
+        ot: this.orden?.numero_ot || this.orden?.id,
+        vehiculo_id: this.orden?.vehiculo_id
+      }
+    });
   }
 
   solicitarAprobacion(): void {
-    alert(`Solicitud de aprobación enviada al cliente de la OT ${this.orden?.numero_ot}.`);
+    this.toastService.info(
+      `Solicitud de aprobación enviada al cliente para la OT ${this.orden?.numero_ot || ''}.`
+    );
   }
 
   confirmarCambioEstado(): void {
