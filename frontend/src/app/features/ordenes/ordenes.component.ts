@@ -358,8 +358,14 @@ export class OrdenesComponent implements OnInit {
 
   onItemsActualizados(items: ItemPresupuesto[]): void {
     this.itemsPresupuesto.set(items || []);
+    const nuevoMonto = (items || []).reduce((acc, i) => acc + (Number(i.subtotal) || (i.cantidad * i.precio_unitario)), 0);
     if (this.ordenActiva()) {
-      this.ordenService.obtenerOrdenPorId(this.ordenActiva()!.id).subscribe({
+      const ordenId = this.ordenActiva()!.id;
+      this.ordenSeleccionada.update(sel => sel && sel.id === ordenId ? { ...sel, monto_total: nuevoMonto } : sel);
+      this.listaOrdenes.update(lista =>
+        lista.map(o => o.id === ordenId ? { ...o, monto_total: nuevoMonto } : o)
+      );
+      this.ordenService.obtenerOrdenPorId(ordenId).subscribe({
         next: (ordenActualizada: OrdenResponse) => {
           this.ordenSeleccionada.set(ordenActualizada);
           this.listaOrdenes.update(lista =>
@@ -368,6 +374,16 @@ export class OrdenesComponent implements OnInit {
         },
         error: () => {}
       });
+    }
+  }
+
+  onTotalPresupuestoActualizado(nuevoTotal: number): void {
+    if (this.ordenActiva()) {
+      const ordenId = this.ordenActiva()!.id;
+      this.ordenSeleccionada.update(sel => sel && sel.id === ordenId ? { ...sel, monto_total: nuevoTotal } : sel);
+      this.listaOrdenes.update(lista =>
+        lista.map(o => o.id === ordenId ? { ...o, monto_total: nuevoTotal } : o)
+      );
     }
   }
 
