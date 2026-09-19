@@ -1,41 +1,37 @@
 <div class="space-y-6">
   <!-- Header del Dashboard y Conmutador de Vista Previa de Rol -->
   <div
-    class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900/90 border border-white/10 p-6 rounded-card shadow-xl backdrop-blur-md"
+    class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-color-surface-container border border-white/10 p-6 rounded-card shadow-xl backdrop-blur-md"
   >
     <div>
-      <h2 class="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
-        <svg
-          class="w-5 h-5 text-color-primary-accent"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
-        Panel de Control del Taller
-      </h2>
-      <p class="text-xs text-zinc-400 mt-1">
-        Monitoreo operativo de carga de trabajo de mecánicos y legajos de clientes en tiempo real.
-      </p>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-card bg-black/40 border border-color-primary-accent/40 flex items-center justify-center shadow">
+          <svg class="w-5 h-5 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xl font-extrabold text-white tracking-tight">
+            Panel de Control del Taller
+          </h2>
+          <p class="text-xs text-color-text-secondary mt-0.5">
+            Monitoreo operacional, capacidad técnica de mecánicos y legajos de clientes en tiempo real.
+          </p>
+        </div>
+      </div>
     </div>
 
-    <!-- Conmutador de Vista Previa de Rol -->
-    <div class="flex items-center gap-2 bg-black/40 border border-white/10 p-1.5 rounded-pill">
-      <span class="text-xs font-bold text-zinc-400 px-3 hidden sm:inline">Vista Previa:</span>
+    <!-- Conmutador de Vista Previa de Rol (Pill Figma) -->
+    <div class="flex items-center gap-2 bg-black/50 border border-white/10 p-1.5 rounded-pill self-start lg:self-auto shadow-inner">
+      <span class="text-xs font-bold text-color-text-secondary px-3 hidden sm:inline">Vista Previa:</span>
 
       <button
         type="button"
         (click)="cambiarVistaPrevia('admin')"
         [class.bg-color-primary-accent]="!sidebarService.vistaPreviaRolSignal()"
         [class.text-black]="!sidebarService.vistaPreviaRolSignal()"
-        [class.text-zinc-400]="sidebarService.vistaPreviaRolSignal()"
-        class="px-3 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+        [class.text-color-text-secondary]="sidebarService.vistaPreviaRolSignal()"
+        class="px-3.5 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
       >
         Admin
       </button>
@@ -45,8 +41,8 @@
         (click)="cambiarVistaPrevia('tecnico')"
         [class.bg-color-primary-accent]="sidebarService.vistaPreviaRolSignal() === 'tecnico'"
         [class.text-black]="sidebarService.vistaPreviaRolSignal() === 'tecnico'"
-        [class.text-zinc-400]="sidebarService.vistaPreviaRolSignal() !== 'tecnico'"
-        class="px-3 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+        [class.text-color-text-secondary]="sidebarService.vistaPreviaRolSignal() !== 'tecnico'"
+        class="px-3.5 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
       >
         Mecánico
       </button>
@@ -56,109 +52,168 @@
         (click)="cambiarVistaPrevia('cliente')"
         [class.bg-color-primary-accent]="sidebarService.vistaPreviaRolSignal() === 'cliente'"
         [class.text-black]="sidebarService.vistaPreviaRolSignal() === 'cliente'"
-        [class.text-zinc-400]="sidebarService.vistaPreviaRolSignal() !== 'cliente'"
-        class="px-3 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
+        [class.text-color-text-secondary]="sidebarService.vistaPreviaRolSignal() !== 'cliente'"
+        class="px-3.5 py-1.5 rounded-pill text-xs font-bold transition-all cursor-pointer"
       >
         Cliente
       </button>
     </div>
   </div>
 
-  <!-- Sección 1: Tarjetas Operativas de Mecánicos (Carga de Trabajo) -->
-  <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h3
-        class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2"
-      >
-        <svg
-          class="w-4 h-4 text-color-primary-accent"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-          />
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-          />
+  <!-- Barra de Acciones Rápidas (Quick Actions) -->
+  <div class="flex flex-wrap items-center gap-3">
+    <a
+      routerLink="/admin/ordenes"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-pill bg-color-primary-accent text-black font-bold text-xs hover:bg-yellow-400 active:scale-95 transition-all shadow-md decoration-none"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+      </svg>
+      <span>Nueva Orden de Trabajo</span>
+    </a>
+
+    <a
+      routerLink="/admin/turnos"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-pill bg-black/40 border border-white/10 text-white font-semibold text-xs hover:bg-white/10 active:scale-95 transition-all decoration-none"
+    >
+      <svg class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <span>Agendar Turno</span>
+    </a>
+
+    <a
+      routerLink="/admin/clientes"
+      class="inline-flex items-center gap-2 px-4 py-2 rounded-pill bg-black/40 border border-white/10 text-white font-semibold text-xs hover:bg-white/10 active:scale-95 transition-all decoration-none"
+    >
+      <svg class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+      </svg>
+      <span>Nuevo Cliente</span>
+    </a>
+  </div>
+
+  <!-- Core KPI Cards (4 Tarjetas Métricas Superiores) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- KPI 1: OTs Activas -->
+    <div class="bg-color-surface-container border border-white/10 p-5 rounded-card shadow-lg flex items-center justify-between">
+      <div>
+        <span class="text-xs text-color-text-secondary uppercase tracking-wider font-semibold">Órdenes Activas</span>
+        <h3 class="text-2xl font-black text-white mt-1">{{ totalOtsActivas() }}</h3>
+        <span class="text-[11px] text-color-primary-accent font-medium">En proceso en taller</span>
+      </div>
+      <div class="w-12 h-12 rounded-card bg-color-primary-accent/10 border border-color-primary-accent/20 flex items-center justify-center text-color-primary-accent">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        Mecánicos Activos y Carga de Trabajo
+      </div>
+    </div>
+
+    <!-- KPI 2: Capacidad Promedio -->
+    <div class="bg-color-surface-container border border-white/10 p-5 rounded-card shadow-lg flex items-center justify-between">
+      <div>
+        <span class="text-xs text-color-text-secondary uppercase tracking-wider font-semibold">Carga de Taller</span>
+        <h3 class="text-2xl font-black text-white mt-1">{{ capacidadPromedio() }}%</h3>
+        <span 
+          class="text-[11px] font-medium"
+          [class.text-emerald-400]="capacidadPromedio() < 70"
+          [class.text-amber-400]="capacidadPromedio() >= 70 && capacidadPromedio() < 90"
+          [class.text-rose-400]="capacidadPromedio() >= 90"
+        >
+          {{ capacidadPromedio() >= 90 ? 'Carga Crítica' : (capacidadPromedio() >= 70 ? 'Carga Alta' : 'Capacidad Óptima') }}
+        </span>
+      </div>
+      <div class="w-12 h-12 rounded-card bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- KPI 3: Clientes Registrados -->
+    <div class="bg-color-surface-container border border-white/10 p-5 rounded-card shadow-lg flex items-center justify-between">
+      <div>
+        <span class="text-xs text-color-text-secondary uppercase tracking-wider font-semibold">Total Clientes</span>
+        <h3 class="text-2xl font-black text-white mt-1">{{ totalClientesRegistrados() }}</h3>
+        <span class="text-[11px] text-color-primary-accent font-medium">Legajos activos en cartera</span>
+      </div>
+      <div class="w-12 h-12 rounded-card bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- KPI 4: Facturación Consolidada -->
+    <div class="bg-color-surface-container border border-white/10 p-5 rounded-card shadow-lg flex items-center justify-between">
+      <div>
+        <span class="text-xs text-color-text-secondary uppercase tracking-wider font-semibold">Facturación Total</span>
+        <h3 class="text-2xl font-black text-emerald-400 mt-1">${{ facturacionTotalConsolidada() | number: '1.0-0' }}</h3>
+        <span class="text-[11px] text-color-text-secondary font-medium">Consolidado general</span>
+      </div>
+      <div class="w-12 h-12 rounded-card bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección 1: Mecánicos del Taller y Asignaciones Activas -->
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-bold text-color-primary-accent tracking-wide">
+        Mecánicos del Taller y Asignaciones Activas
       </h3>
-      <span class="text-xs text-zinc-400">Capacidad máxima: 5 OTs activas por mecánico</span>
+      <span class="text-xs text-color-text-secondary">Capacidad máxima estándar: 5 OTs por mecánico</span>
     </div>
 
     <!-- Spinner Cargando -->
     @if (cargandoMecanicos()) {
-      <div class="p-8 text-center bg-zinc-900 border border-white/5 rounded-card">
-        <span class="text-xs text-zinc-400">Cargando estado de mecánicos...</span>
+      <div class="p-8 text-center bg-color-surface-container border border-white/5 rounded-card">
+        <span class="text-xs text-color-text-secondary">Cargando estado de mecánicos...</span>
       </div>
     }
 
-    <!-- Grilla de Mecánicos -->
+    <!-- Grilla de Mecánicos (Cards Figma) -->
     @if (!cargandoMecanicos()) {
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        @for (m of mecanicos(); track m) {
+        @for (m of mecanicos(); track m.id) {
           <div
-            class="bg-zinc-900 border border-white/10 p-5 rounded-card shadow-lg hover:border-color-primary-accent/40 transition-all space-y-4"
+            class="bg-color-surface-container border border-white/10 p-4 rounded-card shadow-lg hover:border-color-primary-accent/40 transition-all flex flex-col justify-between"
           >
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div
-                  class="w-10 h-10 rounded-full bg-zinc-800 border border-color-primary-accent/30 flex items-center justify-center font-bold text-color-primary-accent text-sm"
-                >
-                  {{ m.nombre.charAt(0) }}
-                </div>
-                <div>
-                  <h4 class="text-sm font-bold text-white leading-none">{{ m.nombre }}</h4>
-                  <span class="text-xs text-zinc-400">{{ m.email }}</span>
-                </div>
-              </div>
-              <span
-                class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-              >
-                {{ m.estado }}
-              </span>
+            <div>
+              <h4 class="text-sm font-bold text-white leading-tight">{{ m.nombre }}</h4>
+              <p class="text-xs text-color-text-secondary mt-1">
+                @if (m.ot_activa_numero) {
+                  <span class="font-medium text-white/90">{{ m.ot_activa_numero.startsWith('OT-') ? m.ot_activa_numero : 'OT-' + m.ot_activa_numero.replace('#', '') }}</span> - {{ m.ot_activa_vehiculo || 'Vehículo en taller' }}
+                } @else {
+                  <span class="italic text-color-text-secondary">Sin orden activa asignada</span>
+                }
+              </p>
             </div>
-            <!-- Métricas de Carga -->
-            <div class="space-y-1.5">
-              <div class="flex justify-between text-xs font-semibold">
-                <span class="text-zinc-400">Carga Operativa:</span>
-                <span
-                  [class.text-emerald-400]="m.porcentaje_carga < 70"
-                  [class.text-amber-400]="m.porcentaje_carga >= 70 && m.porcentaje_carga < 90"
-                  [class.text-rose-400]="m.porcentaje_carga >= 90"
-                >
-                  {{ m.porcentaje_carga }}%
+            <div class="mt-3">
+              @if (m.ot_activa_estado === 'En Proceso' || m.ot_activa_estado === 'en_proceso') {
+                <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-primary-accent text-black uppercase tracking-wider">
+                  En Proceso
                 </span>
-              </div>
-              <div
-                class="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden border border-white/5"
-              >
-                <div
-                  class="h-full transition-all duration-500 rounded-full"
-                  [style.width.%]="m.porcentaje_carga"
-                  [class.bg-emerald-500]="m.porcentaje_carga < 70"
-                  [class.bg-amber-500]="m.porcentaje_carga >= 70 && m.porcentaje_carga < 90"
-                  [class.bg-rose-500]="m.porcentaje_carga >= 90"
-                ></div>
-              </div>
-            </div>
-            <div
-              class="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-zinc-400"
-            >
-              <span
-                >OTs Activas: <strong class="text-white">{{ m.ots_activas }}</strong></span
-              >
-              <span
-                >Totales Asignadas: <strong class="text-white">{{ m.ots_asignadas }}</strong></span
-              >
+              } @else if (m.ot_activa_estado === 'En Revisión' || m.ot_activa_estado === 'en_revision' || m.ot_activa_estado === 'aprobado' || m.ot_activa_estado === 'Aprobado') {
+                <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-status-review text-white uppercase tracking-wider">
+                  En Revisión
+                </span>
+              } @else if (m.ot_activa_estado === 'Pendiente' || m.ot_activa_estado === 'Ingresado' || m.ot_activa_estado === 'ingresado') {
+                <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-zinc-700 text-white uppercase tracking-wider">
+                  Pendiente
+                </span>
+              } @else if (m.ots_activas === 0 || m.ot_activa_estado === 'Disponible') {
+                <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-status-review text-white uppercase tracking-wider">
+                  Disponible
+                </span>
+              } @else {
+                <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-zinc-700 text-white uppercase tracking-wider">
+                  {{ m.ot_activa_estado }}
+                </span>
+              }
             </div>
           </div>
         }
@@ -166,69 +221,115 @@
     }
   </div>
 
-  <!-- Sección 2: Tarjetas Operativas de Clientes (Resumen de Legajos) -->
-  <div class="space-y-4 pt-4">
+  <!-- Sección 2: Últimas Órdenes de Trabajo e Historial de Clientes -->
+  <div class="space-y-3 pt-2">
     <div class="flex items-center justify-between">
-      <h3
-        class="text-sm font-bold text-color-primary-accent uppercase tracking-wider flex items-center gap-2"
-      >
-        <span>👤</span> Legajo de Clientes y Estado Operativo
+      <h3 class="text-sm font-bold text-color-primary-accent tracking-wide">
+        Últimas Órdenes de Trabajo e Historial de Clientes
       </h3>
       <a
-        routerLink="/admin/clientes"
-        class="text-xs font-bold text-color-primary-accent hover:underline"
-        >Ver Directorio Completo →</a
+        routerLink="/admin/ordenes"
+        class="text-xs font-bold text-color-primary-accent hover:underline decoration-none"
       >
+        Ver Todas las Órdenes →
+      </a>
     </div>
 
-    <!-- Spinner Cargando -->
-    @if (cargandoClientes()) {
-      <div class="p-8 text-center bg-zinc-900 border border-white/5 rounded-card">
-        <span class="text-xs text-zinc-400">Cargando legajos de clientes...</span>
+    <!-- Tabla Figma -->
+    <div class="bg-color-surface-container border border-white/10 rounded-card overflow-hidden shadow-xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead class="bg-black/40 text-color-text-secondary text-[11px] font-bold uppercase tracking-wider border-b border-white/10">
+            <tr>
+              <th class="py-3 px-4">Orden #</th>
+              <th class="py-3 px-4">Cliente</th>
+              <th class="py-3 px-4">Vehículo / Patente</th>
+              <th class="py-3 px-4">Fecha Ingreso</th>
+              <th class="py-3 px-4">Estado</th>
+              <th class="py-3 px-4 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-white/5 text-xs">
+            @if (cargandoOrdenes()) {
+              <tr>
+                <td colspan="6" class="py-8 text-center text-color-text-secondary text-xs">
+                  Cargando órdenes de trabajo recientes...
+                </td>
+              </tr>
+            } @else if (ordenesRecientes().length === 0) {
+              <tr>
+                <td colspan="6" class="py-8 text-center text-color-text-secondary text-xs">
+                  No hay órdenes de trabajo registradas recientemente.
+                </td>
+              </tr>
+            } @else {
+              @for (orden of ordenesRecientes(); track orden.id) {
+                <tr class="hover:bg-white/[0.03] transition-colors">
+                  <td class="py-3.5 px-4 font-bold text-color-primary-accent text-xs">
+                    {{ orden.numero_ot.startsWith('OT-') ? orden.numero_ot : 'OT-' + orden.numero_ot }}
+                  </td>
+                  <td class="py-3.5 px-4 text-white text-xs font-medium">
+                    {{ orden.cliente_nombre || 'Cliente' }}
+                    @if (orden.cliente_dni_cuit) {
+                      <span class="text-color-text-secondary text-[11px] ml-1 font-normal">
+                        ({{ orden.cliente_documento || 'DNI: ' + orden.cliente_dni_cuit }})
+                      </span>
+                    }
+                  </td>
+                  <td class="py-3.5 px-4 text-white text-xs">
+                    {{ orden.vehiculo_marca_modelo || 'Vehículo' }}
+                    @if (orden.vehiculo_patente) {
+                      <span class="text-color-text-secondary text-[11px] ml-1 font-normal">
+                        ({{ orden.vehiculo_patente }})
+                      </span>
+                    }
+                  </td>
+                  <td class="py-3.5 px-4 text-color-text-secondary text-xs">
+                    {{ orden.fecha_ingreso | date: 'dd/MM/yyyy' }}
+                  </td>
+                  <td class="py-3.5 px-4">
+                    @if (orden.estado === 'En Proceso' || orden.estado === 'en_proceso') {
+                      <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-primary-accent text-black uppercase tracking-wider">
+                        En Proceso
+                      </span>
+                    } @else if (orden.estado === 'En Revisión' || orden.estado === 'en_revision' || orden.estado === 'aprobado' || orden.estado === 'Aprobado') {
+                      <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-status-review text-white uppercase tracking-wider">
+                        En Revisión
+                      </span>
+                    } @else if (orden.estado === 'Facturado' || orden.estado === 'facturado' || orden.estado === 'Facturado ARCA' || orden.estado === 'finalizado' || orden.estado === 'Finalizado') {
+                      <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-status-pending text-white uppercase tracking-wider">
+                        Facturado ARCA
+                      </span>
+                    } @else if (orden.estado === 'Ingresado' || orden.estado === 'ingresado') {
+                      <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-zinc-700 text-white uppercase tracking-wider">
+                        Ingresado
+                      </span>
+                    } @else if (orden.estado === 'en_presupuesto' || orden.estado === 'En Presupuesto') {
+                      <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-color-status-process text-black uppercase tracking-wider">
+                        En Presupuesto
+                      </span>
+                    } @else {
+                      <span class="inline-block px-3 py-1 rounded-pill text-xs font-bold bg-zinc-700 text-white uppercase tracking-wider">
+                        {{ orden.estado }}
+                      </span>
+                    }
+                  </td>
+                  <td class="py-3.5 px-4 text-right">
+                    <a
+                      [routerLink]="['/admin/ordenes']"
+                      [queryParams]="{ busqueda: orden.numero_ot, id: orden.id }"
+                      class="text-xs font-bold text-color-primary-accent hover:underline decoration-none inline-flex items-center gap-1 cursor-pointer"
+                      title="Abrir y ver detalle de la orden"
+                    >
+                      Ver Detalle
+                    </a>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
       </div>
-    }
-
-    <!-- Grilla de Clientes -->
-    @if (!cargandoClientes()) {
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        @for (c of clientes(); track c) {
-          <div
-            class="bg-zinc-900 border border-white/10 p-5 rounded-card shadow-lg hover:border-color-primary-accent/40 transition-all space-y-3"
-          >
-            <div class="flex items-center justify-between">
-              <div>
-                <h4 class="text-sm font-bold text-white leading-none">
-                  {{ c.nombre }} {{ c.apellido }}
-                </h4>
-                <span class="text-xs text-zinc-400">{{ c.tipo_documento }}: {{ c.dni_cuit }}</span>
-              </div>
-              <span
-                class="px-2 py-0.5 rounded bg-zinc-800 border border-white/10 text-[10px] font-mono text-color-primary-accent font-bold"
-              >
-                {{ c.codigo_cliente }}
-              </span>
-            </div>
-            <div class="grid grid-cols-2 gap-2 text-xs pt-2">
-              <div class="bg-black/30 p-2.5 rounded-lg border border-white/5">
-                <span class="text-zinc-500 block text-[10px] uppercase font-bold"
-                  >Vehículos Titulares</span
-                >
-                <span class="text-sm font-bold text-white">{{ c.vehiculos_count }}</span>
-              </div>
-              <div class="bg-black/30 p-2.5 rounded-lg border border-white/5">
-                <span class="text-zinc-500 block text-[10px] uppercase font-bold">OTs Activas</span>
-                <span class="text-sm font-bold text-color-primary-accent">{{ c.ots_activas }}</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-              <span class="text-zinc-400">Monto Facturado:</span>
-              <span class="font-extrabold text-emerald-400"
-                >${{ c.monto_total_facturado | number: '1.2-2' }}</span
-              >
-            </div>
-          </div>
-        }
-      </div>
-    }
+    </div>
   </div>
 </div>

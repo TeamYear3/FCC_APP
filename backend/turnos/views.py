@@ -12,9 +12,9 @@ class TurnoViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if getattr(user, "rol", None) == "cliente":
             # Un cliente solo puede ver sus propios turnos
-            return Turno.objects.filter(cliente__usuario=user)
+            return Turno.objects.filter(cliente__usuario=user).select_related("cliente", "vehiculo")
         # Administradores y técnicos pueden ver todos los turnos
-        return Turno.objects.all()
+        return Turno.objects.all().select_related("cliente", "vehiculo")
 
     def perform_create(self, serializer):
         # Si un cliente está creando el turno, podemos forzar que se asocie a su propio perfil

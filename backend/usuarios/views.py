@@ -383,4 +383,46 @@ class PerfilUsuarioView(APIView):
         return Response(res_serializer.data, status=status.HTTP_200_OK)
 
 
+class ListaUsuariosAdminView(APIView):
+    permission_classes = [IsAuthenticated, EsAdministrador]
+
+    def get(self, request, *args, **kwargs):
+        usuarios_qs = Usuario.objects.all().order_by('-creado_en')
+
+        total_usuarios = usuarios_qs.count()
+        admins_count = usuarios_qs.filter(rol='admin').count()
+        tecnicos_count = usuarios_qs.filter(rol='tecnico').count()
+        clientes_count = usuarios_qs.filter(rol='cliente').count()
+        activos_count = usuarios_qs.filter(active=True).count()
+
+        usuarios_data = [
+            {
+                'id': str(u.id),
+                'email': u.email,
+                'nombre': u.nombre or '',
+                'apellido': u.apellido or '',
+                'nombre_completo': f"{u.nombre} {u.apellido}".strip() or u.email,
+                'rol': u.rol,
+                'is_active': u.active,
+                'last_login': u.last_login.isoformat() if u.last_login else None,
+                'creado_en': u.creado_en.isoformat() if hasattr(u, 'creado_en') and u.creado_en else None,
+            }
+            for u in usuarios_qs
+        ]
+
+        return Response({
+            'metricas': {
+                'total_usuarios': total_usuarios,
+                'administradores_count': admins_count,
+                'tecnicos_count': tecnicos_count,
+                'clientes_count': clientes_count,
+                'activos_count': activos_count
+            },
+            'usuarios': usuarios_data
+        }, status=status.HTTP_200_OK)
+
+
+
+
+
 
