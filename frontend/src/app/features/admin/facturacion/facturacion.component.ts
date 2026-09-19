@@ -5,6 +5,8 @@ import { FacturacionService } from '../../../core/services/facturacion.service';
 import { OrdenService } from '../../../core/services/orden.service';
 import { Factura, TipoComprobante, EstadoPago } from '../../../core/models/facturacion.model';
 
+import { FacturaImpresionComponent } from './factura-impresion/factura-impresion.component';
+
 export interface OrdenPendienteFacturar {
   id: string;
   numero_ot: string;
@@ -18,7 +20,7 @@ export interface OrdenPendienteFacturar {
 @Component({
   selector: 'app-facturacion',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FacturaImpresionComponent],
   templateUrl: './facturacion.component.html',
   styleUrl: './facturacion.component.css'
 })
@@ -34,6 +36,10 @@ export class FacturacionComponent implements OnInit {
   readonly modalEmisionAbierto = signal<boolean>(false);
   readonly modalDetalleAbierto = signal<boolean>(false);
   readonly facturaSeleccionada = signal<Factura | null>(null);
+
+  // Modal de impresión A4 (TK099)
+  readonly modalImpresionAbierto = signal<boolean>(false);
+  readonly facturaAImprimir = signal<Factura | null>(null);
 
   // Filtro
   filtroEstadoPago: string = '';
@@ -180,7 +186,13 @@ export class FacturacionComponent implements OnInit {
   }
 
   imprimirComprobante(factura: Factura): void {
-    window.print();
+    this.facturaAImprimir.set(factura);
+    this.modalImpresionAbierto.set(true);
+  }
+
+  cerrarModalImpresion(): void {
+    this.modalImpresionAbierto.set(false);
+    this.facturaAImprimir.set(null);
   }
 
   facturasFiltradas(): Factura[] {

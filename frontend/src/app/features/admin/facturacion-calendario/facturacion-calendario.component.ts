@@ -9,6 +9,9 @@ import {
   SemaforoColor
 } from '../../../core/models/facturacion.model';
 
+import { Factura } from '../../../core/models/facturacion.model';
+import { FacturaImpresionComponent } from '../facturacion/factura-impresion/factura-impresion.component';
+
 export interface CalendarDay {
   date: Date;
   dateString: string; // YYYY-MM-DD
@@ -21,7 +24,7 @@ export interface CalendarDay {
 @Component({
   selector: 'app-facturacion-calendario',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FacturaImpresionComponent],
   templateUrl: './facturacion-calendario.component.html',
   styleUrl: './facturacion-calendario.component.css'
 })
@@ -40,6 +43,10 @@ export class FacturacionCalendarioComponent implements OnInit {
   readonly facturaSeleccionada = signal<FacturaCalendarioItem | null>(null);
   readonly modalDetalleAbierto = signal<boolean>(false);
   readonly actualizandoPago = signal<boolean>(false);
+
+  // Modal de impresión A4 (TK099)
+  readonly modalImpresionAbierto = signal<boolean>(false);
+  readonly facturaAImprimir = signal<Factura | null>(null);
 
   // Fecha de referencia del calendario
   currentDate = new Date();
@@ -301,6 +308,37 @@ export class FacturacionCalendarioComponent implements OnInit {
   }
 
   imprimirFactura(): void {
-    window.print();
+    const item = this.facturaSeleccionada();
+    if (!item) return;
+
+    const facturaMapped: Factura = {
+      id: item.id,
+      orden_trabajo: item.id,
+      numero_ot: item.numero_comprobante || 'OT-0001',
+      cliente_nombre: item.cliente,
+      vehiculo_patente: item.patente,
+      tipo_comprobante: item.tipo_comprobante as any,
+      punto_venta: 1,
+      numero_factura: parseInt(item.numero_comprobante?.split('-').pop() || '1', 10),
+      numero_comprobante: item.numero_comprobante,
+      cae: item.cae || '74291847561928',
+      fecha_vencimiento_cae: '2026-09-05',
+      total: item.total,
+      estado: 'emitida',
+      estado_pago: item.estado_pago,
+      semaforo: item.semaforo,
+      fecha_vencimiento_pago: item.fecha_vencimiento_pago,
+      fecha_emision: item.fecha_emision,
+      cuit_emisor: '30-71829384-9',
+      observaciones: 'Factura autorizada vía ARCA WebService'
+    };
+
+    this.facturaAImprimir.set(facturaMapped);
+    this.modalImpresionAbierto.set(true);
+  }
+
+  cerrarModalImpresion(): void {
+    this.modalImpresionAbierto.set(false);
+    this.facturaAImprimir.set(null);
   }
 }
