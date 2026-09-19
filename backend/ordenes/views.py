@@ -149,13 +149,15 @@ class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
             'items_presupuesto', 'adjuntos_diagnostico', 'historial_estados'
         ).all()
 
-    def get_object(self):
-        orden = super().get_object()
-        user = self.request.user
+    def check_object_permissions(self, request, obj):
+        user = request.user
         if getattr(user, 'rol', None) == 'cliente':
-            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != user.id:
+            if not obj.vehiculo or not obj.vehiculo.cliente or obj.vehiculo.cliente.usuario_id != user.id:
                 raise PermissionDenied("No tiene autorización para consultar esta Orden de Trabajo.")
-        return orden
+        elif getattr(user, 'rol', None) in ('admin', 'tecnico'):
+            return
+        else:
+            raise PermissionDenied("No tiene permisos para realizar esta acción.")
 
 
 class AgregarManoDeObraView(APIView):

@@ -1283,6 +1283,102 @@ class AdjuntoDiagnosticoAPITest(APITestCase):
             self.assertEqual(mock_ws.call_args[1]['accion'], 'eliminado')
 
 
+class DetalleOrdenTrabajoAPITestCase(APITestCase):
+    def setUp(self):
+        self.user_admin = User.objects.create_user(
+            email="admin_detalle@taller.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="password123"
+        )
+        self.user_tecnico = User.objects.create_user(
+            email="tecnico_detalle@taller.com",
+            nombre="Tecnico",
+            apellido="Taller",
+            rol="tecnico",
+            password="password123"
+        )
+        self.user_cliente = User.objects.create_user(
+            email="cliente_detalle@taller.com",
+            nombre="Cliente",
+            apellido="Propietario",
+            rol="cliente",
+            password="password123"
+        )
+        self.user_ajeno = User.objects.create_user(
+            email="ajeno_detalle@taller.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Cliente",
+            apellido="Propietario",
+            tipo_documento="DNI",
+            dni_cuit="22333444",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA123BB",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.user_tecnico,
+            descripcion_problema="Problema de frenos y revisión general",
+            fecha_ingreso="2026-09-15"
+        )
+
+    def test_consultar_detalle_orden_admin_exito(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.orden.id))
+        self.assertEqual(response.data['numero_ot'], self.orden.numero_ot)
+        self.assertEqual(response.data['vehiculo_patente'], "AA123BB")
+        self.assertEqual(response.data['cliente_nombre'], "Cliente Propietario")
+
+    def test_consultar_detalle_orden_tecnico_exito(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.orden.id))
+
+    def test_consultar_detalle_orden_cliente_duenio_exito(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.orden.id))
+        self.assertEqual(response.data['vehiculo_patente'], "AA123BB")
+
+    def test_consultar_detalle_orden_cliente_ajeno_restringido(self):
+        self.client.force_authenticate(user=self.user_ajeno)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_consultar_detalle_orden_inexistente(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_consultar_detalle_orden_no_autenticado_restringido(self):
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+
 
 
 
