@@ -129,68 +129,79 @@
         <h3 class="text-lg font-bold text-white">Órdenes Aprobadas Listas para Facturar</h3>
       </div>
       <span class="text-xs text-color-text-secondary"
-        >{{ ordenesParaFacturar.length }} órdenes pendientes</span
+        >{{ ordenesParaFacturar().length }} órdenes pendientes</span
       >
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      @for (ord of ordenesParaFacturar; track ord) {
-        <div
-          class="p-4 rounded-card bg-black/40 border border-white/5 flex flex-col justify-between hover:border-color-primary-accent/40 transition-all"
-        >
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span
-                class="px-2 py-0.5 rounded-badge bg-white/10 text-white font-mono text-xs font-bold"
-                >{{ ord.numero_ot }}</span
-              >
-              <span class="text-color-primary-accent font-bold text-base"
-                >${{ ord.monto | number: '1.2-2' }}</span
-              >
+    @if (cargandoOrdenes()) {
+      <div class="py-6 text-center text-zinc-400 text-xs">
+        <div class="w-6 h-6 border-2 border-color-primary-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+        <span>Cargando órdenes finalizadas desde la base de datos...</span>
+      </div>
+    } @else if (ordenesParaFacturar().length === 0) {
+      <div class="p-6 text-center border border-dashed border-white/10 rounded-card bg-black/20 text-xs text-zinc-500">
+        No hay órdenes de trabajo finalizadas pendientes de emisión de factura.
+      </div>
+    } @else {
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        @for (ord of ordenesParaFacturar(); track ord.id) {
+          <div
+            class="p-4 rounded-card bg-black/40 border border-white/5 flex flex-col justify-between hover:border-color-primary-accent/40 transition-all"
+          >
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span
+                  class="px-2 py-0.5 rounded-badge bg-white/10 text-white font-mono text-xs font-bold"
+                  >{{ ord.numero_ot }}</span
+                >
+                <span class="text-color-primary-accent font-bold text-base"
+                  >${{ ord.monto | number: '1.2-2' }}</span
+                >
+              </div>
+              <p class="text-white font-semibold text-sm">{{ ord.cliente }}</p>
+              <p class="text-xs text-zinc-400 mt-0.5">CUIT/DNI: {{ ord.dni_cuit }}</p>
+              <p class="text-xs text-zinc-300 mt-1 flex items-center gap-1">
+                <svg
+                  class="w-3.5 h-3.5 text-zinc-400 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 17a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zM3 9l2-4h10l2 4M3 9v7a1 1 0 001 1h16a1 1 0 001-1V9M3 9h18"
+                  />
+                </svg>
+                {{ ord.vehiculo }} ({{ ord.patente }})
+              </p>
             </div>
-            <p class="text-white font-semibold text-sm">{{ ord.cliente }}</p>
-            <p class="text-xs text-zinc-400 mt-0.5">CUIT/DNI: {{ ord.dni_cuit }}</p>
-            <p class="text-xs text-zinc-300 mt-1 flex items-center gap-1">
+            <button
+              type="button"
+              (click)="abrirModalEmision(ord)"
+              class="mt-4 w-full py-2 px-3 rounded-pill bg-color-primary-accent/15 border border-color-primary-accent/50 text-color-primary-accent hover:bg-color-primary-accent hover:text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md"
+            >
               <svg
-                class="w-3.5 h-3.5 text-zinc-400 shrink-0"
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4"
                 fill="none"
-                stroke="currentColor"
                 viewBox="0 0 24 24"
+                stroke="currentColor"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M8 17a2 2 0 100 4 2 2 0 000-4zm8 0a2 2 0 100 4 2 2 0 000-4zM3 9l2-4h10l2 4M3 9v7a1 1 0 001 1h16a1 1 0 001-1V9M3 9h18"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              {{ ord.vehiculo }} ({{ ord.patente }})
-            </p>
+              <span>Facturar con ARCA</span>
+            </button>
           </div>
-          <button
-            type="button"
-            (click)="abrirModalEmision(ord)"
-            class="mt-4 w-full py-2 px-3 rounded-pill bg-color-primary-accent/15 border border-color-primary-accent/50 text-color-primary-accent hover:bg-color-primary-accent hover:text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <span>Facturar con ARCA</span>
-          </button>
-        </div>
-      }
-    </div>
+        }
+      </div>
+    }
   </div>
 
   <!-- Barra de Filtros y Búsqueda de Facturas Emitidas -->
@@ -315,17 +326,31 @@
                 >
               </div>
               <div class="flex items-center gap-2">
+                @if (fact.estado_pago !== 'pagada') {
+                  <button
+                    type="button"
+                    (click)="cambiarEstadoPago(fact, 'pagada')"
+                    class="px-3 py-1.5 rounded-pill bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500 hover:text-black text-xs font-bold transition-all cursor-pointer shadow"
+                    title="Marcar Comprobante como Pagado"
+                  >
+                    Marcar Pagada
+                  </button>
+                } @else {
+                  <span class="px-2.5 py-1 rounded-pill bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
+                    ✓ Pagada
+                  </span>
+                }
                 <button
                   type="button"
                   (click)="verDetalle(fact)"
-                  class="px-3 py-1.5 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all"
+                  class="px-3 py-1.5 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
                 >
                   Detalle
                 </button>
                 <button
                   type="button"
                   (click)="imprimirComprobante(fact)"
-                  class="p-2 rounded-full bg-color-primary-accent/15 border border-color-primary-accent/40 text-color-primary-accent hover:bg-color-primary-accent hover:text-black transition-all"
+                  class="p-2 rounded-full bg-color-primary-accent/15 border border-color-primary-accent/40 text-color-primary-accent hover:bg-color-primary-accent hover:text-black transition-all cursor-pointer"
                   title="Imprimir Factura"
                 >
                   <svg
@@ -403,7 +428,7 @@
               [(ngModel)]="ordenSeleccionadaId"
               class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent"
             >
-              @for (ord of ordenesParaFacturar; track ord) {
+              @for (ord of ordenesParaFacturar(); track ord.id) {
                 <option [value]="ord.id">
                   {{ ord.numero_ot }} - {{ ord.cliente }} (${{ ord.monto | number: '1.2-2' }})
                 </option>
@@ -562,12 +587,25 @@
           <span class="text-sm text-zinc-300 font-bold uppercase">Importe Total Facturado:</span>
           <span class="text-2xl font-black text-white">${{ f.total | number: '1.2-2' }}</span>
         </div>
-        <!-- Acciones de Impresión y Cierre -->
+        <!-- Acciones de Estado, Impresión y Cierre -->
         <div class="flex items-center justify-end gap-3 pt-2">
+          @if (f.estado_pago !== 'pagada') {
+            <button
+              type="button"
+              (click)="cambiarEstadoPago(f, 'pagada')"
+              class="px-4 py-2.5 rounded-pill bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all shadow-lg cursor-pointer"
+            >
+              ✓ Marcar Comprobante como Pagado
+            </button>
+          } @else {
+            <span class="px-3 py-1.5 rounded-badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
+              ✓ Factura Pagada
+            </span>
+          }
           <button
             type="button"
             (click)="imprimirComprobante(f)"
-            class="px-5 py-2.5 rounded-pill bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 hover:bg-color-primary-accent/90 transition-all shadow-lg"
+            class="px-5 py-2.5 rounded-pill bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 hover:bg-color-primary-accent/90 transition-all shadow-lg cursor-pointer"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
