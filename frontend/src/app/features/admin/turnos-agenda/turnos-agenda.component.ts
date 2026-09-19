@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -14,6 +14,7 @@ import { TurnoService, TurnoResponse } from '../../../core/services/turno.servic
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
 import { VehiculoService, VehiculoResponse } from '../../../core/services/vehiculo.service';
 import { OrdenService, OrdenResponse } from '../../../core/services/orden.service';
+import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
   selector: 'app-turnos-agenda',
@@ -28,7 +29,11 @@ export class TurnosAgendaComponent implements OnInit {
   private readonly clienteService = inject(ClienteService);
   private readonly vehiculoService = inject(VehiculoService);
   private readonly ordenService = inject(OrdenService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  // Permisos según rol autenticado (TK110)
+  readonly esTecnico = computed(() => this.authService.getUserRole() === 'tecnico');
 
   cargando = signal(false);
   turnos = signal<TurnoResponse[]>([]);
@@ -199,6 +204,7 @@ export class TurnosAgendaComponent implements OnInit {
 
     this.calendarOptions.update((options) => ({
       ...options,
+      editable: !this.esTecnico(),
       events: eventos
     }));
   }
@@ -223,6 +229,11 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   handleDateClick(arg: any): void {
+    // Si el usuario es técnico, no tiene permiso para agendar turnos (TK110)
+    if (this.esTecnico()) {
+      return;
+    }
+
     const clickDate = new Date(arg.date);
     // Formatear la fecha para input datetime-local: YYYY-MM-DDTHH:MM
     const yyyy = clickDate.getFullYear();
@@ -265,6 +276,11 @@ export class TurnosAgendaComponent implements OnInit {
   }
 
   handleEventDrop(info: any): void {
+    if (this.esTecnico()) {
+      info.revert();
+      return;
+    }
+
     const turnoId = info.event.id;
     const nuevoStart = info.event.start;
     if (!nuevoStart) return;
