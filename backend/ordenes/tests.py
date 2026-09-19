@@ -761,19 +761,21 @@ class OrdenTrabajoEmailTest(TestCase):
 
     @patch("ordenes.signals.enviar_email_orden_background")
     def test_creacion_orden_dispara_senal_email(self, mock_enviar_email):
-        orden = OrdenTrabajo.objects.create(
-            vehiculo=self.vehiculo,
-            descripcion_problema="Alineación y balanceo"
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            orden = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema="Alineación y balanceo"
+            )
         mock_enviar_email.assert_called_once_with(orden.id)
 
     @patch("threading.Thread")
     def test_senal_tolerancia_a_errores_de_hilo(self, mock_thread):
         mock_thread.return_value.start.side_effect = Exception("Fallo al iniciar el hilo de pruebas")
-        orden = OrdenTrabajo.objects.create(
-            vehiculo=self.vehiculo,
-            descripcion_problema="Revisión general"
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            orden = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema="Revisión general"
+            )
         self.assertIsNotNone(orden.id)
 
 
