@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
-
+import { Component, inject, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { SidebarService } from '../../core/services/sidebar.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -11,5 +11,11 @@ import { SidebarService } from '../../core/services/sidebar.service';
 })
 export class SidebarComponent {
   readonly sidebarService = inject(SidebarService);
+  private readonly authService = inject(AuthService);
+
   readonly vistaPreviaRol = this.sidebarService.vistaPreviaRolSignal;
+
+  readonly rolEfectivo = computed(() => {
+    return this.vistaPreviaRol() || this.authService.getUserRole() || 'admin';
+  });
 }
