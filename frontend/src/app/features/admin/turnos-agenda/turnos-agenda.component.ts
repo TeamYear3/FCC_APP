@@ -213,9 +213,17 @@ export class TurnosAgendaComponent implements OnInit {
   guardarTurno(): void {
     if (this.turnoForm.invalid) return;
 
+    const payload = this.turnoForm.value;
+    const fechaSeleccionadaObj = new Date(payload.fecha_hora);
+    
+    // Validar domingo en frontend (0 = Domingo)
+    if (fechaSeleccionadaObj.getDay() === 0) {
+      this.mensajeError.set('El taller no atiende los días domingos. Por favor seleccione una fecha de lunes a sábado.');
+      return;
+    }
+
     this.cargando.set(true);
     this.mensajeError.set('');
-    const payload = this.turnoForm.value;
 
     this.turnoService.crearTurno(payload).subscribe({
       next: (res) => {
@@ -231,8 +239,8 @@ export class TurnosAgendaComponent implements OnInit {
           this.datosPendientesCrear.set(payload);
           this.mostrarAlertaSobrecupo.set(true);
         } else {
-          // Errores de validación estándar (ej. vehículo inválido, etc.)
-          const msg = errorData?.detail || errorData?.vehiculo || 'Ocurrió un error al agendar el turno.';
+          // Errores de validación estándar (ej. vehículo inválido, fecha pasada, etc.)
+          const msg = errorData?.detail || errorData?.fecha_hora || errorData?.vehiculo || 'Ocurrió un error al agendar el turno.';
           this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
         }
       }
