@@ -208,6 +208,13 @@ class AdjuntoDiagnostico(models.Model):
         on_delete=models.CASCADE,
         related_name="adjuntos_diagnostico"
     )
+    item_presupuesto = models.ForeignKey(
+        'ordenes.ItemPresupuesto',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="adjuntos"
+    )
     url_secure = models.URLField(max_length=500)
     public_id = models.CharField(max_length=255, blank=True, null=True)
     nombre_archivo = models.CharField(max_length=255)

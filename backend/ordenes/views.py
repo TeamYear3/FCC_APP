@@ -231,7 +231,7 @@ class AdjuntoDiagnosticoListCreateView(APIView):
     def get(self, request, orden_id, *args, **kwargs):
         orden = get_object_or_404(OrdenTrabajo, id=orden_id)
         adjuntos = orden.adjuntos_diagnostico.all()
-        serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True)
+        serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, orden_id=None, *args, **kwargs):
@@ -246,8 +246,14 @@ class AdjuntoDiagnosticoListCreateView(APIView):
 
         resultado_upload = subir_imagen_diagnostico(file_obj, orden.id)
 
+        item_id = request.data.get('item_presupuesto_id') or request.data.get('item_presupuesto')
+        item_obj = None
+        if item_id:
+            item_obj = ItemPresupuesto.objects.filter(id=item_id, orden_trabajo=orden).first()
+
         adjunto = AdjuntoDiagnostico.objects.create(
             orden_trabajo=orden,
+            item_presupuesto=item_obj,
             url_secure=resultado_upload['url_secure'],
             public_id=resultado_upload['public_id'],
             nombre_archivo=resultado_upload['nombre_archivo'],
@@ -256,7 +262,7 @@ class AdjuntoDiagnosticoListCreateView(APIView):
             creado_por=request.user if request.user.is_authenticated else None
         )
 
-        serializer = AdjuntoDiagnosticoSerializer(adjunto)
+        serializer = AdjuntoDiagnosticoSerializer(adjunto, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
