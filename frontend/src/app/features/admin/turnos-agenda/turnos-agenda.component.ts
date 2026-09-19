@@ -44,6 +44,7 @@ export class TurnosAgendaComponent implements OnInit {
   // Datos temporales para la operación de forzado (bypass)
   datosPendientesCrear = signal<any>(null);
   modoEdicion = signal<boolean>(false);
+  mostrarModalConfirmarEliminar = signal<boolean>(false);
 
   // Formularios
   turnoForm!: FormGroup;
@@ -59,10 +60,12 @@ export class TurnosAgendaComponent implements OnInit {
     },
     locales: [esLocale],
     locale: 'es',
+    editable: true,
     displayEventTime: false,
     events: [],
     dateClick: this.handleDateClick.bind(this),
-    eventClick: this.handleEventClick.bind(this)
+    eventClick: this.handleEventClick.bind(this),
+    eventDrop: this.handleEventDrop.bind(this)
   });
 
   constructor() {
@@ -221,6 +224,63 @@ export class TurnosAgendaComponent implements OnInit {
     this.mostrarModalDetalle.set(true);
   }
 
+  handleEventDrop(info: any): void {
+    const turnoId = info.event.id;
+    const nuevoStart = info.event.start;
+    if (!nuevoStart) return;
+
+    const fechaObj = new Date(nuevoStart);
+    const ahora = new Date();
+
+    // Validar si es domingo (0 = Domingo en JavaScript)
+    if (fechaObj.getDay() === 0) {
+      info.revert();
+      this.mensajeError.set('El taller no atiende los domingos. No se puede reprogramar a este día.');
+      return;
+    }
+
+    // Validar si es fecha pasada
+    if (fechaObj < ahora) {
+      info.revert();
+      this.mensajeError.set('No se puede reprogramar un turno a una fecha u hora pasada.');
+      return;
+    }
+
+    const yyyy = fechaObj.getFullYear();
+    const mm = String(fechaObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(fechaObj.getDate()).padStart(2, '0');
+    const hh = String(fechaObj.getHours()).padStart(2, '0');
+    const min = String(fechaObj.getMinutes()).padStart(2, '0');
+    const fechaIso = `${yyyy}-${mm}-${dd}T${hh}:${min}:00`;
+
+    this.cargando.set(true);
+    this.mensajeError.set('');
+
+    this.turnoService.actualizarTurno(turnoId, { fecha_hora: fechaIso }).subscribe({
+      next: () => {
+        this.cargando.set(false);
+        this.cargarDatos();
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        const errorData = err.error;
+        if (errorData && errorData.warning_overbooking) {
+          this.datosPendientesCrear.set({
+            fecha_hora: fechaIso,
+            esEdicion: true,
+            turnoId: turnoId,
+            revertFunc: () => info.revert()
+          });
+          this.mostrarAlertaSobrecupo.set(true);
+        } else {
+          info.revert();
+          const msg = errorData?.detail || errorData?.fecha_hora || 'Error al reprogramar el turno arrastrado.';
+          this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+      }
+    });
+  }
+
   habilitarEdicion(): void {
     const turno = this.turnoSeleccionado();
     if (!turno) return;
@@ -332,6 +392,7 @@ export class TurnosAgendaComponent implements OnInit {
     const turnoId = payload.turnoId;
     delete payloadForzado.esEdicion;
     delete payloadForzado.turnoId;
+    delete payloadForzado.revertFunc;
 
     if (esEdicion && turnoId) {
       this.turnoService.actualizarTurno(turnoId, payloadForzado).subscribe({
@@ -397,7 +458,42 @@ export class TurnosAgendaComponent implements OnInit {
     return vehiculo ? `${vehiculo.marca} ${vehiculo.modelo} (${vehiculo.patente})` : 'Vehículo asignado';
   }
 
+  solicitarEliminarTurno(): void {
+    this.mostrarModalConfirmarEliminar.set(true);
+  }
+
+  cerrarModalEliminar(): void {
+    this.mostrarModalConfirmarEliminar.set(false);
+  }
+
+  ejecutarEliminarTurno(): void {
+    const turno = this.turnoSeleccionado();
+    if (!turno) return;
+
+    this.cargando.set(true);
+    this.mensajeError.set('');
+
+    this.turnoService.eliminarTurno(turno.id).subscribe({
+      next: () => {
+        this.cerrarModalEliminar();
+        this.cerrarModalDetalle();
+        this.cargarDatos();
+      },
+      error: (err) => {
+        this.cargando.set(false);
+        const errorData = err.error;
+        const msg = errorData?.detail || 'Ocurrió un error al eliminar el turno.';
+        this.mensajeError.set(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        this.cerrarModalEliminar();
+      }
+    });
+  }
+
   cerrarAlertaSobrecupo(): void {
+    const payload = this.datosPendientesCrear();
+    if (payload && typeof payload.revertFunc === 'function') {
+      payload.revertFunc();
+    }
     this.mostrarAlertaSobrecupo.set(false);
     this.datosPendientesCrear.set(null);
   }
@@ -411,6 +507,7 @@ export class TurnosAgendaComponent implements OnInit {
   cerrarModalDetalle(): void {
     this.mostrarModalDetalle.set(false);
     this.turnoSeleccionado.set(null);
+    this.modoEdicion.set(false);
     this.mensajeError.set('');
   }
 }
