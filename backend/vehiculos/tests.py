@@ -313,10 +313,10 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.data["cliente_id"][0], "El cliente especificado no existe.")
 
     def test_actualizar_vehiculo_sin_permiso(self):
-        # Tecnico (Ahora tiene permiso en TK071)
+        # Tecnico (Restringido a solo lectura en TK108)
         self.client.force_authenticate(user=self.tecnico_user)
         response = self.client.patch(self.url_detalle, {"color": "Negro"}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Cliente
         self.client.force_authenticate(user=self.cliente_user)
@@ -598,16 +598,14 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.data["modelo"], "Fiesta Editado")
         self.assertEqual(response.data["numero_chasis"], "NUEVOCHASIS999")
 
-        # Probar con Tecnico
+        # Probar con Tecnico (Restringido en TK108)
         self.client.force_authenticate(user=self.tecnico_user)
         data = {
             "marca": "Ford Editado Tecnico",
             "numero_chasis": "VINEDITADOTECNICO"
         }
         response = self.client.patch(detail_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["marca"], "Ford Editado Tecnico")
-        self.assertEqual(response.data["numero_chasis"], "VINEDITADOTECNICO")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_actualizar_vehiculo_prohibido_cliente(self):
         self.client.force_authenticate(user=self.cliente_user)
