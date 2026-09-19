@@ -200,5 +200,15 @@ export class OrdenService {
   eliminarItemPresupuesto(ordenId: string, itemId: string): Observable<{ message: string; monto_total: number }> {
     return this.http.delete<{ message: string; monto_total: number }>(`${this.apiUrl}${ordenId}/items/${itemId}/`);
   }
+
+  /**
+   * Descargar reporte de la Orden de Trabajo en formato PDF (GET /api/ordenes/<id>/pdf/) (TK121)
+   */
+  descargarOrdenPDF(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}${id}/pdf/`, {
+      responseType: 'blob'
+    });
+  }
 }
+
 
