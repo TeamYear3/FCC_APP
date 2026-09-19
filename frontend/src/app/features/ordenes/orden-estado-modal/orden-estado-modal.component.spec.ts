@@ -45,7 +45,8 @@ describe('OrdenEstadoModalComponent', () => {
 
   beforeEach(async () => {
     mockOrdenService = {
-      actualizarEstado: vi.fn().mockReturnValue(of(mockHistorialRes))
+      actualizarEstado: vi.fn().mockReturnValue(of(mockHistorialRes)),
+      registrarPago: vi.fn().mockReturnValue(of({ message: 'Cobro OK', orden: mockOrden }))
     };
 
     mockToastService = {
@@ -116,5 +117,21 @@ describe('OrdenEstadoModalComponent', () => {
       'en_presupuesto',
       'Iniciado presupuesto'
     );
+  });
+
+  it('debe llamar a registrarPago en el servicio al confirmar cobro operativo (TK103)', () => {
+    component.seccionActiva.set('cobro');
+    component.metodoPago.set('transferencia');
+    component.comentarioCobro.set('Comprobante #1234');
+    component.entregarOrden.set(true);
+
+    component.confirmarCobro();
+
+    expect(mockOrdenService.registrarPago).toHaveBeenCalledWith('ot-123', {
+      metodo_pago: 'transferencia',
+      comentario: 'Comprobante #1234',
+      entregar_orden: true
+    });
+    expect(mockToastService.exito).toHaveBeenCalledWith('Cobro de la Orden registrado correctamente.');
   });
 });

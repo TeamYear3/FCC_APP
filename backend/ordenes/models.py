@@ -140,7 +140,11 @@ class OrdenTrabajo(models.Model):
 
         # Guardar cambio de estado
         self.estado = nuevo_estado
-        self.save(update_fields=['estado', 'actualizado_en'])
+        update_fields = ['estado', 'actualizado_en']
+        if nuevo_estado == EstadoOrden.ENTREGADO and not self.fecha_entrega:
+            self.fecha_entrega = timezone.now().date()
+            update_fields.append('fecha_entrega')
+        self.save(update_fields=update_fields)
 
         # Registrar historial
         HistorialEstadoOrden.objects.create(

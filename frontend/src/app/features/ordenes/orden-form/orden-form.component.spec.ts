@@ -46,7 +46,8 @@ describe('OrdenFormComponent', () => {
         anio: 2022,
         cliente_id: 'cli-1'
       })),
-      getVehiculos: vi.fn().mockReturnValue(of([]))
+      getVehiculos: vi.fn().mockReturnValue(of([])),
+      obtenerVehiculos: vi.fn().mockReturnValue(of({ results: [] }))
     };
 
     mockClienteService = {
@@ -56,7 +57,8 @@ describe('OrdenFormComponent', () => {
         apellido: 'Perez',
         email: 'juan@example.com',
         telefono: '1122334455'
-      }))
+      })),
+      obtenerClientes: vi.fn().mockReturnValue(of({ results: [] }))
     };
 
     mockTurnoService = {
@@ -137,4 +139,23 @@ describe('OrdenFormComponent', () => {
       state: { successOT: 'OT-001' }
     });
   });
+
+  it('debe manejar apertura y cierre del modal in-situ de cliente (TK102)', () => {
+    component.abrirModalCliente();
+    expect(component.mostrarModalCliente()).toBe(true);
+    expect(component.clienteFormInSitu).toBeDefined();
+
+    component.cerrarModalCliente();
+    expect(component.mostrarModalCliente()).toBe(false);
+  });
+
+  it('debe manejar apertura y configuracion del modal in-situ de vehiculo (TK102)', () => {
+    component.abrirModalVehiculo('cli-1');
+    expect(component.mostrarModalVehiculo()).toBe(true);
+    expect(component.vehiculoFormInSitu.get('cliente_id')?.value).toBe('cli-1');
+
+    component.cerrarModalVehiculo();
+    expect(component.mostrarModalVehiculo()).toBe(false);
+  });
 });
+
