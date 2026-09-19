@@ -1,6 +1,6 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenFiltros } from '../../core/services/orden.service';
@@ -38,6 +38,7 @@ export class OrdenesComponent implements OnInit {
   readonly authService = inject(AuthService);
   readonly ordenService = inject(OrdenService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly userRole = this.authService.userRoleSignal;
   readonly isAdminView = signal<boolean>(false);
@@ -48,7 +49,7 @@ export class OrdenesComponent implements OnInit {
   readonly mostrarModalEstado = signal<boolean>(false);
   readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
 
-  // Filtros Avanzados (TK056)
+  // Filtros Avanzados (TK056 / TK119)
   readonly busqueda = signal<string>('');
   readonly estadoFiltro = signal<string>('todos');
   readonly complejidadFiltro = signal<string>('todas');
@@ -62,10 +63,20 @@ export class OrdenesComponent implements OnInit {
   readonly totalPaginas = signal<number>(1);
   readonly totalItems = signal<number>(0);
 
-  get ordenIdActiva(): string {
-    return this.listaOrdenes()[0]?.id || '1';
-  }
+  // Orden activa / seleccionada en expediente (TK120)
+  readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
+  readonly otQueryParam = signal<string | null>(null);
 
+  readonly ordenActiva = computed<OrdenResponse | null>(() => {
+    const sel = this.ordenSeleccionada();
+    if (sel) return sel;
+    const lista = this.listaOrdenes();
+    return lista.length > 0 ? lista[0] : null;
+  });
+
+  get ordenIdActiva(): string {
+    return this.ordenActiva()?.id || '';
+  }
 
   ngOnInit(): void {
     const isAdmin = this.router.url.startsWith('/admin');
@@ -76,6 +87,13 @@ export class OrdenesComponent implements OnInit {
       this.successOT.set(window.history.state.successOT);
       window.history.replaceState({}, '', isAdmin ? '/admin/ordenes' : '/ordenes');
     }
+
+    this.route.queryParams.subscribe(params => {
+      if (params['ot']) {
+        this.otQueryParam.set(params['ot']);
+      }
+    });
+
     this.cargarOrdenes(1);
   }
 
@@ -93,15 +111,59 @@ export class OrdenesComponent implements OnInit {
 
     this.ordenService.obtenerOrdenes(filtros, page, 10).subscribe({
       next: (res) => {
-        this.listaOrdenes.set(res.results || []);
+        const ordenes = res.results || [];
+        this.listaOrdenes.set(ordenes);
         this.paginaActual.set(res.current_page || 1);
         this.totalPaginas.set(res.total_pages || 1);
         this.totalItems.set(res.total_items || 0);
         this.cargando.set(false);
+
+        // Auto-selección por query param o preservar selección previa
+        const targetOt = this.otQueryParam();
+        if (targetOt && ordenes.length > 0) {
+          const encontrada = ordenes.find(o => o.id === targetOt || o.numero_ot === targetOt);
+          if (encontrada) {
+            this.ordenSeleccionada.set(encontrada);
+          }
+        } else if (this.ordenSeleccionada()) {
+          const sigueExistiendo = ordenes.find(o => o.id === this.ordenSeleccionada()?.id);
+          if (sigueExistiendo) {
+            this.ordenSeleccionada.set(sigueExistiendo);
+          }
+        }
       },
       error: (err) => {
         console.error('Error al cargar órdenes:', err);
         this.cargando.set(false);
+      }
+    });
+  }
+
+  seleccionarOrden(orden: OrdenResponse, scrollToExpediente: boolean = false): void {
+    this.ordenSeleccionada.set(orden);
+    if (scrollToExpediente && typeof document !== 'undefined') {
+      const elem = document.getElementById('expediente-activo');
+      if (elem) {
+        elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  imprimirOT(orden?: OrdenResponse | null): void {
+    const target = orden || this.ordenActiva();
+    if (!target) return;
+    this.ordenService.descargarOrdenPDF(target.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Orden_Trabajo_${target.numero_ot || target.id}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('Error al descargar PDF de la orden:', err);
+        alert('No se pudo generar el PDF de la orden de trabajo.');
       }
     });
   }
