@@ -100,12 +100,46 @@ Para facilitar la evaluación técnica y funcional del sistema, se encuentran di
 
 ---
 
-## 🧪 Ejecución de Pruebas Unitarias
+## 🧪 Ejecución de Pruebas y Compilación
 
-Para ejecutar las suites de pruebas unitarias de backend utilizando el entorno de configuraciones dinámicas desde variables de entorno (`TK106`):
+### Backend (Django REST)
+Para ejecutar la suite completa de pruebas unitarias de backend utilizando el entorno de configuraciones dinámicas desde variables de entorno (`TK106`):
 
 ```bash
-# Ejecutar desde la carpeta backend con el entorno virtual activado
+# Opción 1: En entorno virtual local (desde la carpeta backend/)
 python manage.py test --settings=config.settings.test
+
+# Opción 2: Dentro del contenedor Docker activo (desde la raíz)
+docker compose exec backend python manage.py test --settings=config.settings.test
 ```
+
+### Frontend (Angular 21)
+Para validar la suite de pruebas unitarias y la compilación de producción del cliente web:
+
+```bash
+# Ejecución de pruebas unitarias con Karma / Jasmine (desde la carpeta frontend/)
+npm test
+
+# Compilación de producción (TypeScript + Angular Compiler)
+npm run build
+```
+
+---
+
+## 🐳 Comandos Útiles de Administración con Docker
+
+```bash
+# Aplicar migraciones en PostgreSQL
+docker compose exec backend python manage.py migrate
+
+# Crear un nuevo superusuario interactivo
+docker compose exec backend python manage.py createsuperuser
+
+# Acceder a la consola interactiva de Django
+docker compose exec backend python manage.py shell
+
+# Ver logs en tiempo real de los servicios
+docker compose logs -f backend frontend
+```
+
 
