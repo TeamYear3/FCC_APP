@@ -56,14 +56,8 @@ export class OrdenesComponent implements OnInit {
   readonly fechaDesde = signal<string>('');
   readonly fechaHasta = signal<string>('');
 
-  // Estado de lista paginada
+  // Estado de lista paginada y orden activa (TK120)
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
-  readonly cargando = signal<boolean>(false);
-  readonly paginaActual = signal<number>(1);
-  readonly totalPaginas = signal<number>(1);
-  readonly totalItems = signal<number>(0);
-
-  // Orden activa / seleccionada en expediente (TK120)
   readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
   readonly otQueryParam = signal<string | null>(null);
 
@@ -74,10 +68,14 @@ export class OrdenesComponent implements OnInit {
     return lista.length > 0 ? lista[0] : null;
   });
 
+  readonly cargando = signal<boolean>(false);
+  readonly paginaActual = signal<number>(1);
+  readonly totalPaginas = signal<number>(1);
+  readonly totalItems = signal<number>(0);
+
   get ordenIdActiva(): string {
     return this.ordenActiva()?.id || '';
   }
-
   ngOnInit(): void {
     const isAdmin = this.router.url.startsWith('/admin');
     this.isAdminView.set(isAdmin);
@@ -89,20 +87,23 @@ export class OrdenesComponent implements OnInit {
     }
 
     this.route.queryParams.subscribe(params => {
-      if (params['ot']) {
-        this.otQueryParam.set(params['ot']);
+      const targetOt = params['ot'] || params['id'];
+      if (targetOt) {
+        this.otQueryParam.set(targetOt);
       }
+      const targetBusqueda = params['busqueda'];
+      if (targetBusqueda) {
+        this.busqueda.set(targetBusqueda);
+      }
+      this.cargarOrdenes(1, targetOt, targetBusqueda);
     });
-
-    this.cargarOrdenes(1);
   }
 
-  cargarOrdenes(page: number = 1): void {
+  cargarOrdenes(page: number = 1, targetId?: string, targetBusqueda?: string): void {
     this.cargando.set(true);
     const busq = this.busqueda().trim();
     const filtros: OrdenFiltros = {
-      patente: busq,
-      cliente: busq,
+      busqueda: busq,
       estado: this.estadoFiltro(),
       complejidad: this.complejidadFiltro(),
       fecha_desde: this.fechaDesde(),
@@ -116,6 +117,19 @@ export class OrdenesComponent implements OnInit {
         this.paginaActual.set(res.current_page || 1);
         this.totalPaginas.set(res.total_pages || 1);
         this.totalItems.set(res.total_items || 0);
+
+        if (targetId) {
+          const enc = ordenes.find((o: OrdenResponse) => String(o.id) === String(targetId) || o.numero_ot === targetId);
+          if (enc) this.ordenSeleccionada.set(enc);
+        } else if (targetBusqueda) {
+          const enc = ordenes.find((o: OrdenResponse) => 
+            (o.numero_ot && o.numero_ot.toLowerCase().includes(targetBusqueda.toLowerCase())) ||
+            String(o.id) === String(targetBusqueda)
+          );
+          if (enc) this.ordenSeleccionada.set(enc);
+        } else if (ordenes.length > 0 && (!this.ordenSeleccionada() || !ordenes.some((r: OrdenResponse) => r.id === this.ordenSeleccionada()?.id))) {
+          this.ordenSeleccionada.set(ordenes[0]);
+        }
         this.cargando.set(false);
 
         // Auto-selección por query param o preservar selección previa
@@ -166,6 +180,63 @@ export class OrdenesComponent implements OnInit {
         alert('No se pudo generar el PDF de la orden de trabajo.');
       }
     });
+  }
+
+  obtenerClaseEstado(estado?: string | null): string {
+    const e = (estado || '').toLowerCase().trim();
+    switch (e) {
+      case 'en_proceso':
+      case 'en proceso':
+        return 'bg-color-primary-accent text-black';
+      case 'en_revision':
+      case 'en revisión':
+      case 'aprobado':
+      case 'entregado':
+        return 'bg-color-status-review text-white';
+      case 'facturado':
+      case 'facturado arca':
+      case 'finalizado':
+        return 'bg-color-status-pending text-white';
+      case 'en_presupuesto':
+      case 'en presupuesto':
+        return 'bg-color-status-process text-black';
+      case 'ingresado':
+      default:
+        return 'bg-zinc-700 text-white';
+    }
+  }
+
+  obtenerTextoEstado(estado?: string | null): string {
+    const e = (estado || '').toLowerCase().trim();
+    switch (e) {
+      case 'en_proceso':
+      case 'en proceso':
+        return 'En Proceso';
+      case 'en_revision':
+      case 'en revisión':
+        return 'En Revisión';
+      case 'aprobado':
+        return 'Aprobado';
+      case 'facturado':
+      case 'facturado arca':
+        return 'Facturado ARCA';
+      case 'finalizado':
+        return 'Finalizado';
+      case 'en_presupuesto':
+      case 'en presupuesto':
+        return 'En Presupuesto';
+      case 'ingresado':
+        return 'Ingresado';
+      case 'en_pausa':
+      case 'en pausa':
+        return 'En Pausa';
+      case 'cancelado':
+        return 'Cancelado';
+      case 'entregado':
+        return 'Entregado';
+      default:
+        return estado || 'Sin Estado';
+    }
   }
 
   onFiltroChange(): void {

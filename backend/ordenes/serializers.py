@@ -67,18 +67,22 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             rep['vehiculo_patente'] = instance.vehiculo.patente
             rep['vehiculo_marca_modelo'] = f"{instance.vehiculo.marca} {instance.vehiculo.modelo}".strip()
             if instance.vehiculo.cliente:
-                rep['cliente_nombre'] = f"{instance.vehiculo.cliente.nombre} {instance.vehiculo.cliente.apellido}".strip()
-                rep['cliente_telefono'] = instance.vehiculo.cliente.telefono or ''
-                rep['cliente_dni_cuit'] = instance.vehiculo.cliente.dni_cuit or ''
+                cli = instance.vehiculo.cliente
+                rep['cliente_nombre'] = f"{cli.nombre} {cli.apellido}".strip()
+                rep['cliente_telefono'] = cli.telefono or ''
+                rep['cliente_documento'] = f"{cli.tipo_documento}: {cli.dni_cuit}" if getattr(cli, 'dni_cuit', None) else ""
+                rep['cliente_dni_cuit'] = cli.dni_cuit or ''
             else:
                 rep['cliente_nombre'] = 'Sin Cliente'
                 rep['cliente_telefono'] = ''
+                rep['cliente_documento'] = ''
                 rep['cliente_dni_cuit'] = ''
         else:
             rep['vehiculo_patente'] = ''
             rep['vehiculo_marca_modelo'] = ''
             rep['cliente_nombre'] = ''
             rep['cliente_telefono'] = ''
+            rep['cliente_documento'] = ''
             rep['cliente_dni_cuit'] = ''
         return rep
 

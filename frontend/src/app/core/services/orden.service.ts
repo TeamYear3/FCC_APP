@@ -30,11 +30,15 @@ export interface OrdenResponse {
   vehiculo_marca_modelo?: string;
   cliente_nombre?: string;
   cliente_telefono?: string;
+  cliente_documento?: string;
   cliente_dni_cuit?: string;
   monto_total?: number | string;
 }
 
 export interface OrdenFiltros {
+  busqueda?: string;
+  id?: string;
+  numero_ot?: string;
   patente?: string;
   cliente?: string;
   estado?: string;
@@ -61,7 +65,7 @@ export interface HistorialEstadoItem {
 }
 
 export interface OrdenHistorialResponse {
-  orden_id: string;
+  id: string;
   numero_ot: string;
   estado_actual: string;
   estado_actual_display: string;
@@ -116,6 +120,9 @@ export class OrdenService {
       .set('page', page.toString())
       .set('limit', limit.toString());
 
+    if (filtros.busqueda?.trim()) params = params.set('busqueda', filtros.busqueda.trim());
+    if (filtros.id?.trim()) params = params.set('id', filtros.id.trim());
+    if (filtros.numero_ot?.trim()) params = params.set('numero_ot', filtros.numero_ot.trim());
     if (filtros.patente?.trim()) params = params.set('patente', filtros.patente.trim());
     if (filtros.cliente?.trim()) params = params.set('cliente', filtros.cliente.trim());
     if (filtros.estado?.trim() && filtros.estado.toLowerCase() !== 'todos') params = params.set('estado', filtros.estado.trim());
