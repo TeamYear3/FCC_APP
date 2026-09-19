@@ -253,9 +253,11 @@
                   ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched
                 "
               >
-                <option [ngValue]="null">-- Seleccione un turno disponible --</option>
-                @for (t of turnosDisponibles; track t) {
-                  <option [value]="t.id">{{ t.descripcion }}</option>
+                <option [ngValue]="null">
+                  {{ cargandoTurnos() ? '-- Cargando turnos disponibles... --' : '-- Seleccione un turno agendado --' }}
+                </option>
+                @for (t of turnos(); track t.id) {
+                  <option [value]="t.id">{{ formatearTurno(t) }}</option>
                 }
               </select>
               @if (ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched) {

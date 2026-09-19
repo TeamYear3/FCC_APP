@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { OrdenService, OrdenPayload } from '../../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse } from '../../../core/services/vehiculo.service';
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
+import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
 import { VehiculoSelectorComponent } from '../../../shared/components/vehiculo-selector/vehiculo-selector.component';
 
 @Component({
@@ -19,6 +20,7 @@ export class OrdenFormComponent implements OnInit {
   private readonly ordenService = inject(OrdenService);
   private readonly vehiculoService = inject(VehiculoService);
   private readonly clienteService = inject(ClienteService);
+  private readonly turnoService = inject(TurnoService);
   private readonly router = inject(Router);
 
   readonly isSubmitting = signal<boolean>(false);
@@ -29,18 +31,15 @@ export class OrdenFormComponent implements OnInit {
   readonly selectedClienteDetails = signal<ClienteResponse | null>(null);
   readonly returnUrl = signal<string>('/ordenes');
 
-  ordenForm!: FormGroup;
+  // Turnos reales obtenidos desde el backend
+  readonly turnos = signal<TurnoResponse[]>([]);
+  readonly cargandoTurnos = signal<boolean>(false);
 
-  // Turnos simulados (Mocks) para la UI antes del desarrollo del backend de Turnos
-  readonly turnosDisponibles = [
-    { id: 'T-001', descripcion: 'Turno Mañana - 09:00 hs' },
-    { id: 'T-002', descripcion: 'Turno Mañana - 11:30 hs' },
-    { id: 'T-003', descripcion: 'Turno Tarde - 15:00 hs' },
-    { id: 'T-004', descripcion: 'Turno Tarde - 17:30 hs' }
-  ];
+  ordenForm!: FormGroup;
 
   ngOnInit(): void {
     this.returnUrl.set(this.router.url.startsWith('/admin') ? '/admin/ordenes' : '/ordenes');
+    this.cargarTurnos();
     const hoy = new Date();
     const hoyString = hoy.getFullYear() + '-' + 
                       String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -101,6 +100,38 @@ export class OrdenFormComponent implements OnInit {
         }
       });
     });
+  }
+
+  cargarTurnos(): void {
+    this.cargandoTurnos.set(true);
+    this.turnoService.obtenerTurnos().subscribe({
+      next: (lista) => {
+        // Filtrar turnos activos o pendientes
+        const activos = lista.filter(t => t.estado !== 'cancelado');
+        this.turnos.set(activos.length > 0 ? activos : lista);
+        this.cargandoTurnos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar turnos disponibles:', err);
+        this.turnos.set([]);
+        this.cargandoTurnos.set(false);
+      }
+    });
+  }
+
+  formatearTurno(t: TurnoResponse): string {
+    try {
+      const fecha = new Date(t.fecha_hora);
+      const dia = String(fecha.getDate()).padStart(2, '0');
+      const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+      const horas = String(fecha.getHours()).padStart(2, '0');
+      const min = String(fecha.getMinutes()).padStart(2, '0');
+      const fechaFormateada = `${dia}/${mes} ${horas}:${min} hs`;
+      const infoTitular = t.cliente_nombre ? ` (${t.cliente_nombre})` : '';
+      return `${fechaFormateada} - ${t.motivo}${infoTitular}`;
+    } catch {
+      return `${t.fecha_hora} - ${t.motivo}`;
+    }
   }
 
   get modoSeleccionado(): 'PRESUPUESTO' | 'ORDEN_TRABAJO' {
