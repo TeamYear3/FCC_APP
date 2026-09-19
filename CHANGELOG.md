@@ -35,6 +35,9 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Toggle interactivo ver/ocultar contraseña e indicador de fortaleza de clave en Mi Perfil (TK089).
 - Documentación técnica de persistencia híbrida NoSQL con MongoDB para auditoría, telemetría y eventos (TK107).
 - Plan Maestro de Pruebas de Software bajo norma IEEE 829 con 25 casos de prueba oficiales y Plan de Gestión de la Configuración en `docs/`.
+- Grilla interactiva de Órdenes de Trabajo con tabla responsive, paginación dinámica, badges semánticos y selección reactiva por clic y doble clic con foco en expediente (TK120).
+- Endpoint formal `GET /api/ordenes/<pk>/pdf/` para exportación e impresión del comprobante oficial de Orden de Trabajo mediante ReportLab con desglose de repuestos y mano de obra (TK121).
+- Integración de órdenes de trabajo activas y actividades diarias como eventos interactivos en la Agenda FullCalendar con navegación directa al expediente operativo (TK122).
 
 ### Modificado
 
@@ -47,6 +50,8 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ### Corregido
 
+- Enrutamiento directo de subruta `/admin/facturacion` al componente de calendario tributario ARCA desacoplado (TK118).
+- Búsqueda flexible multi-criterio `OR` en `ListarCrearOrdenTrabajoView` y enriquecimiento de `OrdenTrabajoSerializer` con datos desnormalizados de patente, titular y contacto (TK119).
 - Imports opcionales de `daphne`, `channels` y `reportlab` para evitar errores en entornos sin esas dependencias.
 - Dependencias de FullCalendar alineadas a v6 con tipos en tsconfig.
 - Configuración de routing ASGI para WebSockets.
