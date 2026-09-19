@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     CrearOrdenTrabajoView,
+    DetalleOrdenTrabajoView,
     AgregarManoDeObraView,
     AgregarRepuestoView,
     ConsultarHistorialOrdenView,
@@ -15,6 +16,7 @@ from .views import (
 
 urlpatterns = [
     path('ordenes/', CrearOrdenTrabajoView.as_view(), name='crear-orden-trabajo'),
+    path('ordenes/<uuid:id>/', DetalleOrdenTrabajoView.as_view(), name='detalle-orden-trabajo'),
     path('ordenes/<uuid:pk>/pdf/', ExportarOrdenPDFView.as_view(), name='exportar-orden-pdf'),
     path('ordenes/<uuid:orden_id>/items/', ListarItemsPresupuestoView.as_view(), name='listar-items-presupuesto'),
     path('ordenes/<uuid:orden_id>/items/mano-de-obra/', AgregarManoDeObraView.as_view(), name='agregar-mano-de-obra'),
