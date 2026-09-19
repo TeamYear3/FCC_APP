@@ -89,6 +89,28 @@ class TurnoAPITests(APITestCase):
         self.assertIn("fecha_hora", response.data)
         self.assertIn("pasado", str(response.data["fecha_hora"]))
 
+    def test_rechazo_turno_dia_domingo(self):
+        """Prueba que no permite crear un turno en día domingo (TK116)."""
+        self.client.force_authenticate(user=self.admin_user)
+        ahora = timezone.now()
+        # Buscamos el próximo domingo a futuro
+        dias_hasta_domingo = (6 - ahora.weekday() + 7) % 7
+        if dias_hasta_domingo == 0:
+            dias_hasta_domingo = 7
+        fecha_domingo = timezone.make_aware(
+            datetime.combine((ahora + timezone.timedelta(days=dias_hasta_domingo)).date(), time(10, 0))
+        )
+        payload = {
+            "cliente": str(self.cliente_a.id),
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": fecha_domingo.isoformat(),
+            "motivo": "Turno Domingo No Permitido"
+        }
+        response = self.client.post("/api/turnos/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("fecha_hora", response.data)
+        self.assertIn("domingo", str(response.data["fecha_hora"]).lower())
+
     def test_normalizacion_timezone_nocturno_argentina(self):
         """Prueba que un turno a las 22:00 hs en Argentina cuenta para la fecha local y no el día siguiente UTC (TK077)."""
         self.client.force_authenticate(user=self.admin_user)
