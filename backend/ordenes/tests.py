@@ -1208,6 +1208,80 @@ class ExportarOrdenPDFViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import AdjuntoDiagnostico
+
+
+class AdjuntoDiagnosticoAPITest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_adjuntos@fccapp.com",
+            password="Password123!",
+            rol="admin"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="22334455",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AC123BD",
+            marca="Ford",
+            modelo="Ranger",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Fallo en bomba de combustible",
+            fecha_ingreso="2026-09-19"
+        )
+        self.item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Reemplazo de bomba de nafta",
+            precio_unitario=Decimal("15000.00"),
+            cantidad=Decimal("1.00")
+        )
+
+    def test_subir_adjunto_vinculado_a_servicio_y_notificar_ws(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        foto_mock = SimpleUploadedFile("bomba.jpg", b"fake image bytes", content_type="image/jpeg")
+
+        with patch('ordenes.services.notificar_adjunto_diagnostico_websocket') as mock_ws:
+            response = self.client.post(url, {
+                'archivo': foto_mock,
+                'item_presupuesto_id': str(self.item.id)
+            }, format='multipart')
+
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(response.data['item_presupuesto_id'], str(self.item.id))
+            self.assertEqual(response.data['item_presupuesto_descripcion'], "Reemplazo de bomba de nafta")
+            self.assertTrue(mock_ws.called)
+            self.assertEqual(mock_ws.call_args[1]['accion'], 'creado')
+
+    def test_eliminar_adjunto_y_notificar_ws(self):
+        self.client.force_authenticate(user=self.admin)
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="test.jpg"
+        )
+        url = reverse('eliminar-adjunto-diagnostico', kwargs={'adjunto_id': adjunto.id})
+
+        with patch('ordenes.services.notificar_adjunto_diagnostico_websocket') as mock_ws:
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+            self.assertFalse(AdjuntoDiagnostico.objects.filter(id=adjunto.id).exists())
+            self.assertTrue(mock_ws.called)
+            self.assertEqual(mock_ws.call_args[1]['accion'], 'eliminado')
+
+
+
 
 
 

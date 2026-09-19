@@ -263,6 +263,14 @@ class AdjuntoDiagnosticoListCreateView(APIView):
         )
 
         serializer = AdjuntoDiagnosticoSerializer(adjunto, context={'request': request})
+        from .services import notificar_adjunto_diagnostico_websocket
+        notificar_adjunto_diagnostico_websocket(
+            adjunto_o_id=adjunto.id,
+            orden_id=orden.id,
+            numero_ot=orden.numero_ot,
+            accion="creado",
+            datos_adjunto=serializer.data
+        )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -275,8 +283,18 @@ class AdjuntoDiagnosticoDetailView(APIView):
 
     def delete(self, request, adjunto_id, *args, **kwargs):
         adjunto = get_object_or_404(AdjuntoDiagnostico, id=adjunto_id)
+        orden_id = str(adjunto.orden_trabajo_id)
+        numero_ot = adjunto.orden_trabajo.numero_ot if adjunto.orden_trabajo else None
         eliminar_imagen_diagnostico(adjunto.public_id)
         adjunto.delete()
+
+        from .services import notificar_adjunto_diagnostico_websocket
+        notificar_adjunto_diagnostico_websocket(
+            adjunto_o_id=adjunto_id,
+            orden_id=orden_id,
+            numero_ot=numero_ot,
+            accion="eliminado"
+        )
         return Response({'message': 'Adjunto de diagnóstico eliminado exitosamente.'}, status=status.HTTP_204_NO_CONTENT)
 
 
