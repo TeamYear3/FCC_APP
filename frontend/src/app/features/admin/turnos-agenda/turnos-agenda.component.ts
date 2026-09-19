@@ -2,14 +2,10 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { FullCalendarModule } from '@fullcalendar/angular';
-// @ts-ignore
 import dayGridPlugin from '@fullcalendar/daygrid';
-// @ts-ignore
 import timeGridPlugin from '@fullcalendar/timegrid';
-// @ts-ignore
 import interactionPlugin from '@fullcalendar/interaction';
-// @ts-ignore
-import esLocale from '@fullcalendar/core/locales/es.js';
+import esLocale from '@fullcalendar/core/locales/es';
 import { forkJoin } from 'rxjs';
 
 import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
