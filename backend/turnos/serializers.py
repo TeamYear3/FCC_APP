@@ -67,6 +67,13 @@ class TurnoSerializer(serializers.ModelSerializer):
                     "fecha_hora": "No es posible agendar turnos con fecha u hora en el pasado."
                 })
 
+            # Validación de días no laborables (Domingos: weekday 6 en Python)
+            fecha_local = timezone.localtime(fecha_hora)
+            if fecha_local.weekday() == 6:
+                raise serializers.ValidationError({
+                    "fecha_hora": "El taller no atiende los días domingos."
+                })
+
         # Validación 2: Regla de sobre-cupo diario (>2 turnos/día)
         # Solo se valida si el turno no es cancelado
         if estado != "cancelado" and fecha_hora:
