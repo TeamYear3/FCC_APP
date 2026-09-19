@@ -51,18 +51,44 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
         if getattr(user, 'rol', None) == 'cliente':
             queryset = queryset.filter(vehiculo__cliente__usuario=user)
 
-        # Filtros acumulativos TK056
+        # Filtros acumulativos TK056 & TK119
+        search = self.request.query_params.get('search') or self.request.query_params.get('busqueda')
         patente = self.request.query_params.get('patente')
-        if patente:
-            queryset = queryset.filter(vehiculo__patente__icontains=patente.strip())
-
         cliente = self.request.query_params.get('cliente')
-        if cliente:
-            cliente_term = cliente.strip()
+
+        # Si patente y cliente tienen el mismo valor (búsqueda unificada desde frontend)
+        if patente and cliente and patente.strip() == cliente.strip():
+            term = patente.strip()
             queryset = queryset.filter(
-                Q(vehiculo__cliente__nombre__icontains=cliente_term) |
-                Q(vehiculo__cliente__apellido__icontains=cliente_term) |
-                Q(vehiculo__cliente__dni_cuit__icontains=cliente_term)
+                Q(vehiculo__patente__icontains=term) |
+                Q(vehiculo__cliente__nombre__icontains=term) |
+                Q(vehiculo__cliente__apellido__icontains=term) |
+                Q(vehiculo__cliente__dni_cuit__icontains=term) |
+                Q(numero_ot__icontains=term) |
+                Q(descripcion_problema__icontains=term)
+            )
+        else:
+            if patente:
+                queryset = queryset.filter(
+                    Q(vehiculo__patente__icontains=patente.strip()) |
+                    Q(numero_ot__icontains=patente.strip())
+                )
+            if cliente:
+                cliente_term = cliente.strip()
+                queryset = queryset.filter(
+                    Q(vehiculo__cliente__nombre__icontains=cliente_term) |
+                    Q(vehiculo__cliente__apellido__icontains=cliente_term) |
+                    Q(vehiculo__cliente__dni_cuit__icontains=cliente_term)
+                )
+
+        if search:
+            search_term = search.strip()
+            queryset = queryset.filter(
+                Q(vehiculo__patente__icontains=search_term) |
+                Q(vehiculo__cliente__nombre__icontains=search_term) |
+                Q(vehiculo__cliente__apellido__icontains=search_term) |
+                Q(vehiculo__cliente__dni_cuit__icontains=search_term) |
+                Q(numero_ot__icontains=search_term)
             )
 
         estado = self.request.query_params.get('estado')

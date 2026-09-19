@@ -27,8 +27,11 @@ export interface OrdenResponse {
   creado_en: string;
   actualizado_en: string;
   vehiculo_patente?: string;
+  vehiculo_marca_modelo?: string;
   cliente_nombre?: string;
-  monto_total?: number;
+  cliente_telefono?: string;
+  cliente_dni_cuit?: string;
+  monto_total?: number | string;
 }
 
 export interface OrdenFiltros {
@@ -116,6 +119,7 @@ export class OrdenService {
     if (filtros.patente?.trim()) params = params.set('patente', filtros.patente.trim());
     if (filtros.cliente?.trim()) params = params.set('cliente', filtros.cliente.trim());
     if (filtros.estado?.trim() && filtros.estado.toLowerCase() !== 'todos') params = params.set('estado', filtros.estado.trim());
+    if (filtros.complejidad?.trim() && filtros.complejidad.toLowerCase() !== 'todas') params = params.set('complejidad', filtros.complejidad.trim());
     if (filtros.tecnico?.trim()) params = params.set('tecnico', filtros.tecnico.trim());
     if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
     if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
