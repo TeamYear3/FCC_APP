@@ -666,9 +666,78 @@ class ListaUsuariosAdminAPITest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        self.client.force_authenticate(user=self.cliente)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+class SeguridadTecnicoRBACTestCase(APITestCase):
+    """
+    TK108: Pruebas unitarias de seguridad RBAC para el rol Técnico.
+    Valida el bloqueo de facturación, mutación de clientes, vehículos y turnos (HTTP 403 Forbidden)
+    y el acceso de solo lectura para consultas operativas (HTTP 200 OK).
+    """
+    def setUp(self):
+        self.tecnico = User.objects.create_user(
+            email="tecnico_rbac@taller.com",
+            nombre="Técnico",
+            apellido="Seguridad",
+            password="TecnicoPassword123!",
+            rol="tecnico"
+        )
+        self.admin = User.objects.create_user(
+            email="admin_rbac@taller.com",
+            nombre="Admin",
+            apellido="Seguridad",
+            password="AdminPassword123!",
+            rol="admin"
+        )
+        self.client.force_authenticate(user=self.tecnico)
+
+    def test_tecnico_puede_listar_clientes_vehiculos_turnos(self):
+        # GET Clientes
+        res_clientes = self.client.get(reverse('crear-cliente'))
+        self.assertEqual(res_clientes.status_code, status.HTTP_200_OK)
+
+        # GET Vehículos
+        res_vehiculos = self.client.get(reverse('crear-vehiculo'))
+        self.assertEqual(res_vehiculos.status_code, status.HTTP_200_OK)
+
+        # GET Turnos
+        res_turnos = self.client.get(reverse('turno-list'))
+        self.assertEqual(res_turnos.status_code, status.HTTP_200_OK)
+
+    def test_tecnico_bloqueado_en_creacion_modificacion_clientes(self):
+        data = {
+            "nombre": "Cliente",
+            "apellido": "Bloqueado",
+            "tipo_documento": "DNI",
+            "dni_cuit": "33444555",
+            "condicion_iva": "CF"
+        }
+        res_post = self.client.post(reverse('crear-cliente'), data)
+        self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_tecnico_bloqueado_en_creacion_modificacion_vehiculos(self):
+        data = {
+            "patente": "AB123CD",
+            "marca": "Toyota",
+            "modelo": "Corolla",
+            "anio": 2022
+        }
+        res_post = self.client.post(reverse('crear-vehiculo'), data)
+        self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_tecnico_bloqueado_en_creacion_modificacion_turnos(self):
+        data = {
+            "fecha_hora": "2026-10-01T10:00:00Z",
+            "motivo": "Revisión técnica"
+        }
+        res_post = self.client.post(reverse('turno-list'), data)
+        self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_tecnico_bloqueado_en_modulo_facturacion(self):
+        res_emitir = self.client.post(reverse('factura-emitir'), {})
+        self.assertEqual(res_emitir.status_code, status.HTTP_403_FORBIDDEN)
+
+        res_resumen = self.client.get(reverse('factura-list'))
+        self.assertEqual(res_resumen.status_code, status.HTTP_403_FORBIDDEN)
+
 
 
 

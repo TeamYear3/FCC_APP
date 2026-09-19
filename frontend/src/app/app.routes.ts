@@ -33,7 +33,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     canActivate: [roleGuardFn],
-    data: { roles: ['admin'] },
+    data: { roles: ['admin', 'tecnico'] },
     loadComponent: () =>
       import('./features/admin/admin.component').then(
         (m) => m.AdminComponent
@@ -90,6 +90,8 @@ export const routes: Routes = [
       },
       {
         path: 'facturacion',
+        canActivate: [roleGuardFn],
+        data: { roles: ['admin'] },
         loadComponent: () =>
           import('./features/admin/facturacion-calendario/facturacion-calendario.component').then(
             (m) => m.FacturacionCalendarioComponent
