@@ -145,9 +145,10 @@ export class PresupuestoFormComponent implements OnInit {
     if (!item.id) return;
 
     this.ordenService.eliminarItemPresupuesto(this.ordenId, item.id).subscribe({
-      next: () => {
-        this.items.update(list => list.filter(i => i.id !== item.id));
-        this.totalActualizado.emit(this.montoTotal());
+      next: (res) => {
+        this.items.update(list => list.filter(i => String(i.id) !== String(item.id)));
+        const nuevoTotal = typeof res?.monto_total === 'number' ? res.monto_total : this.montoTotal();
+        this.totalActualizado.emit(nuevoTotal);
         this.itemsActualizados.emit(this.items());
         this.successMessage.set('Ítem eliminado.');
         setTimeout(() => this.successMessage.set(''), 3000);
