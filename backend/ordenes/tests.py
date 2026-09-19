@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import patch
 from decimal import Decimal
 from django.test import TestCase
@@ -1123,6 +1124,89 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertIn("está cancelado", str(ctx.exception))
+
+
+class ExportarOrdenPDFViewTest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email='admin_pdf@taller.com',
+            nombre='Admin',
+            apellido='PDF',
+            password='password123',
+            rol='admin'
+        )
+        self.user_cliente = User.objects.create_user(
+            email='cliente_pdf@taller.com',
+            nombre='Cliente',
+            apellido='PDF',
+            password='password123',
+            rol='cliente'
+        )
+        self.user_otro_cliente = User.objects.create_user(
+            email='otro_pdf@taller.com',
+            nombre='Otro',
+            apellido='PDF',
+            password='password123',
+            rol='cliente'
+        )
+
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Carlos",
+            apellido="Gómez",
+            tipo_documento="DNI",
+            dni_cuit="20334455667",
+            condicion_iva="CF",
+            telefono="1122334455"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="PDF123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido en tren delantero y frenos",
+            complejidad='media'
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Revisión tren delantero",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("15000.00")
+        )
+
+    def test_admin_puede_descargar_pdf_orden(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('inline; filename="orden_trabajo_', response['Content-Disposition'])
+        self.assertTrue(len(response.content) > 0)
+
+    def test_cliente_propietario_puede_descargar_pdf(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_cliente_ajeno_recibe_forbidden(self):
+        self.client.force_authenticate(user=self.user_otro_cliente)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_orden_inexistente_retorna_404(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 
 
 
