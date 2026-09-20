@@ -23,6 +23,19 @@ class EstadoOrden(models.TextChoices):
     FINALIZADO = 'finalizado', 'Finalizado'
     ENTREGADO = 'entregado', 'Entregado'
 
+
+class EstadoCobro(models.TextChoices):
+    PENDIENTE = 'pendiente', 'Pendiente'
+    COBRADO = 'cobrado', 'Cobrado'
+
+
+class MetodoPago(models.TextChoices):
+    EFECTIVO = 'efectivo', 'Efectivo'
+    TRANSFERENCIA = 'transferencia', 'Transferencia'
+    DEBITO = 'debito', 'Tarjeta de Débito'
+    CREDITO = 'credito', 'Tarjeta de Crédito'
+
+
 class OrdenTrabajo(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     vehiculo = models.ForeignKey(Vehiculo, on_delete=models.PROTECT, related_name="ordenes")
@@ -58,6 +71,18 @@ class OrdenTrabajo(models.Model):
     fecha_entrega = models.DateField(null=True, blank=True)
     comentario_rechazo = models.TextField(null=True, blank=True)
     monto_total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    estado_cobro = models.CharField(
+        max_length=20,
+        choices=EstadoCobro.choices,
+        default=EstadoCobro.PENDIENTE
+    )
+    metodo_pago = models.CharField(
+        max_length=20,
+        choices=MetodoPago.choices,
+        null=True,
+        blank=True
+    )
+    fecha_cobro = models.DateTimeField(null=True, blank=True)
     aprobado_por_cliente = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
@@ -115,7 +140,11 @@ class OrdenTrabajo(models.Model):
 
         # Guardar cambio de estado
         self.estado = nuevo_estado
-        self.save(update_fields=['estado', 'actualizado_en'])
+        update_fields = ['estado', 'actualizado_en']
+        if nuevo_estado == EstadoOrden.ENTREGADO and not self.fecha_entrega:
+            self.fecha_entrega = timezone.now().date()
+            update_fields.append('fecha_entrega')
+        self.save(update_fields=update_fields)
 
         # Registrar historial
         HistorialEstadoOrden.objects.create(

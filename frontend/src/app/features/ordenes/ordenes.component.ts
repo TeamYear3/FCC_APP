@@ -38,9 +38,10 @@ export class OrdenesComponent implements OnInit {
   readonly successOT = signal<string | null>(null);
   readonly nuevaOrdenUrl = signal<string>('/ordenes/nueva');
 
-  // Control del modal de estado (TK036)
+  // Control del modal de estado y cobro (TK036 / TK103)
   readonly mostrarModalEstado = signal<boolean>(false);
   readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
+  readonly modoModalEstado = signal<'estado' | 'cobro'>('estado');
 
   // Filtros Avanzados (TK056 / TK119)
   readonly busqueda = signal<string>('');
@@ -539,6 +540,13 @@ export class OrdenesComponent implements OnInit {
 
   abrirModalEstado(orden: OrdenResponse): void {
     this.ordenSeleccionadaEstado.set(orden);
+    this.modoModalEstado.set('estado');
+    this.mostrarModalEstado.set(true);
+  }
+
+  abrirModalCobro(orden: OrdenResponse): void {
+    this.ordenSeleccionadaEstado.set(orden);
+    this.modoModalEstado.set('cobro');
     this.mostrarModalEstado.set(true);
   }
 

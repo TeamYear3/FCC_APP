@@ -359,14 +359,25 @@
                     </span>
                   </td>
 
-                  <!-- Columna Estado -->
+                  <!-- Columna Estado y Cobro -->
                   <td class="py-3 px-3 whitespace-nowrap">
-                    <span
-                      class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide inline-block"
-                      [ngClass]="getEstadoBadgeClass(orden.estado)"
-                    >
-                      {{ orden.estado.replace('_', ' ') }}
-                    </span>
+                    <div class="flex flex-col gap-1 items-start">
+                      <span
+                        class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide inline-block"
+                        [ngClass]="getEstadoBadgeClass(orden.estado)"
+                      >
+                        {{ orden.estado.replace('_', ' ') }}
+                      </span>
+                      <span
+                        class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
+                        [ngClass]="{
+                          'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': orden.estado_cobro === 'cobrado',
+                          'bg-zinc-800 text-zinc-400 border border-zinc-700': orden.estado_cobro !== 'cobrado'
+                        }"
+                      >
+                        {{ orden.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Pendiente' }}
+                      </span>
+                    </div>
                   </td>
 
                   <!-- Columna Presupuesto -->
@@ -399,6 +410,18 @@
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+
+                      <!-- Botón Registrar Cobro (TK103) -->
+                      <button
+                        type="button"
+                        (click)="abrirModalCobro(orden)"
+                        title="Registrar Cobro"
+                        class="p-1.5 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-emerald-400 transition-colors border-0 cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                       </button>
 
@@ -498,6 +521,19 @@
                 >
                   Complejidad {{ ordenActiva()?.complejidad || 'Media' }}
                 </span>
+                <!-- Badge Cobro (TK103) -->
+                <span
+                  class="px-2.5 py-0.5 rounded-badge text-[11px] font-bold uppercase tracking-wider flex items-center gap-1"
+                  [ngClass]="{
+                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenActiva()?.estado_cobro === 'cobrado',
+                    'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenActiva()?.estado_cobro !== 'cobrado'
+                  }"
+                >
+                  <span>{{ ordenActiva()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}</span>
+                  @if (ordenActiva()?.estado_cobro === 'cobrado' && ordenActiva()?.metodo_pago) {
+                    <span class="text-[10px] opacity-80 uppercase font-mono">({{ ordenActiva()?.metodo_pago }})</span>
+                  }
+                </span>
               </div>
               <h2 class="typography-h2-section text-white mt-1">
                 {{ ordenActiva()?.vehiculo_marca_modelo || 'Vehículo ' + (ordenActiva()?.vehiculo_patente || 'Registrado') }}
@@ -535,6 +571,28 @@
                   />
                 </svg>
                 <span>Imprimir OT</span>
+              </button>
+
+              <button
+                type="button"
+                (click)="abrirModalCobro(ordenActiva()!)"
+                class="px-3 py-2 rounded-card bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black typography-caption font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <span>Registrar Cobro</span>
               </button>
 
               <button
@@ -914,10 +972,11 @@
       <span>Expediente #OT-1257 protegido y auditado</span>
     </div>
     <span>Material Design 3 · Dark Mode Optimizado</span>
-    <!-- Modal de Actualización de Estado (TK036) -->
+    <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103) -->
     <app-orden-estado-modal
       [mostrar]="mostrarModalEstado()"
       [orden]="ordenSeleccionadaEstado()"
+      [modoInicial]="modoModalEstado()"
       (cerrado)="mostrarModalEstado.set(false)"
       (estadoActualizado)="onEstadoActualizado()"
     ></app-orden-estado-modal>

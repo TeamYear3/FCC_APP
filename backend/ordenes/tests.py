@@ -1378,6 +1378,104 @@ class DetalleOrdenTrabajoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+class RegistrarPagoOrdenAPITestCase(APITestCase):
+    def setUp(self):
+        self.user_admin = User.objects.create_superuser(
+            email="admin_cobro@example.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="adminpassword"
+        )
+        self.user_tecnico = User.objects.create_user(
+            email="tecnico_cobro@example.com",
+            nombre="Tecnico",
+            apellido="Taller",
+            rol="tecnico",
+            password="tecnicopassword"
+        )
+        self.user_cliente = User.objects.create_user(
+            email="cliente_cobro@example.com",
+            nombre="Cliente",
+            apellido="Taller",
+            rol="cliente",
+            password="clientepassword"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Roberto",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="28444333",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CC999DD",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.user_tecnico,
+            descripcion_problema="Service programado 50.000km",
+            estado=EstadoOrden.FINALIZADO
+        )
+        self.url = reverse('orden-registrar-pago', kwargs={'id': self.orden.id})
+
+    def test_registrar_pago_exitoso_efectivo(self):
+        self.client.force_authenticate(user=self.user_admin)
+        payload = {
+            "metodo_pago": "efectivo",
+            "comentario": "Pago abonado en efectivo en mostrador",
+            "entregar_orden": False
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Cobro registrado exitosamente.")
+        self.assertEqual(response.data["orden"]["estado_cobro"], "cobrado")
+        self.assertEqual(response.data["orden"]["metodo_pago"], "efectivo")
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado_cobro, "cobrado")
+        self.assertEqual(self.orden.metodo_pago, "efectivo")
+        self.assertIsNotNone(self.orden.fecha_cobro)
+        self.assertEqual(self.orden.estado, EstadoOrden.FINALIZADO)
+
+    def test_registrar_pago_con_entrega_orden(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        payload = {
+            "metodo_pago": "transferencia",
+            "comentario": "Transferencia comprobante #987654",
+            "entregar_orden": True
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["orden"]["estado_cobro"], "cobrado")
+        self.assertEqual(response.data["orden"]["estado"], EstadoOrden.ENTREGADO)
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.ENTREGADO)
+        self.assertIsNotNone(self.orden.fecha_entrega)
+
+    def test_registrar_pago_metodo_invalido(self):
+        self.client.force_authenticate(user=self.user_admin)
+        payload = {
+            "metodo_pago": "metodo_inexistente"
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("metodo_pago", response.data)
+
+    def test_registrar_pago_cliente_restringido(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        payload = {
+            "metodo_pago": "debito"
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
 
 
 

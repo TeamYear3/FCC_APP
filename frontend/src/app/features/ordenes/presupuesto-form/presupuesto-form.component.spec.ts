@@ -117,4 +117,32 @@ describe('PresupuestoFormComponent', () => {
     expect(spyTotal).toHaveBeenCalledWith(12000);
     expect(spyItems).toHaveBeenCalled();
   });
+
+  it('debe filtrar sugerencias predictivas según el tipo y texto ingresado (TK104)', () => {
+    fixture.detectChanges();
+    component.nuevoTipo.set('mano_de_obra');
+    component.nuevaDescripcion.set('Aceite');
+
+    const sugerencias = component.sugerenciasFiltradas();
+    expect(sugerencias.length).toBeGreaterThan(0);
+    expect(sugerencias[0].descripcion.toLowerCase()).toContain('aceite');
+    expect(sugerencias[0].tipo).toBe('mano_de_obra');
+  });
+
+  it('debe autocompletar descripcion y precio sugerido al seleccionar una sugerencia (TK104)', () => {
+    fixture.detectChanges();
+    component.nuevoTipo.set('repuesto');
+    
+    const sugerencia = {
+      tipo: 'repuesto' as const,
+      descripcion: 'Filtro de Aceite Original',
+      precioSugerido: 18000,
+      categoria: 'Mantenimiento'
+    };
+
+    component.seleccionarSugerencia(sugerencia);
+
+    expect(component.nuevaDescripcion()).toBe('Filtro de Aceite Original');
+    expect(component.nuevoPrecioUnitario()).toBe(18000);
+  });
 });

@@ -132,11 +132,35 @@
           </div>
         </div>
 
-        <!-- Selector de Vehículo -->
+        <!-- Selector de Vehículo con Accesos In-Situ (TK102) -->
         <div class="flex flex-col gap-2">
-          <label class="typography-body-highlight text-white uppercase tracking-wide">
-            Seleccionar Vehículo <span class="text-color-primary-accent">*</span>
-          </label>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label class="typography-body-highlight text-white uppercase tracking-wide">
+              Seleccionar Vehículo <span class="text-color-primary-accent">*</span>
+            </label>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="abrirModalCliente()"
+                class="px-3 py-1.5 text-xs font-bold rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <svg class="w-3.5 h-3.5 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <span>+ Nuevo Cliente</span>
+              </button>
+              <button
+                type="button"
+                (click)="abrirModalVehiculo()"
+                class="px-3 py-1.5 text-xs font-bold rounded-lg border border-color-primary-accent/40 bg-color-primary-accent/15 hover:bg-color-primary-accent/25 text-color-primary-accent flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <span>+ Nuevo Vehículo</span>
+              </button>
+            </div>
+          </div>
           <app-vehiculo-selector formControlName="vehiculo_id"></app-vehiculo-selector>
           @if (ordenForm.get('vehiculo_id')?.invalid && ordenForm.get('vehiculo_id')?.touched) {
             <span class="text-red-400 text-xs mt-1">
@@ -253,9 +277,11 @@
                   ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched
                 "
               >
-                <option [ngValue]="null">-- Seleccione un turno disponible --</option>
-                @for (t of turnosDisponibles; track t) {
-                  <option [value]="t.id">{{ t.descripcion }}</option>
+                <option [ngValue]="null">
+                  {{ cargandoTurnos() ? '-- Cargando turnos disponibles... --' : '-- Seleccione un turno agendado --' }}
+                </option>
+                @for (t of turnos(); track t.id) {
+                  <option [value]="t.id">{{ formatearTurno(t) }}</option>
                 }
               </select>
               @if (ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched) {
@@ -464,4 +490,278 @@
     <span>FCC App · Módulo Órdenes</span>
     <span>Material Design 3 · Dark Mode</span>
   </div>
+
+  <!-- Modal In-Situ: Alta Rápida de Cliente (TK102) -->
+  @if (mostrarModalCliente()) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div class="bg-[#1E1E1E] border border-color-primary-accent/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 bg-color-primary-accent/15 border border-color-primary-accent/30 rounded-xl text-color-primary-accent">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white leading-tight">Alta Rápida de Cliente</h3>
+              <p class="text-xs text-zinc-400">Registrá al titular sin abandonar el formulario</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarModalCliente()"
+            class="text-zinc-400 hover:text-white p-1 bg-transparent border-0 cursor-pointer"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        @if (errorModalCliente()) {
+          <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-semibold">
+            {{ errorModalCliente() }}
+          </div>
+        }
+
+        <form [formGroup]="clienteFormInSitu" (ngSubmit)="guardarClienteInSitu()" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Tipo Doc *</label>
+              <select
+                formControlName="tipo_documento"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              >
+                <option value="DNI">DNI</option>
+                <option value="CUIT">CUIT</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Nro Documento *</label>
+              <input
+                type="text"
+                formControlName="dni_cuit"
+                placeholder="Ej. 34567890"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Nombre *</label>
+              <input
+                type="text"
+                formControlName="nombre"
+                placeholder="Nombre del cliente"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Apellido *</label>
+              <input
+                type="text"
+                formControlName="apellido"
+                placeholder="Apellido"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Condición IVA *</label>
+              <select
+                formControlName="condicion_iva"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              >
+                <option value="CF">Consumidor Final</option>
+                <option value="RI">Responsable Inscripto</option>
+                <option value="MT">Monotributista</option>
+                <option value="EX">Exento</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Teléfono</label>
+              <input
+                type="text"
+                formControlName="telefono"
+                placeholder="Ej. 11 2345-6789"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Domicilio</label>
+            <input
+              type="text"
+              formControlName="domicilio"
+              placeholder="Calle, número y localidad"
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            />
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+            <button
+              type="button"
+              (click)="cerrarModalCliente()"
+              class="px-4 py-2 text-xs font-bold rounded-xl border border-white/20 bg-transparent text-zinc-300 hover:bg-white/5 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="guardandoClienteInSitu() || clienteFormInSitu.invalid"
+              class="px-5 py-2 text-xs font-bold rounded-xl bg-color-primary-accent text-black hover:bg-opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {{ guardandoClienteInSitu() ? 'Guardando...' : 'Crear y Continuar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Modal In-Situ: Alta Rápida de Vehículo (TK102) -->
+  @if (mostrarModalVehiculo()) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div class="bg-[#1E1E1E] border border-color-primary-accent/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 bg-color-primary-accent/15 border border-color-primary-accent/30 rounded-xl text-color-primary-accent">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white leading-tight">Alta Rápida de Vehículo</h3>
+              <p class="text-xs text-zinc-400">Registrá la unidad y vinculala a la orden activa</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarModalVehiculo()"
+            class="text-zinc-400 hover:text-white p-1 bg-transparent border-0 cursor-pointer"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        @if (errorModalVehiculo()) {
+          <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-semibold">
+            {{ errorModalVehiculo() }}
+          </div>
+        }
+
+        <form [formGroup]="vehiculoFormInSitu" (ngSubmit)="guardarVehiculoInSitu()" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Titular / Cliente Propietario *</label>
+            <select
+              formControlName="cliente_id"
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            >
+              <option value="">Seleccione un cliente...</option>
+              @for (c of listaClientes(); track c.id) {
+                <option [value]="c.id">{{ c.nombre }} {{ c.apellido }} ({{ c.tipo_documento }}: {{ c.dni_cuit }})</option>
+              }
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Patente *</label>
+              <input
+                type="text"
+                formControlName="patente"
+                placeholder="Ej. AB123CD o ABC123"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs uppercase font-mono font-bold focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Marca *</label>
+              <input
+                type="text"
+                formControlName="marca"
+                placeholder="Ej. Toyota, Ford, VW"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Modelo *</label>
+              <input
+                type="text"
+                formControlName="modelo"
+                placeholder="Ej. Corolla, Focus, Gol"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Año</label>
+              <input
+                type="number"
+                formControlName="anio"
+                placeholder="Ej. 2022"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Kilometraje (km)</label>
+              <input
+                type="number"
+                formControlName="kilometraje"
+                placeholder="0"
+                min="0"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Color</label>
+              <input
+                type="text"
+                formControlName="color"
+                placeholder="Ej. Gris Plata"
+                class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Nro de Chasis / VIN</label>
+            <input
+              type="text"
+              formControlName="numero_chasis"
+              placeholder="Opcional"
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            />
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+            <button
+              type="button"
+              (click)="cerrarModalVehiculo()"
+              class="px-4 py-2 text-xs font-bold rounded-xl border border-white/20 bg-transparent text-zinc-300 hover:bg-white/5 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="guardandoVehiculoInSitu() || vehiculoFormInSitu.invalid"
+              class="px-5 py-2 text-xs font-bold rounded-xl bg-color-primary-accent text-black hover:bg-opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {{ guardandoVehiculoInSitu() ? 'Guardando...' : 'Guardar y Vincular' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
 </div>
