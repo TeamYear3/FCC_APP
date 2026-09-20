@@ -27,7 +27,8 @@ describe('OrdenesComponent', () => {
             actualizado_en: '2026-08-01'
           }
         ]
-      }))
+      })),
+      obtenerItemsPresupuesto: vi.fn().mockReturnValue(of([]))
     };
 
     await TestBed.configureTestingModule({

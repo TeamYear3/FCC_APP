@@ -1,0 +1,173 @@
+@if (mostrar && factura) {
+  <!-- Contenedor Backdrop (solo en pantalla, oculto al imprimir) -->
+  <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto no-print">
+    
+    <!-- Ventana Modal de Vista Previa A4 -->
+    <div class="bg-[#1a1a1a] border border-white/10 rounded-2xl max-w-4xl w-full p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      
+      <!-- Barra de Acciones del Modal (Oculta al imprimir) -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-3 no-print">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-color-primary-accent text-2xl">print</span>
+          <div>
+            <h3 class="text-base font-bold text-white uppercase tracking-tight">Vista Previa de Impresión A4</h3>
+            <p class="text-xs text-zinc-400">Comprobante Oficial {{ factura.tipo_comprobante }} · ARCA / AFIP</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            (click)="imprimir()"
+            class="px-5 py-2.5 rounded-pill bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 hover:bg-color-primary-accent/90 transition-all cursor-pointer shadow-lg"
+          >
+            <span class="material-symbols-outlined text-sm">print</span>
+            <span>Imprimir / Exportar PDF</span>
+          </button>
+          
+          <button
+            type="button"
+            (click)="cerrarModal()"
+            class="px-4 py-2.5 rounded-pill bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+
+      <!-- HOJA A4 OFICIAL ARCA (Imprimible) -->
+      <div id="hoja-factura-a4" class="factura-a4-wrapper">
+        
+        <!-- ENCABEZADO TRIPARTITO AFIP/ARCA -->
+        <div class="header-tripartito">
+          
+          <!-- LADO IZQUIERDO: EMISOR (Taller) -->
+          <div class="emisor-box">
+            <h1 class="emisor-titulo">TALLER MECÁNICO FCC</h1>
+            <p class="emisor-sub">Centro Mecánico & Diagnóstico Computarizado</p>
+            <p class="emisor-dato"><strong>Razón Social:</strong> Taller Mecánico FCC S.R.L.</p>
+            <p class="emisor-dato"><strong>Domicilio Comercial:</strong> Av. San Martín 1450, Córdoba</p>
+            <p class="emisor-dato"><strong>Condición IVA:</strong> IVA Responsable Inscripto</p>
+          </div>
+
+          <!-- CENTRO: LETRA Y CÓDIGO FISCAL -->
+          <div class="letra-box">
+            <div class="letra-letra">{{ factura.tipo_comprobante || 'B' }}</div>
+            <div class="letra-codigo">COD. {{ getCodigoComprobante() }}</div>
+          </div>
+
+          <!-- LADO DERECHO: COMPROBANTE -->
+          <div class="comprobante-box">
+            <h2 class="comprobante-titulo">FACTURA</h2>
+            <p class="comprobante-nro">N° {{ factura.numero_comprobante || (factura.tipo_comprobante + '-0001-' + factura.numero_factura) }}</p>
+            <p class="comprobante-dato"><strong>Fecha de Emisión:</strong> {{ factura.fecha_emision }}</p>
+            <p class="comprobante-dato"><strong>CUIT:</strong> {{ factura.cuit_emisor || '30-71829384-9' }}</p>
+            <p class="comprobante-dato"><strong>Ingresos Brutos:</strong> 30-71829384-9</p>
+            <p class="comprobante-dato"><strong>Inicio de Actividades:</strong> 01/03/2021</p>
+          </div>
+        </div>
+
+        <!-- SECCIÓN CLIENTE Y VEHÍCULO -->
+        <div class="seccion-cliente">
+          <div class="cliente-col">
+            <p><strong>Cliente / Titular:</strong> {{ factura.cliente_nombre }}</p>
+            <p><strong>CUIT / DNI:</strong> Consumidor Final / CUIT</p>
+            <p><strong>Condición IVA:</strong> Consumidor Final</p>
+          </div>
+          <div class="cliente-col">
+            <p><strong>Orden de Trabajo:</strong> OT #{{ factura.numero_ot || 'N/A' }}</p>
+            <p><strong>Vehículo / Patente:</strong> {{ factura.vehiculo_patente }}</p>
+            <p><strong>Condición de Pago:</strong> Contado / Transferencia (Venc: {{ factura.fecha_vencimiento_pago || '15 Días' }})</p>
+          </div>
+        </div>
+
+        <!-- TABLA DE ÍTEMS DETALLADA -->
+        <div class="seccion-items">
+          <table class="tabla-a4">
+            <thead>
+              <tr>
+                <th style="width: 10%;">Cant.</th>
+                <th style="width: 50%;">Descripción de Servicio / Repuesto</th>
+                <th style="width: 20%; text-align: right;">Precio Unit.</th>
+                <th style="width: 20%; text-align: right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (cargandoItems()) {
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 15px; color: #666;">
+                    Cargando desglose de la orden...
+                  </td>
+                </tr>
+              } @else if (items().length === 0) {
+                <tr>
+                  <td style="text-align: center;">1</td>
+                  <td>Servicio Integral de Taller Mecánico - {{ factura.numero_ot }}</td>
+                  <td style="text-align: right;">$ {{ factura.total | number:'1.2-2' }}</td>
+                  <td style="text-align: right;">$ {{ factura.total | number:'1.2-2' }}</td>
+                </tr>
+              } @else {
+                @for (item of items(); track item.id) {
+                  <tr>
+                    <td style="text-align: center;">{{ item.cantidad }}</td>
+                    <td>
+                      <span class="badge-tipo">{{ item.tipo === 'mano_de_obra' ? 'SERVICIO' : 'REPUESTO' }}</span>
+                      {{ item.descripcion }}
+                    </td>
+                    <td style="text-align: right;">$ {{ item.precio_unitario | number:'1.2-2' }}</td>
+                    <td style="text-align: right; font-weight: bold;">$ {{ (item.subtotal || (item.cantidad * item.precio_unitario)) | number:'1.2-2' }}</td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- FOOTER Y AUTORIZACIÓN ARCA CAE -->
+        <div class="seccion-footer-arca">
+          
+          <!-- LADO IZQUIERDO: QR / BARRAS ARCA -->
+          <div class="qr-arca-box">
+            <div class="qr-placeholder">
+              <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5">
+                <path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM18 18h3v3h-3z" />
+              </svg>
+              <span class="qr-label">Comprobante Autorizado por ARCA</span>
+            </div>
+          </div>
+
+          <!-- LADO DERECHO: CAE Y TOTALES -->
+          <div class="totales-cae-box">
+            <div class="totales-resumen">
+              @if (items().length > 0) {
+                <div class="subtotal-fila">
+                  <span>Mano de Obra:</span>
+                  <span>$ {{ getSubtotalManoObra() | number:'1.2-2' }}</span>
+                </div>
+                <div class="subtotal-fila">
+                  <span>Repuestos / Insumos:</span>
+                  <span>$ {{ getSubtotalRepuestos() | number:'1.2-2' }}</span>
+                </div>
+              }
+              <div class="total-fila">
+                <span>TOTAL FACTURADO:</span>
+                <span class="monto-final">$ {{ factura.total | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <div class="cae-cuadro">
+              <p><strong>CAE N°:</strong> {{ factura.cae || '74291847561928' }}</p>
+              <p><strong>Fecha Vencimiento CAE:</strong> {{ factura.fecha_vencimiento_cae || '05/09/2026' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pie-documento">
+          Comprobante generado electrónicamente mediante el Sistema Integral del Taller FCC. Prohibida su reproducción no autorizada.
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+}

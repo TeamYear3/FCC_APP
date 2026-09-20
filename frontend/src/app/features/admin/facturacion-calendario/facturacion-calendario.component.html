@@ -446,4 +446,11 @@
       </div>
     </div>
   }
+
+  <!-- Modal de Vista Previa e Impresión Fiscal A4 (TK099) -->
+  <app-factura-impresion
+    [mostrar]="modalImpresionAbierto()"
+    [factura]="facturaAImprimir()"
+    (cerrado)="cerrarModalImpresion()"
+  ></app-factura-impresion>
 </div>
