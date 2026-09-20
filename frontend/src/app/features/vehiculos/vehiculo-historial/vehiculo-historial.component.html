@@ -169,12 +169,14 @@
           </svg>
           Mantenimiento Preventivo
         </h3>
-        <button
-          (click)="abrirModalMantenimiento()"
-          class="px-3.5 py-1.5 bg-color-primary-accent text-black font-bold text-xs rounded-xl hover:bg-color-primary-accent/90 transition-all cursor-pointer border-0"
-        >
-          + Programar Service
-        </button>
+        @if (userRole() !== 'tecnico') {
+          <button
+            (click)="abrirModalMantenimiento()"
+            class="px-3.5 py-1.5 bg-color-primary-accent text-black font-bold text-xs rounded-xl hover:bg-color-primary-accent/90 transition-all cursor-pointer border-0"
+          >
+            + Programar Service
+          </button>
+        }
       </div>
 
       @if (cargandoMantenimientos()) {

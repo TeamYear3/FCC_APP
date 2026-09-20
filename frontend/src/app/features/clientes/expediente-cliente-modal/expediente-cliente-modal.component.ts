@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from '../../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenesPaginadasResponse } from '../../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse } from '../../../core/services/vehiculo.service';
 import { ClienteDisplayItem } from '../clientes.component';
@@ -15,8 +16,11 @@ import { ClienteDisplayItem } from '../clientes.component';
   styleUrl: './expediente-cliente-modal.component.css'
 })
 export class ExpedienteClienteModalComponent implements OnChanges {
+  private readonly authService = inject(AuthService);
   private readonly ordenService = inject(OrdenService);
   private readonly vehiculoService = inject(VehiculoService);
+
+  readonly userRole = this.authService.userRoleSignal;
 
   @Input() mostrar = false;
   @Input() cliente: ClienteDisplayItem | null = null;

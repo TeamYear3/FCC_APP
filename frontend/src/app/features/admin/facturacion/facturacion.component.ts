@@ -2,7 +2,10 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FacturacionService } from '../../../core/services/facturacion.service';
-import { Factura, TipoComprobante } from '../../../core/models/facturacion.model';
+import { OrdenService } from '../../../core/services/orden.service';
+import { Factura, TipoComprobante, EstadoPago } from '../../../core/models/facturacion.model';
+
+import { FacturaImpresionComponent } from './factura-impresion/factura-impresion.component';
 
 export interface OrdenPendienteFacturar {
   id: string;
@@ -17,12 +20,13 @@ export interface OrdenPendienteFacturar {
 @Component({
   selector: 'app-facturacion',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FacturaImpresionComponent],
   templateUrl: './facturacion.component.html',
   styleUrl: './facturacion.component.css'
 })
 export class FacturacionComponent implements OnInit {
   private readonly facturacionService = inject(FacturacionService);
+  private readonly ordenService = inject(OrdenService);
 
   readonly facturas = signal<Factura[]>([]);
   readonly cargando = signal<boolean>(false);
@@ -32,6 +36,10 @@ export class FacturacionComponent implements OnInit {
   readonly modalEmisionAbierto = signal<boolean>(false);
   readonly modalDetalleAbierto = signal<boolean>(false);
   readonly facturaSeleccionada = signal<Factura | null>(null);
+
+  // Modal de impresión A4 (TK099)
+  readonly modalImpresionAbierto = signal<boolean>(false);
+  readonly facturaAImprimir = signal<Factura | null>(null);
 
   // Filtro
   filtroEstadoPago: string = '';
@@ -45,39 +53,37 @@ export class FacturacionComponent implements OnInit {
   diasVencimientoSeleccionado: number = 15;
   observacionesEmision: string = '';
 
-  // Órdenes aprobadas listas para ser facturadas
-  readonly ordenesParaFacturar: OrdenPendienteFacturar[] = [
-    {
-      id: 'ot-001-mock',
-      numero_ot: 'OT-0089',
-      cliente: 'Carlos Rodríguez',
-      dni_cuit: '20-30405060-4',
-      vehiculo: 'Ford Focus SE 2.0',
-      patente: 'AF123JK',
-      monto: 145000
-    },
-    {
-      id: 'ot-002-mock',
-      numero_ot: 'OT-0092',
-      cliente: 'Mariana López',
-      dni_cuit: '27-35890123-8',
-      vehiculo: 'Volkswagen Gol Trend',
-      patente: 'AC987ZZ',
-      monto: 89500
-    },
-    {
-      id: 'ot-003-mock',
-      numero_ot: 'OT-0095',
-      cliente: 'Transportes del Sur SRL',
-      dni_cuit: '30-71458921-9',
-      vehiculo: 'Toyota Hilux DX 4x4',
-      patente: 'AG456XX',
-      monto: 320000
-    }
-  ];
+  // Órdenes aprobadas/finalizadas reales listas para ser facturadas (TK098)
+  readonly ordenesParaFacturar = signal<OrdenPendienteFacturar[]>([]);
+  readonly cargandoOrdenes = signal<boolean>(false);
 
   ngOnInit(): void {
     this.cargarFacturas();
+    this.cargarOrdenesPendientes();
+  }
+
+  cargarOrdenesPendientes(): void {
+    this.cargandoOrdenes.set(true);
+    this.ordenService.obtenerOrdenes({ estado: 'finalizado' }, 1, 50).subscribe({
+      next: (res) => {
+        const list = res.results || [];
+        const mapped: OrdenPendienteFacturar[] = list.map(o => ({
+          id: o.id,
+          numero_ot: o.numero_ot || `OT-${o.id.slice(0, 4)}`,
+          cliente: o.cliente_nombre || 'Cliente General',
+          dni_cuit: o.cliente_dni_cuit || o.cliente_documento || 'Consumidor Final',
+          vehiculo: o.vehiculo_marca_modelo || 'Vehículo Registrado',
+          patente: o.vehiculo_patente || 'S/D',
+          monto: typeof o.monto_total === 'number' ? o.monto_total : parseFloat(String(o.monto_total || '0'))
+        }));
+        this.ordenesParaFacturar.set(mapped);
+        this.cargandoOrdenes.set(false);
+      },
+      error: () => {
+        this.ordenesParaFacturar.set([]);
+        this.cargandoOrdenes.set(false);
+      }
+    });
   }
 
   cargarFacturas(): void {
@@ -88,70 +94,26 @@ export class FacturacionComponent implements OnInit {
       tipo: this.filtroTipo || undefined
     }).subscribe({
       next: (data) => {
-        this.facturas.set(data);
+        this.facturas.set(data || []);
         this.cargando.set(false);
       },
-      error: () => {
-        // Mock fallback si la base está limpia
-        this.cargarMocksFallback();
+      error: (err) => {
+        console.error('Error al obtener facturas desde el servidor:', err);
+        this.error.set('No se pudieron recuperar las facturas emitidas desde el servidor fiscal.');
+        this.facturas.set([]);
         this.cargando.set(false);
       }
     });
   }
 
-  private cargarMocksFallback(): void {
-    const mocks: Factura[] = [
-      {
-        id: 'mock-fact-1',
-        orden_trabajo: 'ot-mock-1',
-        numero_ot: 'OT-0078',
-        cliente_nombre: 'Esteban Quito',
-        vehiculo_patente: 'AF999ZZ',
-        tipo_comprobante: 'A',
-        punto_venta: 1,
-        numero_factura: 104,
-        numero_comprobante: 'A-0001-00000104',
-        cae: '74291847192841',
-        fecha_vencimiento_cae: '2026-09-05',
-        total: 120000,
-        estado: 'emitida',
-        estado_pago: 'pagada',
-        semaforo: 'pagada',
-        fecha_vencimiento_pago: '2026-09-10',
-        fecha_emision: '2026-08-25',
-        cuit_emisor: '30-71234567-9',
-        observaciones: 'Factura autorizada vía ARCA WebService'
-      },
-      {
-        id: 'mock-fact-2',
-        orden_trabajo: 'ot-mock-2',
-        numero_ot: 'OT-0081',
-        cliente_nombre: 'Valeria Mansilla',
-        vehiculo_patente: 'AE444RR',
-        tipo_comprobante: 'B',
-        punto_venta: 1,
-        numero_factura: 105,
-        numero_comprobante: 'B-0001-00000105',
-        cae: '74301928374619',
-        fecha_vencimiento_cae: '2026-09-06',
-        total: 75400,
-        estado: 'emitida',
-        estado_pago: 'sin_interaccion',
-        semaforo: 'a_vencer',
-        fecha_vencimiento_pago: '2026-09-12',
-        fecha_emision: '2026-08-26',
-        cuit_emisor: '30-71234567-9',
-        observaciones: 'Service y frenos'
-      }
-    ];
-    this.facturas.set(mocks);
-  }
-
   abrirModalEmision(orden?: OrdenPendienteFacturar): void {
+    const lista = this.ordenesParaFacturar();
     if (orden) {
       this.ordenSeleccionadaId = orden.id;
-    } else if (this.ordenesParaFacturar.length > 0) {
-      this.ordenSeleccionadaId = this.ordenesParaFacturar[0].id;
+    } else if (lista.length > 0) {
+      this.ordenSeleccionadaId = lista[0].id;
+    } else {
+      this.ordenSeleccionadaId = '';
     }
     this.tipoComprobanteSeleccionado = 'B';
     this.puntoVentaSeleccionado = 1;
@@ -167,7 +129,7 @@ export class FacturacionComponent implements OnInit {
 
   confirmarEmision(): void {
     if (!this.ordenSeleccionadaId) {
-      this.error.set('Seleccione una Orden de Trabajo.');
+      this.error.set('Seleccione una Orden de Trabajo para facturar.');
       return;
     }
 
@@ -186,38 +148,29 @@ export class FacturacionComponent implements OnInit {
         this.modalEmisionAbierto.set(false);
         this.facturaReciente.set(nuevaFactura);
         this.facturas.update((prev) => [nuevaFactura, ...prev]);
+        this.cargarOrdenesPendientes();
       },
       error: (err) => {
-        // Fallback simulado para entorno offline
-        const orden = this.ordenesParaFacturar.find(o => o.id === this.ordenSeleccionadaId);
-        const numero = this.facturas().length + 106;
-        const caeSimulado = '74' + Math.floor(100000000000 + Math.random() * 900000000000).toString();
-        const nuevaFacturaSimulada: Factura = {
-          id: 'fact-' + Date.now(),
-          orden_trabajo: this.ordenSeleccionadaId,
-          numero_ot: orden?.numero_ot || 'OT-0099',
-          cliente_nombre: orden?.cliente || 'Cliente General',
-          vehiculo_patente: orden?.patente || 'AF000AA',
-          tipo_comprobante: this.tipoComprobanteSeleccionado,
-          punto_venta: this.puntoVentaSeleccionado,
-          numero_factura: numero,
-          numero_comprobante: `${this.tipoComprobanteSeleccionado}-0001-${numero.toString().padStart(8, '0')}`,
-          cae: caeSimulado,
-          fecha_vencimiento_cae: '2026-09-10',
-          total: orden?.monto || 100000,
-          estado: 'emitida',
-          estado_pago: 'sin_interaccion',
-          semaforo: 'a_vencer',
-          fecha_vencimiento_pago: '2026-09-15',
-          fecha_emision: new Date().toISOString().split('T')[0],
-          cuit_emisor: '30-71234567-9',
-          observaciones: this.observacionesEmision || 'Emisión autorizada por ARCA WebService'
-        };
-
+        console.error('Error al emitir factura en ARCA WebService:', err);
         this.emitirEnProgreso.set(false);
-        this.modalEmisionAbierto.set(false);
-        this.facturaReciente.set(nuevaFacturaSimulada);
-        this.facturas.update((prev) => [nuevaFacturaSimulada, ...prev]);
+        const msg = err.error?.error || err.error?.detail || err.message || 'Error en la comunicación con el WebService de ARCA/AFIP.';
+        this.error.set(msg);
+      }
+    });
+  }
+
+  cambiarEstadoPago(factura: Factura, nuevoEstado: EstadoPago): void {
+    this.facturacionService.actualizarEstadoPago(factura.id, nuevoEstado).subscribe({
+      next: (facturaActualizada) => {
+        this.facturas.update(prev => prev.map(f => f.id === facturaActualizada.id ? facturaActualizada : f));
+        if (this.facturaSeleccionada()?.id === facturaActualizada.id) {
+          this.facturaSeleccionada.set(facturaActualizada);
+        }
+      },
+      error: (err) => {
+        console.error('Error al actualizar estado de cobro:', err);
+        const msg = err.error?.error || err.error?.detail || 'No se pudo actualizar el estado de cobro de la factura.';
+        alert(msg);
       }
     });
   }
@@ -233,7 +186,13 @@ export class FacturacionComponent implements OnInit {
   }
 
   imprimirComprobante(factura: Factura): void {
-    window.print();
+    this.facturaAImprimir.set(factura);
+    this.modalImpresionAbierto.set(true);
+  }
+
+  cerrarModalImpresion(): void {
+    this.modalImpresionAbierto.set(false);
+    this.facturaAImprimir.set(null);
   }
 
   facturasFiltradas(): Factura[] {
@@ -243,10 +202,10 @@ export class FacturacionComponent implements OnInit {
       const term = this.busqueda.toLowerCase();
       const cumpleBusqueda =
         !term ||
-        f.numero_comprobante.toLowerCase().includes(term) ||
-        f.cliente_nombre.toLowerCase().includes(term) ||
-        f.vehiculo_patente.toLowerCase().includes(term) ||
-        f.cae.includes(term);
+        (f.numero_comprobante && f.numero_comprobante.toLowerCase().includes(term)) ||
+        (f.cliente_nombre && f.cliente_nombre.toLowerCase().includes(term)) ||
+        (f.vehiculo_patente && f.vehiculo_patente.toLowerCase().includes(term)) ||
+        (f.cae && f.cae.includes(term));
 
       return cumpleFiltroEstado && cumpleFiltroTipo && cumpleBusqueda;
     });
