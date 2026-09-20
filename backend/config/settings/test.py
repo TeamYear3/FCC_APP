@@ -17,3 +17,6 @@ DATABASES = {
 TESTING = True
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# MONGO_URI vacío en tests para activar el fallback seguro
+MONGO_URI = ""

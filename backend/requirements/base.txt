@@ -11,3 +11,4 @@ cloudinary>=1.36.0
 django-cloudinary-storage>=0.3.0
 channels>=4.0.0
 daphne>=4.0.0
+pymongo>=4.6.0
