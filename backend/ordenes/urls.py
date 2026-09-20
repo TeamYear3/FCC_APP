@@ -12,7 +12,8 @@ from .views import (
     MarcarItemCompletadoView,
     EliminarItemPresupuestoView,
     ExportarOrdenPDFView,
-    RegistrarPagoOrdenView
+    RegistrarPagoOrdenView,
+    OrdenTrabajoAuditoriaView
 )
 
 urlpatterns = [
@@ -26,6 +27,7 @@ urlpatterns = [
     path('ordenes/<uuid:orden_id>/items/<uuid:item_id>/completado/', MarcarItemCompletadoView.as_view(), name='marcar-item-completado'),
     path('ordenes/<uuid:orden_id>/items/<uuid:item_id>/', EliminarItemPresupuestoView.as_view(), name='eliminar-item-presupuesto'),
     path('ordenes/<uuid:orden_id>/historial/', ConsultarHistorialOrdenView.as_view(), name='consultar-historial-orden'),
+    path('ordenes/<uuid:orden_id>/auditoria/', OrdenTrabajoAuditoriaView.as_view(), name='orden-auditoria-nosql'),
     path('ordenes/<uuid:orden_id>/estado/', ActualizarEstadoOrdenView.as_view(), name='actualizar-estado-orden'),
     path('ordenes/<uuid:orden_id>/adjuntos/', AdjuntoDiagnosticoListCreateView.as_view(), name='listar-crear-adjuntos-orden'),
     path('diagnosticos/adjuntos/', AdjuntoDiagnosticoListCreateView.as_view(), name='crear-adjunto-diagnostico'),

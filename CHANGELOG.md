@@ -53,6 +53,8 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Flujo multicanal de confirmación y aprobación de presupuestos (WhatsApp, llamada, presencial) con conversión directa a estado EN PROCESO (TK091).
 - Optimización Mobile-First y ergonomía táctil en taller: tarjetas condensadas en pantallas < 640px, targets táctiles mínimos de 44px y padding seguro para navegación móvil (TK105).
 - Rediseño y expansión exhaustiva de la documentación `README.md` con arquitectura orientada a microservicios (diagrama Mermaid), guías de despliegue con y sin Docker, credenciales de prueba y catálogo integral de endpoints REST y WebSockets (TK080).
+- Cliente NoSQL singleton en Django con librería PyMongo y soporte de tolerancia a fallos en conexión (TK128).
+- Registro automático de auditoría de trazabilidad de Órdenes de Trabajo en MongoDB y endpoint REST `GET /api/ordenes/<id>/auditoria/` (TK129).
 
 ### Modificado
 

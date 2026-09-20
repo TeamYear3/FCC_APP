@@ -155,6 +155,16 @@ class OrdenTrabajo(models.Model):
             comentario=comentario
         )
 
+        # TK129: Registrar auditoría NoSQL en MongoDB
+        from core.mongo import registrar_auditoria_ot
+        registrar_auditoria_ot(
+            orden_id=self.id,
+            estado_anterior=estado_anterior,
+            estado_nuevo=nuevo_estado,
+            usuario=usuario,
+            metadata={"comentario": comentario, "numero_ot": self.numero_ot}
+        )
+
         # Enviar notificación WebSocket
         from .services import notificar_cambio_estado_websocket
         notificar_cambio_estado_websocket(self, estado_anterior)

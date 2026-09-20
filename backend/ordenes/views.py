@@ -7,6 +7,7 @@ from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
 from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico, ItemPresupuesto, EstadoCobro, EstadoOrden
 from .serializers import (
@@ -656,5 +657,32 @@ class RegistrarPagoOrdenView(APIView):
         return Response({
             'message': 'Cobro registrado exitosamente.',
             'orden': response_serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class OrdenTrabajoAuditoriaView(APIView):
+    """
+    TK129: Endpoint GET /api/ordenes/<orden_id>/auditoria/
+    Recupera el historial cronológico de auditoría NoSQL almacenado en MongoDB.
+    """
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar la auditoría de esta Orden.")
+
+        from core.mongo import obtener_auditoria_ot
+        registros_nosql = obtener_auditoria_ot(orden.id)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'origen_datos': 'MongoDB',
+            'total_registros': len(registros_nosql),
+            'auditoria': registros_nosql
         }, status=status.HTTP_200_OK)
 
