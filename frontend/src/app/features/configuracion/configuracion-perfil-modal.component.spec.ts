@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ConfiguracionPerfilModalComponent } from './configuracion-perfil-modal.component';
@@ -75,4 +76,40 @@ describe('ConfiguracionPerfilModalComponent', () => {
     });
     expect(component.mensajeExito()).toContain('¡Perfil actualizado con éxito!');
   });
+
+  it('debe conmutar la visibilidad de los campos de contraseña', () => {
+    expect(component.mostrarPasswordActual()).toBe(false);
+    expect(component.mostrarNuevaPassword()).toBe(false);
+    expect(component.mostrarConfirmarPassword()).toBe(false);
+
+    component.togglePasswordVisibility('actual');
+    component.togglePasswordVisibility('nueva');
+    component.togglePasswordVisibility('confirmar');
+
+    expect(component.mostrarPasswordActual()).toBe(true);
+    expect(component.mostrarNuevaPassword()).toBe(true);
+    expect(component.mostrarConfirmarPassword()).toBe(true);
+  });
+
+  it('debe calcular correctamente la fortaleza de la contraseña ingresada', () => {
+    // Vacío
+    component.perfilForm.patchValue({ nueva_password: '' });
+    expect(component.fortalezaPassword.nivel).toBeNull();
+
+    // Débil (< 8 caracteres)
+    component.perfilForm.patchValue({ nueva_password: 'abc' });
+    expect(component.fortalezaPassword.nivel).toBe('debil');
+    expect(component.fortalezaPassword.etiqueta).toBe('Débil');
+
+    // Media (>= 8 chars con mayúsculas/números)
+    component.perfilForm.patchValue({ nueva_password: 'Password12' });
+    expect(component.fortalezaPassword.nivel).toBe('media');
+    expect(component.fortalezaPassword.etiqueta).toBe('Media');
+
+    // Fuerte (>= 10 chars con mayúscula, números y símbolos)
+    component.perfilForm.patchValue({ nueva_password: 'Password123!' });
+    expect(component.fortalezaPassword.nivel).toBe('fuerte');
+    expect(component.fortalezaPassword.etiqueta).toBe('Fuerte');
+  });
 });
+

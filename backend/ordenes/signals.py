@@ -1,6 +1,7 @@
 import logging
 import threading
 from django.conf import settings
+from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.template.loader import render_to_string
@@ -103,7 +104,8 @@ def enviar_email_orden_background(orden_id):
 @receiver(post_save, sender=OrdenTrabajo)
 def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
     """
-    Señal de Django para registrar el historial de estado inicial y disparar el correo al cliente.
+    Señal de Django para registrar el historial de estado inicial y disparar el correo al cliente
+    únicamente tras la confirmación (commit) de la transacción en la base de datos.
     """
     if created:
         from .models import HistorialEstadoOrden
@@ -114,20 +116,18 @@ def orden_trabajo_creada_signal(sender, instance, created, **kwargs):
             comentario="Orden de Trabajo registrada en el sistema."
         )
 
-        # Envío automático de email en segundo plano (síncrono en tests, asíncrono en prod/dev)
-        if getattr(settings, "TESTING", False):
-            enviar_email_orden_background(instance.id)
-            return
+        def _iniciar_hilo_email():
+            try:
+                threading.Thread(
+                    target=enviar_email_orden_background,
+                    args=(instance.id,),
+                    daemon=True
+                ).start()
+            except Exception as e:
+                logger.error(
+                    f"Error al iniciar el hilo de envío de correo para la orden {instance.id}: {str(e)}",
+                    exc_info=True
+                )
 
-        try:
-            threading.Thread(
-                target=enviar_email_orden_background,
-                args=(instance.id,),
-                daemon=True
-            ).start()
-        except Exception as e:
-            logger.error(
-                f"Error al iniciar el hilo de envío de correo para la orden {instance.id}: {str(e)}",
-                exc_info=True
-            )
+        transaction.on_commit(_iniciar_hilo_email)
 

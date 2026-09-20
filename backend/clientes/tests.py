@@ -173,14 +173,27 @@ class ClienteAPITestCase(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_crear_cliente_cuit_invalido(self):
+    def test_crear_cliente_cuit_sin_guiones_valido(self):
         self.client.force_authenticate(user=self.admin_user)
-        # Formato sin guiones
         data = {
             "nombre": "Empresa S.A.",
             "apellido": "Perez",
             "tipo_documento": "CUIT",
             "dni_cuit": "20123456789",
+            "condicion_iva": "RI"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["dni_cuit"], "20-12345678-9")
+
+    def test_crear_cliente_cuit_invalido(self):
+        self.client.force_authenticate(user=self.admin_user)
+        # Longitud incorrecta de dígitos
+        data = {
+            "nombre": "Empresa S.A.",
+            "apellido": "Perez",
+            "tipo_documento": "CUIT",
+            "dni_cuit": "2012345",
             "condicion_iva": "RI"
         }
         response = self.client.post(self.url, data, format='json')

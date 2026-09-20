@@ -1,24 +1,30 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { OrdenService, OrdenPayload } from '../../../core/services/orden.service';
-import { VehiculoService, VehiculoResponse } from '../../../core/services/vehiculo.service';
-import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
+import { VehiculoService, VehiculoResponse, VehiculoCreatePayload } from '../../../core/services/vehiculo.service';
+import { ClienteService, ClienteResponse, ClientePayload } from '../../../core/services/cliente.service';
+import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { VehiculoSelectorComponent } from '../../../shared/components/vehiculo-selector/vehiculo-selector.component';
 
 @Component({
   selector: 'app-orden-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, VehiculoSelectorComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, VehiculoSelectorComponent],
   templateUrl: './orden-form.component.html',
   styleUrls: ['./orden-form.component.css']
 })
 export class OrdenFormComponent implements OnInit {
+  @ViewChild(VehiculoSelectorComponent) vehiculoSelector?: VehiculoSelectorComponent;
+
   private readonly fb = inject(FormBuilder);
   private readonly ordenService = inject(OrdenService);
   private readonly vehiculoService = inject(VehiculoService);
   private readonly clienteService = inject(ClienteService);
+  private readonly turnoService = inject(TurnoService);
+  private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly isSubmitting = signal<boolean>(false);
@@ -29,18 +35,28 @@ export class OrdenFormComponent implements OnInit {
   readonly selectedClienteDetails = signal<ClienteResponse | null>(null);
   readonly returnUrl = signal<string>('/ordenes');
 
-  ordenForm!: FormGroup;
+  // Turnos reales obtenidos desde el backend
+  readonly turnos = signal<TurnoResponse[]>([]);
+  readonly cargandoTurnos = signal<boolean>(false);
 
-  // Turnos simulados (Mocks) para la UI antes del desarrollo del backend de Turnos
-  readonly turnosDisponibles = [
-    { id: 'T-001', descripcion: 'Turno Mañana - 09:00 hs' },
-    { id: 'T-002', descripcion: 'Turno Mañana - 11:30 hs' },
-    { id: 'T-003', descripcion: 'Turno Tarde - 15:00 hs' },
-    { id: 'T-004', descripcion: 'Turno Tarde - 17:30 hs' }
-  ];
+  // Estados de modales In-Situ (TK102)
+  readonly mostrarModalCliente = signal<boolean>(false);
+  readonly mostrarModalVehiculo = signal<boolean>(false);
+  readonly guardandoClienteInSitu = signal<boolean>(false);
+  readonly guardandoVehiculoInSitu = signal<boolean>(false);
+  readonly errorModalCliente = signal<string | null>(null);
+  readonly errorModalVehiculo = signal<string | null>(null);
+  readonly listaClientes = signal<ClienteResponse[]>([]);
+
+  ordenForm!: FormGroup;
+  clienteFormInSitu!: FormGroup;
+  vehiculoFormInSitu!: FormGroup;
 
   ngOnInit(): void {
     this.returnUrl.set(this.router.url.startsWith('/admin') ? '/admin/ordenes' : '/ordenes');
+    this.cargarTurnos();
+    this.cargarListaClientes();
+    this.inicializarFormulariosInSitu();
     const hoy = new Date();
     const hoyString = hoy.getFullYear() + '-' + 
                       String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -49,6 +65,7 @@ export class OrdenFormComponent implements OnInit {
     this.ordenForm = this.fb.group({
       modo: ['PRESUPUESTO', [Validators.required]],
       vehiculo_id: [null, [Validators.required]],
+      complejidad: ['media', [Validators.required]],
       descripcion_problema: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(2000)]],
       fecha_ingreso: [hoyString, [Validators.required]],
       turno_id: [null],
@@ -102,8 +119,207 @@ export class OrdenFormComponent implements OnInit {
     });
   }
 
+  cargarTurnos(): void {
+    this.cargandoTurnos.set(true);
+    this.turnoService.obtenerTurnos().subscribe({
+      next: (lista) => {
+        // Filtrar turnos activos o pendientes
+        const activos = lista.filter(t => t.estado !== 'cancelado');
+        this.turnos.set(activos.length > 0 ? activos : lista);
+        this.cargandoTurnos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar turnos disponibles:', err);
+        this.turnos.set([]);
+        this.cargandoTurnos.set(false);
+      }
+    });
+  }
+
+  formatearTurno(t: TurnoResponse): string {
+    try {
+      const fecha = new Date(t.fecha_hora);
+      const dia = String(fecha.getDate()).padStart(2, '0');
+      const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+      const horas = String(fecha.getHours()).padStart(2, '0');
+      const min = String(fecha.getMinutes()).padStart(2, '0');
+      const fechaFormateada = `${dia}/${mes} ${horas}:${min} hs`;
+      const infoTitular = t.cliente_nombre ? ` (${t.cliente_nombre})` : '';
+      return `${fechaFormateada} - ${t.motivo}${infoTitular}`;
+    } catch {
+      return `${t.fecha_hora} - ${t.motivo}`;
+    }
+  }
+
   get modoSeleccionado(): 'PRESUPUESTO' | 'ORDEN_TRABAJO' {
     return this.ordenForm?.get('modo')?.value || 'PRESUPUESTO';
+  }
+
+  inicializarFormulariosInSitu(): void {
+    this.clienteFormInSitu = this.fb.group({
+      tipo_documento: ['DNI', [Validators.required]],
+      dni_cuit: ['', [Validators.required, Validators.pattern(/^\d{7,8}$/)]],
+      nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+      apellido: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+      condicion_iva: ['CF', [Validators.required]],
+      telefono: ['', [Validators.maxLength(30)]],
+      domicilio: ['', [Validators.maxLength(255)]]
+    });
+
+    this.clienteFormInSitu.get('tipo_documento')?.valueChanges.subscribe((tipo: 'DNI' | 'CUIT') => {
+      const dniCtrl = this.clienteFormInSitu.get('dni_cuit');
+      if (tipo === 'DNI') {
+        dniCtrl?.setValidators([Validators.required, Validators.pattern(/^\d{7,8}$/)]);
+      } else {
+        dniCtrl?.setValidators([Validators.required, Validators.pattern(/^(\d{2}-?\d{8}-?\d{1}|\d{11})$/)]);
+      }
+      dniCtrl?.updateValueAndValidity();
+    });
+
+    this.vehiculoFormInSitu = this.fb.group({
+      cliente_id: ['', [Validators.required]],
+      patente: ['', [Validators.required, Validators.pattern(/^[A-Z]{3}\d{3}$|^[A-Z]{2}\d{3}[A-Z]{2}$/i)]],
+      marca: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+      modelo: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
+      anio: [new Date().getFullYear(), [Validators.min(1900), Validators.max(2030)]],
+      kilometraje: [0, [Validators.min(0)]],
+      color: ['', [Validators.maxLength(30)]],
+      numero_chasis: ['', [Validators.maxLength(50)]]
+    });
+  }
+
+  cargarListaClientes(): void {
+    this.clienteService.obtenerClientes().subscribe({
+      next: (clientes) => this.listaClientes.set(clientes || []),
+      error: () => this.listaClientes.set([])
+    });
+  }
+
+  // Métodos Modal Cliente In-Situ (TK102)
+  abrirModalCliente(): void {
+    this.clienteFormInSitu.reset({
+      tipo_documento: 'DNI',
+      condicion_iva: 'CF'
+    });
+    this.errorModalCliente.set(null);
+    this.mostrarModalCliente.set(true);
+  }
+
+  cerrarModalCliente(): void {
+    this.mostrarModalCliente.set(false);
+  }
+
+  guardarClienteInSitu(): void {
+    if (this.clienteFormInSitu.invalid) {
+      this.clienteFormInSitu.markAllAsTouched();
+      return;
+    }
+
+    this.guardandoClienteInSitu.set(true);
+    this.errorModalCliente.set(null);
+
+    const formVal = this.clienteFormInSitu.value;
+    let dniCuitVal = (formVal.dni_cuit || '').trim();
+    if (formVal.tipo_documento === 'CUIT') {
+      const limpio = dniCuitVal.replace(/\D/g, '');
+      if (limpio.length === 11) {
+        dniCuitVal = `${limpio.slice(0, 2)}-${limpio.slice(2, 10)}-${limpio.slice(10)}`;
+      }
+    }
+
+    const payload: ClientePayload = {
+      nombre: formVal.nombre.trim(),
+      apellido: formVal.apellido.trim(),
+      tipo_documento: formVal.tipo_documento,
+      dni_cuit: dniCuitVal,
+      condicion_iva: formVal.condicion_iva,
+      telefono: formVal.telefono ? formVal.telefono.trim() : undefined,
+      domicilio: formVal.domicilio ? formVal.domicilio.trim() : undefined
+    };
+
+    this.clienteService.crearCliente(payload).subscribe({
+      next: (clienteCreado) => {
+        this.guardandoClienteInSitu.set(false);
+        this.toastService.exito(`Cliente "${clienteCreado.nombre} ${clienteCreado.apellido}" creado exitosamente.`);
+        this.cargarListaClientes();
+        this.cerrarModalCliente();
+
+        // Si aún no hay vehículo, abrir modal de vehículo preseleccionando este cliente
+        this.abrirModalVehiculo(clienteCreado.id);
+      },
+      error: (err) => {
+        this.guardandoClienteInSitu.set(false);
+        const msg = err.error?.dni_cuit || err.error?.detail || err.error?.error || 'Error al registrar cliente in-situ.';
+        this.errorModalCliente.set(Array.isArray(msg) ? msg[0] : msg);
+      }
+    });
+  }
+
+  // Métodos Modal Vehículo In-Situ (TK102)
+  abrirModalVehiculo(clienteIdPreseleccionado?: string): void {
+    this.cargarListaClientes();
+    this.vehiculoFormInSitu.reset({
+      cliente_id: clienteIdPreseleccionado || '',
+      anio: new Date().getFullYear(),
+      kilometraje: 0
+    });
+    this.errorModalVehiculo.set(null);
+    this.mostrarModalVehiculo.set(true);
+  }
+
+  cerrarModalVehiculo(): void {
+    this.mostrarModalVehiculo.set(false);
+  }
+
+  guardarVehiculoInSitu(): void {
+    if (this.vehiculoFormInSitu.invalid) {
+      this.vehiculoFormInSitu.markAllAsTouched();
+      return;
+    }
+
+    this.guardandoVehiculoInSitu.set(true);
+    this.errorModalVehiculo.set(null);
+
+    const formVal = this.vehiculoFormInSitu.value;
+    const payload: VehiculoCreatePayload = {
+      cliente_id: formVal.cliente_id,
+      patente: formVal.patente.trim().toUpperCase(),
+      marca: formVal.marca.trim(),
+      modelo: formVal.modelo.trim(),
+      anio: formVal.anio ? Number(formVal.anio) : undefined,
+      kilometraje: formVal.kilometraje !== null ? Number(formVal.kilometraje) : 0,
+      color: formVal.color ? formVal.color.trim() : undefined,
+      numero_chasis: formVal.numero_chasis ? formVal.numero_chasis.trim() : undefined
+    };
+
+    this.vehiculoService.crearVehiculo(payload).subscribe({
+      next: (vehiculoCreado) => {
+        this.guardandoVehiculoInSitu.set(false);
+        this.toastService.exito(`Vehículo "${vehiculoCreado.patente}" registrado exitosamente.`);
+        
+        // Asignar en el formulario principal y refrescar selector
+        this.ordenForm.get('vehiculo_id')?.setValue(vehiculoCreado.id);
+        this.selectedVehiculoDetails.set(vehiculoCreado);
+        
+        // Recargar datos en el selector de vehículos
+        this.vehiculoSelector?.cargarVehiculos();
+
+        // Cargar datos del cliente asociado
+        if (vehiculoCreado.cliente_id) {
+          this.clienteService.getClienteById(vehiculoCreado.cliente_id).subscribe({
+            next: (cli) => this.selectedClienteDetails.set(cli),
+            error: () => this.selectedClienteDetails.set(null)
+          });
+        }
+
+        this.cerrarModalVehiculo();
+      },
+      error: (err) => {
+        this.guardandoVehiculoInSitu.set(false);
+        const msg = err.error?.patente || err.error?.cliente_id || err.error?.detail || err.error?.error || 'Error al registrar vehículo in-situ.';
+        this.errorModalVehiculo.set(Array.isArray(msg) ? msg[0] : msg);
+      }
+    });
   }
 
   onSubmit(): void {
@@ -120,6 +336,7 @@ export class OrdenFormComponent implements OnInit {
       vehiculo_id: formVal.vehiculo_id,
       descripcion_problema: formVal.descripcion_problema,
       fecha_ingreso: formVal.fecha_ingreso,
+      complejidad: formVal.complejidad,
       estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado'
     };
 

@@ -68,6 +68,9 @@ class TallerDashboardAPITest(TestCase):
         self.assertEqual(response.data[0]['email'], 'tecnico@test.com')
         self.assertEqual(response.data[0]['ots_activas'], 1)
         self.assertEqual(response.data[0]['porcentaje_carga'], 20)
+        self.assertEqual(response.data[0]['ot_activa_numero'], 'OT-7001')
+        self.assertEqual(response.data[0]['ot_activa_vehiculo'], 'Ford Focus')
+        self.assertEqual(response.data[0]['ot_activa_estado'], 'En Proceso')
 
     def test_resumen_mecanicos_tecnico_prohibido(self):
         self.client.force_authenticate(user=self.tecnico)

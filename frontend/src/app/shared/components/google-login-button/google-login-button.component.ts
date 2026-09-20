@@ -1,12 +1,11 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-google-login-button',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './google-login-button.component.html',
-  styleUrl: './google-login-button.component.css'
+  styleUrl: './google-login-button.component.css',
 })
 export class GoogleLoginButtonComponent {
   @Input() label = 'Iniciar sesión con Google';

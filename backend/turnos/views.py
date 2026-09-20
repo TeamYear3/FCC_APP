@@ -6,15 +6,21 @@ from .serializers import TurnoSerializer
 
 class TurnoViewSet(viewsets.ModelViewSet):
     serializer_class = TurnoSerializer
-    permission_classes = [IsAuthenticated, (EsAdministrador | EsTecnico | EsCliente)]
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        elif self.request.method == 'POST':
+            return [IsAuthenticated(), (EsAdministrador | EsCliente)()]
+        return [IsAuthenticated(), EsAdministrador()]
 
     def get_queryset(self):
         user = self.request.user
         if getattr(user, "rol", None) == "cliente":
             # Un cliente solo puede ver sus propios turnos
-            return Turno.objects.filter(cliente__usuario=user)
+            return Turno.objects.filter(cliente__usuario=user).select_related("cliente", "vehiculo")
         # Administradores y técnicos pueden ver todos los turnos
-        return Turno.objects.all()
+        return Turno.objects.all().select_related("cliente", "vehiculo")
 
     def perform_create(self, serializer):
         # Si un cliente está creando el turno, podemos forzar que se asocie a su propio perfil

@@ -108,6 +108,42 @@
   color: #ffffff !important;
 }
 
+/* Estilos para eventos de Órdenes de Trabajo y Actividades en Agenda (TK122) */
+:host ::ng-deep .evento-orden-proceso {
+  background-color: #9333ea !important; /* Púrpura / En Proceso */
+  border-color: #7e22ce !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+:host ::ng-deep .evento-orden-ingresado {
+  background-color: #2563eb !important; /* Azul / Ingresado */
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+:host ::ng-deep .evento-orden-pausa {
+  background-color: #ea580c !important; /* Naranja / Pausado */
+  border-color: #c2410c !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+:host ::ng-deep .evento-orden-finalizado {
+  background-color: #059669 !important; /* Esmeralda / Finalizado */
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+:host ::ng-deep .evento-orden-default {
+  background-color: #4f46e5 !important; /* Índigo */
+  border-color: #4338ca !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
 /* Permitir envoltura y salto de línea en el texto del evento para leerlo completo */
 :host ::ng-deep .fc-event-title {
   white-space: normal !important;
@@ -124,3 +160,16 @@
 :host ::ng-deep .fc-daygrid-event-dot {
   display: none !important;
 }
+
+/* Estilos para interacción de arrastre (drag and drop) */
+:host ::ng-deep .fc-event-draggable {
+  cursor: grab !important;
+}
+
+:host ::ng-deep .fc-event-dragging {
+  opacity: 0.85 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+  cursor: grabbing !important;
+  transform: scale(1.03) !important;
+}
+

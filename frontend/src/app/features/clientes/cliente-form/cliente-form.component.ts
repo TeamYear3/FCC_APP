@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { ClienteService, ClientePayload } from '../../../core/services/cliente.service';
@@ -7,9 +7,9 @@ import { ClienteService, ClientePayload } from '../../../core/services/cliente.s
 @Component({
   selector: 'app-cliente-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './cliente-form.component.html',
-  styleUrls: []
+  styleUrls: [],
 })
 export class ClienteFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
@@ -32,7 +32,7 @@ export class ClienteFormComponent implements OnInit {
       apellido: ['', [Validators.required, Validators.minLength(2)]],
       condicion_iva: ['CF', Validators.required],
       telefono: ['', [Validators.maxLength(30)]],
-      domicilio: ['', [Validators.maxLength(255)]]
+      domicilio: ['', [Validators.maxLength(255)]],
     });
 
     // Suscripción al cambio en tipo_documento para alternar validación síncrona de DNI o CUIT (sólo útil en alta)
@@ -43,7 +43,10 @@ export class ClienteFormComponent implements OnInit {
       if (tipo === 'DNI') {
         dniCuitControl.setValidators([Validators.required, Validators.pattern(/^\d{7,8}$/)]);
       } else {
-        dniCuitControl.setValidators([Validators.required, Validators.pattern(/^\d{2}-\d{8}-\d{1}$/)]);
+        dniCuitControl.setValidators([
+          Validators.required,
+          Validators.pattern(/^(\d{2}-?\d{8}-?\d{1}|\d{11})$/),
+        ]);
       }
       dniCuitControl.updateValueAndValidity();
     });
@@ -68,7 +71,7 @@ export class ClienteFormComponent implements OnInit {
       error: (err) => {
         console.error('Error al cargar datos del cliente:', err);
         this.errorMessage.set('No se pudieron cargar los datos del cliente.');
-      }
+      },
     });
   }
 
@@ -81,9 +84,19 @@ export class ClienteFormComponent implements OnInit {
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
+    const formRaw = this.clienteForm.value;
+    let dniCuitVal = (formRaw.dni_cuit || '').trim();
+    if (this.tipoDocumentoSeleccionado === 'CUIT') {
+      const limpio = dniCuitVal.replace(/\D/g, '');
+      if (limpio.length === 11) {
+        dniCuitVal = `${limpio.slice(0, 2)}-${limpio.slice(2, 10)}-${limpio.slice(10)}`;
+      }
+    }
+
     // En Angular, form.value excluye automáticamente los controles deshabilitados
     const payload: Partial<ClientePayload> = {
-      ...this.clienteForm.value
+      ...formRaw,
+      dni_cuit: dniCuitVal,
     };
 
     const request$ = this.isEditMode()
@@ -100,7 +113,7 @@ export class ClienteFormComponent implements OnInit {
         this.isSubmitting.set(false);
         const accion = this.isEditMode() ? 'actualizar' : 'registrar';
         console.error(`Error al ${accion} cliente en la API:`, err);
-        
+
         // Manejo descriptivo de errores provistos por el backend
         let hasFieldError = false;
         if (err.error && typeof err.error === 'object') {
@@ -119,10 +132,12 @@ export class ClienteFormComponent implements OnInit {
           if (err.error?.detail || err.error?.error) {
             this.errorMessage.set(err.error.detail || err.error.error);
           } else {
-            this.errorMessage.set(`No se pudo ${accion} al cliente. Verifique los datos o la conexión al servidor.`);
+            this.errorMessage.set(
+              `No se pudo ${accion} al cliente. Verifique los datos o la conexión al servidor.`,
+            );
           }
         }
-      }
+      },
     });
   }
 

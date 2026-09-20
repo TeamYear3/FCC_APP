@@ -7,14 +7,34 @@ from django.core.exceptions import ValidationError
 from vehiculos.models import Vehiculo
 
 
+class ComplejidadOrden(models.TextChoices):
+    BAJA = 'baja', 'Baja'
+    MEDIA = 'media', 'Media'
+    ALTA = 'alta', 'Alta'
+
+
 class EstadoOrden(models.TextChoices):
     INGRESADO = 'ingresado', 'Ingresado'
     EN_PRESUPUESTO = 'en_presupuesto', 'En Presupuesto'
     APROBADO = 'aprobado', 'Aprobado'
     RECHAZADO = 'rechazado', 'Rechazado'
     EN_PROCESO = 'en_proceso', 'En Proceso'
+    EN_PAUSA = 'en_pausa', 'En Pausa'
     FINALIZADO = 'finalizado', 'Finalizado'
     ENTREGADO = 'entregado', 'Entregado'
+
+
+class EstadoCobro(models.TextChoices):
+    PENDIENTE = 'pendiente', 'Pendiente'
+    COBRADO = 'cobrado', 'Cobrado'
+
+
+class MetodoPago(models.TextChoices):
+    EFECTIVO = 'efectivo', 'Efectivo'
+    TRANSFERENCIA = 'transferencia', 'Transferencia'
+    DEBITO = 'debito', 'Tarjeta de Débito'
+    CREDITO = 'credito', 'Tarjeta de Crédito'
+
 
 class OrdenTrabajo(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -40,11 +60,29 @@ class OrdenTrabajo(models.Model):
         choices=EstadoOrden.choices,
         default=EstadoOrden.INGRESADO
     )
+    complejidad = models.CharField(
+        max_length=10,
+        choices=ComplejidadOrden.choices,
+        default=ComplejidadOrden.MEDIA
+    )
+    motivo_pausa = models.CharField(max_length=255, blank=True, null=True)
     descripcion_problema = models.TextField()
     fecha_ingreso = models.DateField(default=timezone.now)
     fecha_entrega = models.DateField(null=True, blank=True)
     comentario_rechazo = models.TextField(null=True, blank=True)
     monto_total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    estado_cobro = models.CharField(
+        max_length=20,
+        choices=EstadoCobro.choices,
+        default=EstadoCobro.PENDIENTE
+    )
+    metodo_pago = models.CharField(
+        max_length=20,
+        choices=MetodoPago.choices,
+        null=True,
+        blank=True
+    )
+    fecha_cobro = models.DateTimeField(null=True, blank=True)
     aprobado_por_cliente = models.BooleanField(default=False)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
@@ -77,7 +115,8 @@ class OrdenTrabajo(models.Model):
             EstadoOrden.EN_PRESUPUESTO: [EstadoOrden.APROBADO, EstadoOrden.RECHAZADO],
             EstadoOrden.APROBADO: [EstadoOrden.EN_PROCESO],
             EstadoOrden.RECHAZADO: [EstadoOrden.EN_PRESUPUESTO],
-            EstadoOrden.EN_PROCESO: [EstadoOrden.FINALIZADO],
+            EstadoOrden.EN_PROCESO: [EstadoOrden.FINALIZADO, EstadoOrden.EN_PAUSA],
+            EstadoOrden.EN_PAUSA: [EstadoOrden.EN_PROCESO],
             EstadoOrden.FINALIZADO: [EstadoOrden.ENTREGADO],
             EstadoOrden.ENTREGADO: []
         }
@@ -101,7 +140,11 @@ class OrdenTrabajo(models.Model):
 
         # Guardar cambio de estado
         self.estado = nuevo_estado
-        self.save(update_fields=['estado', 'actualizado_en'])
+        update_fields = ['estado', 'actualizado_en']
+        if nuevo_estado == EstadoOrden.ENTREGADO and not self.fecha_entrega:
+            self.fecha_entrega = timezone.now().date()
+            update_fields.append('fecha_entrega')
+        self.save(update_fields=update_fields)
 
         # Registrar historial
         HistorialEstadoOrden.objects.create(
@@ -110,6 +153,16 @@ class OrdenTrabajo(models.Model):
             estado_nuevo=nuevo_estado,
             usuario=usuario,
             comentario=comentario
+        )
+
+        # TK129: Registrar auditoría NoSQL en MongoDB
+        from core.mongo import registrar_auditoria_ot
+        registrar_auditoria_ot(
+            orden_id=self.id,
+            estado_anterior=estado_anterior,
+            estado_nuevo=nuevo_estado,
+            usuario=usuario,
+            metadata={"comentario": comentario, "numero_ot": self.numero_ot}
         )
 
         # Enviar notificación WebSocket
@@ -193,6 +246,13 @@ class AdjuntoDiagnostico(models.Model):
         OrdenTrabajo,
         on_delete=models.CASCADE,
         related_name="adjuntos_diagnostico"
+    )
+    item_presupuesto = models.ForeignKey(
+        'ordenes.ItemPresupuesto',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="adjuntos"
     )
     url_secure = models.URLField(max_length=500)
     public_id = models.CharField(max_length=255, blank=True, null=True)

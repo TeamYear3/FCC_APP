@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../../core/auth/auth.service';
 import { VehiculoService, VehiculoResponse, HistorialVehiculoResponse, MantenimientoProgramadoResponse } from '../../../core/services/vehiculo.service';
 
 @Component({
@@ -14,6 +15,9 @@ export class VehiculoHistorialComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly vehiculoService = inject(VehiculoService);
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+
+  readonly userRole = this.authService.userRoleSignal;
 
   readonly returnUrl = signal<string>('/ordenes');
   readonly vehiculo = signal<VehiculoResponse | null>(null);

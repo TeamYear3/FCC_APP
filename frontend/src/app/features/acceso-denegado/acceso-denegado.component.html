@@ -18,16 +18,18 @@
     </p>
 
     <!-- Pastilla / Badge de Estado Semántico con rol activo -->
-    <div *ngIf="userRole()" class="bg-black/60 border border-white/10 rounded-badge py-sm px-md mb-lg flex items-center justify-between">
-      <span class="typography-caption text-color-text-secondary font-semibold uppercase">Rol en Sesión:</span>
-      <span class="px-2 py-1 rounded-badge typography-caption font-bold uppercase tracking-wider bg-color-primary-accent/20 text-color-primary-accent border border-color-primary-accent/40">
-        {{ userRole() }}
-      </span>
-    </div>
-
-    <div *ngIf="!userRole()" class="bg-black/60 border border-white/10 rounded-badge py-sm px-md mb-lg typography-caption text-color-text-secondary text-left">
-      ⚠️ Sesión no identificada en capa core. Requiere inicio de sesión con credencial válida.
-    </div>
+    @if (userRole()) {
+      <div class="bg-black/60 border border-white/10 rounded-badge py-sm px-md mb-lg flex items-center justify-between">
+        <span class="typography-caption text-color-text-secondary font-semibold uppercase">Rol en Sesión:</span>
+        <span class="px-2 py-1 rounded-badge typography-caption font-bold uppercase tracking-wider bg-color-primary-accent/20 text-color-primary-accent border border-color-primary-accent/40">
+          {{ userRole() }}
+        </span>
+      </div>
+    } @else {
+      <div class="bg-black/60 border border-white/10 rounded-badge py-sm px-md mb-lg typography-caption text-color-text-secondary text-left">
+        ⚠️ Sesión no identificada en capa core. Requiere inicio de sesión con credencial válida.
+      </div>
+    }
 
     <!-- Botones de Acción Oficiales (Pill Action Button y Outline Pill) -->
     <div class="flex flex-col sm:flex-row gap-sm">

@@ -1,4 +1,4 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 class EsAdministrador(BasePermission):
     message = "No tiene permisos para realizar esta acción."
@@ -11,6 +11,19 @@ class EsTecnico(BasePermission):
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and getattr(request.user, 'rol', None) == 'tecnico')
+
+class EsAdminOSoloLecturaTecnico(BasePermission):
+    message = "No tiene permisos para modificar este recurso."
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        rol = getattr(request.user, 'rol', None)
+        if rol == 'admin':
+            return True
+        if rol == 'tecnico' and request.method in SAFE_METHODS:
+            return True
+        return False
 
 class EsCliente(BasePermission):
     message = "No tiene permisos para realizar esta acción."

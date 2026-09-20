@@ -8,6 +8,8 @@ export interface OrdenPayload {
   descripcion_problema: string;
   fecha_ingreso: string; // YYYY-MM-DD
   estado?: string;
+  complejidad?: 'baja' | 'media' | 'alta';
+  motivo_pausa?: string;
 }
 
 export interface OrdenResponse {
@@ -17,20 +19,33 @@ export interface OrdenResponse {
   descripcion_problema: string;
   fecha_ingreso: string;
   estado: string;
+  complejidad?: 'baja' | 'media' | 'alta';
+  motivo_pausa?: string | null;
   tecnico?: string | null;
   fecha_entrega?: string | null;
   comentario_rechazo?: string | null;
   creado_en: string;
   actualizado_en: string;
   vehiculo_patente?: string;
+  vehiculo_marca_modelo?: string;
   cliente_nombre?: string;
-  monto_total?: number;
+  cliente_telefono?: string;
+  cliente_documento?: string;
+  cliente_dni_cuit?: string;
+  monto_total?: number | string;
+  estado_cobro?: 'pendiente' | 'cobrado' | string;
+  metodo_pago?: string | null;
+  fecha_cobro?: string | null;
 }
 
 export interface OrdenFiltros {
+  busqueda?: string;
+  id?: string;
+  numero_ot?: string;
   patente?: string;
   cliente?: string;
   estado?: string;
+  complejidad?: string;
   tecnico?: string;
   fecha_desde?: string;
   fecha_hasta?: string;
@@ -53,7 +68,7 @@ export interface HistorialEstadoItem {
 }
 
 export interface OrdenHistorialResponse {
-  orden_id: string;
+  id: string;
   numero_ot: string;
   estado_actual: string;
   estado_actual_display: string;
@@ -69,6 +84,7 @@ export interface ItemPresupuesto {
   precio_unitario: number;
   subtotal?: number;
   completado?: boolean;
+  adjuntos?: AdjuntoDiagnostico[];
   creado_en?: string;
   actualizado_en?: string;
 }
@@ -76,6 +92,9 @@ export interface ItemPresupuesto {
 export interface AdjuntoDiagnostico {
   id: string;
   orden_trabajo: string;
+  item_presupuesto?: string | null;
+  item_presupuesto_id?: string | null;
+  item_presupuesto_descripcion?: string | null;
   url_secure: string;
   public_id: string;
   nombre_archivo: string;
@@ -94,6 +113,13 @@ export class OrdenService {
   private readonly apiUrl = `${environment.apiUrl}/ordenes/`;
 
   /**
+   * Obtiene el detalle de una orden de trabajo por ID (GET /api/ordenes/<id>/)
+   */
+  obtenerOrdenPorId(id: string): Observable<OrdenResponse> {
+    return this.http.get<OrdenResponse>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
    * Crea una nueva orden de trabajo (POST /api/ordenes/)
    */
   crearOrden(payload: OrdenPayload): Observable<OrdenResponse> {
@@ -108,9 +134,13 @@ export class OrdenService {
       .set('page', page.toString())
       .set('limit', limit.toString());
 
+    if (filtros.busqueda?.trim()) params = params.set('busqueda', filtros.busqueda.trim());
+    if (filtros.id?.trim()) params = params.set('id', filtros.id.trim());
+    if (filtros.numero_ot?.trim()) params = params.set('numero_ot', filtros.numero_ot.trim());
     if (filtros.patente?.trim()) params = params.set('patente', filtros.patente.trim());
     if (filtros.cliente?.trim()) params = params.set('cliente', filtros.cliente.trim());
     if (filtros.estado?.trim() && filtros.estado.toLowerCase() !== 'todos') params = params.set('estado', filtros.estado.trim());
+    if (filtros.complejidad?.trim() && filtros.complejidad.toLowerCase() !== 'todas') params = params.set('complejidad', filtros.complejidad.trim());
     if (filtros.tecnico?.trim()) params = params.set('tecnico', filtros.tecnico.trim());
     if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
     if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
@@ -133,11 +163,14 @@ export class OrdenService {
   }
 
   /**
-   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053)
+   * Subir una foto de diagnóstico (POST /api/ordenes/<id>/adjuntos/) (TK053 / TK123)
    */
-  subirAdjuntoDiagnostico(ordenId: string, archivo: File): Observable<AdjuntoDiagnostico> {
+  subirAdjuntoDiagnostico(ordenId: string, archivo: File, itemPresupuestoId?: string | null): Observable<AdjuntoDiagnostico> {
     const formData = new FormData();
     formData.append('archivo', archivo);
+    if (itemPresupuestoId) {
+      formData.append('item_presupuesto_id', itemPresupuestoId);
+    }
     return this.http.post<AdjuntoDiagnostico>(`${this.apiUrl}${ordenId}/adjuntos/`, formData);
   }
 
@@ -191,5 +224,28 @@ export class OrdenService {
   eliminarItemPresupuesto(ordenId: string, itemId: string): Observable<{ message: string; monto_total: number }> {
     return this.http.delete<{ message: string; monto_total: number }>(`${this.apiUrl}${ordenId}/items/${itemId}/`);
   }
+
+  /**
+   * Descargar reporte de la Orden de Trabajo en formato PDF (GET /api/ordenes/<id>/pdf/) (TK121)
+   */
+  descargarOrdenPDF(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}${id}/pdf/`, {
+      responseType: 'blob'
+    });
+  }
+
+  /**
+   * Registrar cobro operativo de una OT desacoplado de facturación fiscal (POST /api/ordenes/<id>/registrar-pago/) (TK103)
+   */
+  registrarPago(
+    ordenId: string,
+    payload: { metodo_pago: string; comentario?: string; entregar_orden?: boolean }
+  ): Observable<{ message: string; orden: OrdenResponse }> {
+    return this.http.post<{ message: string; orden: OrdenResponse }>(
+      `${this.apiUrl}${ordenId}/registrar-pago/`,
+      payload
+    );
+  }
 }
+
 

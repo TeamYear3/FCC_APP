@@ -11,6 +11,7 @@ from .views import (
     PasswordResetConfirmView,
     BusquedaUniversalView,
     PerfilUsuarioView,
+    ListaUsuariosAdminView,
 )
 
 urlpatterns = [
@@ -25,6 +26,7 @@ urlpatterns = [
     path("auth/password-reset-confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
 
     path("auth/perfil/", PerfilUsuarioView.as_view(), name="perfil-usuario"),
+    path("admin/usuarios/", ListaUsuariosAdminView.as_view(), name="admin-usuarios-lista"),
     path("busqueda-universal/", BusquedaUniversalView.as_view(), name="busqueda-universal"),
 ]
 

@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     CrearOrdenTrabajoView,
+    DetalleOrdenTrabajoView,
     AgregarManoDeObraView,
     AgregarRepuestoView,
     ConsultarHistorialOrdenView,
@@ -9,17 +10,24 @@ from .views import (
     AdjuntoDiagnosticoDetailView,
     ListarItemsPresupuestoView,
     MarcarItemCompletadoView,
-    EliminarItemPresupuestoView
+    EliminarItemPresupuestoView,
+    ExportarOrdenPDFView,
+    RegistrarPagoOrdenView,
+    OrdenTrabajoAuditoriaView
 )
 
 urlpatterns = [
     path('ordenes/', CrearOrdenTrabajoView.as_view(), name='crear-orden-trabajo'),
+    path('ordenes/<uuid:id>/', DetalleOrdenTrabajoView.as_view(), name='detalle-orden-trabajo'),
+    path('ordenes/<uuid:id>/registrar-pago/', RegistrarPagoOrdenView.as_view(), name='orden-registrar-pago'),
+    path('ordenes/<uuid:pk>/pdf/', ExportarOrdenPDFView.as_view(), name='exportar-orden-pdf'),
     path('ordenes/<uuid:orden_id>/items/', ListarItemsPresupuestoView.as_view(), name='listar-items-presupuesto'),
     path('ordenes/<uuid:orden_id>/items/mano-de-obra/', AgregarManoDeObraView.as_view(), name='agregar-mano-de-obra'),
     path('ordenes/<uuid:orden_id>/items/repuestos/', AgregarRepuestoView.as_view(), name='agregar-repuesto'),
     path('ordenes/<uuid:orden_id>/items/<uuid:item_id>/completado/', MarcarItemCompletadoView.as_view(), name='marcar-item-completado'),
     path('ordenes/<uuid:orden_id>/items/<uuid:item_id>/', EliminarItemPresupuestoView.as_view(), name='eliminar-item-presupuesto'),
     path('ordenes/<uuid:orden_id>/historial/', ConsultarHistorialOrdenView.as_view(), name='consultar-historial-orden'),
+    path('ordenes/<uuid:orden_id>/auditoria/', OrdenTrabajoAuditoriaView.as_view(), name='orden-auditoria-nosql'),
     path('ordenes/<uuid:orden_id>/estado/', ActualizarEstadoOrdenView.as_view(), name='actualizar-estado-orden'),
     path('ordenes/<uuid:orden_id>/adjuntos/', AdjuntoDiagnosticoListCreateView.as_view(), name='listar-crear-adjuntos-orden'),
     path('diagnosticos/adjuntos/', AdjuntoDiagnosticoListCreateView.as_view(), name='crear-adjunto-diagnostico'),

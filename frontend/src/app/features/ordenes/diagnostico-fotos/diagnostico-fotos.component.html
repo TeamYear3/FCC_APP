@@ -2,111 +2,401 @@
   <!-- Header de Sección -->
   <div class="flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <div class="w-8 h-8 rounded-lg bg-[#FFCC00]/10 border border-[#FFCC00]/30 flex items-center justify-center">
-        <span class="text-sm">📷</span>
+      <div
+        class="w-8 h-8 rounded-lg bg-[#FFCC00]/10 border border-[#FFCC00]/30 flex items-center justify-center"
+      >
+        <span class="material-symbols-outlined text-[#FFCC00] text-lg">photo_camera</span>
       </div>
       <div>
-        <h3 class="text-sm font-black text-[#FFCC00] tracking-wide uppercase">Fotos de Diagnóstico</h3>
-        <p class="text-xs text-zinc-400">Evidencias visuales de la inspección mecánica</p>
+        <h3 class="text-sm font-black text-[#FFCC00] tracking-wide uppercase">
+          Galería de Evidencias e Imágenes
+        </h3>
+        <p class="text-xs text-zinc-400">Fotos de diagnóstico y control de calidad vinculables a servicios</p>
       </div>
     </div>
-    <span class="px-2.5 py-1 bg-zinc-800 text-zinc-300 rounded-full text-xs font-bold border border-zinc-700">
+    <span
+      class="px-2.5 py-1 bg-zinc-800 text-zinc-300 rounded-full text-xs font-bold border border-zinc-700"
+    >
       {{ listaAdjuntos().length }} {{ listaAdjuntos().length === 1 ? 'Foto' : 'Fotos' }}
     </span>
   </div>
 
   <!-- Alerta de Error -->
-  <div *ngIf="errorMessage()" class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
-    <span>⚠️</span>
-    <span>{{ errorMessage() }}</span>
-  </div>
+  @if (errorMessage()) {
+    <div
+      class="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2"
+    >
+      <span class="material-symbols-outlined text-red-400 text-base shrink-0">warning</span>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
 
-  <!-- Zona de Carga (Drag & Drop + Cámara Móvil) -->
-  <div *ngIf="!modoLectura" 
-       class="relative border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 cursor-pointer group"
-       [ngClass]="dragOver() ? 'border-[#FFCC00] bg-[#FFCC00]/10 scale-[1.01]' : 'border-zinc-700 hover:border-[#FFCC00]/60 bg-zinc-900/50 hover:bg-zinc-900'"
-       (dragover)="onDragOver($event)"
-       (dragleave)="onDragLeave($event)"
-       (drop)="onDrop($event)"
-       (click)="fileInputPC.click()">
-    
-    <input #fileInputPC type="file" multiple accept="image/*" class="hidden" (change)="onFileSelected($event)">
-    <input #fileInputCamera type="file" accept="image/*" capture="environment" class="hidden" (change)="onFileSelected($event)">
-
-    <div class="space-y-3">
-      <div class="w-12 h-12 mx-auto rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-        📸
+  <!-- Selector de Asociación a Servicio (Opcional) -->
+  @if (!modoLectura && serviciosDisponibles().length > 0) {
+    <div class="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-xs text-zinc-300">
+        <span class="material-symbols-outlined text-[#FFCC00] text-base">link</span>
+        <label for="selectServicio" class="font-bold">Asociar fotos a un servicio específico:</label>
       </div>
-      <div>
-        <p class="text-sm font-bold text-white group-hover:text-[#FFCC00] transition-colors">
-          Arrastra fotos aquí o haz clic para explorar
+      <div class="relative min-w-[240px]">
+        <select
+          id="selectServicio"
+          [ngModel]="itemSeleccionadoId()"
+          (ngModelChange)="itemSeleccionadoId.set($event)"
+          class="w-full bg-[#18181b] border border-zinc-700 focus:border-[#FFCC00] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none transition-colors"
+        >
+          <option value="">-- General (Sin asociar a servicio) --</option>
+          @for (item of serviciosDisponibles(); track item.id) {
+            <option [value]="item.id">
+              [{{ item.tipo === 'mano_de_obra' ? 'Mano de Obra' : 'Repuesto' }}] {{ item.descripcion }}
+            </option>
+          }
+        </select>
+      </div>
+    </div>
+  }
+
+  <!-- Zona de Acciones de Carga (Cámara y Archivos) -->
+  @if (!modoLectura) {
+    <!-- Inputs ocultos para archivo y cámara -->
+    <input
+      #fileInputPC
+      type="file"
+      multiple
+      accept="image/*"
+      class="hidden"
+      (change)="onFileSelected($event)"
+    />
+    <input
+      #fileInputCamera
+      id="inputCamaraNativa"
+      type="file"
+      accept="image/*"
+      capture="environment"
+      class="hidden"
+      (change)="onFileSelected($event)"
+    />
+
+    <!-- Botones Directos de Acción (Universal PC + Móvil) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <button
+        type="button"
+        (click)="abrirCamara()"
+        class="py-3 px-4 bg-[#FFCC00] hover:bg-[#e6b800] text-black font-black rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-[#FFCC00]/10 active:scale-98 transition-all"
+      >
+        <span class="material-symbols-outlined text-lg">photo_camera</span>
+        Tomar Foto con Cámara
+      </button>
+
+      <button
+        type="button"
+        (click)="fileInputPC.click()"
+        class="py-3 px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-98 transition-all"
+      >
+        <span class="material-symbols-outlined text-lg text-[#FFCC00]">upload_file</span>
+        Subir Archivo de Imagen
+      </button>
+    </div>
+
+    <!-- Zona Drag & Drop -->
+    <div
+      class="relative border-2 border-dashed rounded-xl p-5 text-center transition-all duration-200 cursor-pointer group"
+      [ngClass]="
+        dragOver()
+          ? 'border-[#FFCC00] bg-[#FFCC00]/10 scale-[1.01]'
+          : 'border-zinc-800 hover:border-[#FFCC00]/50 bg-zinc-900/30 hover:bg-zinc-900/60'
+      "
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="fileInputPC.click()"
+    >
+      <div class="flex flex-col items-center justify-center gap-1.5">
+        <span class="material-symbols-outlined text-zinc-500 group-hover:text-[#FFCC00] text-2xl transition-colors">
+          add_photo_alternate
+        </span>
+        <p class="text-xs font-semibold text-zinc-300">
+          O arrastra imágenes aquí para cargarlas automáticamente
         </p>
-        <p class="text-xs text-zinc-400 mt-0.5">Soporta JPG, PNG, WEBP (hasta 10MB)</p>
+        <p class="text-[10px] text-zinc-500">JPG, PNG, WEBP de alta resolución</p>
       </div>
 
-      <!-- Botón especial para Móvil/Smartphones (Cámara Directa) -->
-      <div class="pt-2 sm:hidden">
-        <button type="button" 
-                (click)="$event.stopPropagation(); fileInputCamera.click()" 
-                class="w-full py-2.5 px-4 bg-[#FFCC00] text-black font-extrabold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
-          <span>📱</span> Capturar con Cámara del Teléfono
-        </button>
-      </div>
+      <!-- Spinner de subida -->
+      @if (subiendo()) {
+        <div
+          class="absolute inset-0 bg-black/85 rounded-xl backdrop-blur-sm flex items-center justify-center gap-2 text-[#FFCC00] font-bold text-xs"
+        >
+          <div
+            class="w-5 h-5 border-2 border-[#FFCC00] border-t-transparent rounded-full animate-spin"
+          ></div>
+          Subiendo imagen y sincronizando en vivo...
+        </div>
+      }
     </div>
-
-    <!-- Spinner de subida -->
-    <div *ngIf="subiendo()" class="absolute inset-0 bg-black/80 rounded-xl backdrop-blur-sm flex items-center justify-center gap-2 text-[#FFCC00] font-bold text-xs">
-      <div class="w-5 h-5 border-2 border-[#FFCC00] border-t-transparent rounded-full animate-spin"></div>
-      Subiendo evidencia visual...
-    </div>
-  </div>
+  }
 
   <!-- Loading State -->
-  <div *ngIf="cargando()" class="py-8 text-center text-zinc-500 text-xs flex items-center justify-center gap-2">
-    <div class="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin"></div>
-    Cargando fotos de diagnóstico...
-  </div>
+  @if (cargando()) {
+    <div class="py-8 text-center text-zinc-500 text-xs flex items-center justify-center gap-2">
+      <div
+        class="w-4 h-4 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin"
+      ></div>
+      Cargando fotos de diagnóstico...
+    </div>
+  }
 
   <!-- Galería de Fotos -->
-  <div *ngIf="!cargando() && listaAdjuntos().length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-2">
-    <div *ngFor="let adjunto of listaAdjuntos()" 
-         (click)="abrirFotoCompleta(adjunto)"
-         class="group relative aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 cursor-pointer hover:border-[#FFCC00] transition-all">
-      <img [src]="adjunto.url_secure" [alt]="adjunto.nombre_archivo" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-      
-      <!-- Overlay de Hover -->
-      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between">
-        <div class="flex justify-end" *ngIf="!modoLectura">
-          <button type="button" 
-                  (click)="eliminarAdjunto(adjunto, $event)" 
-                  class="w-7 h-7 rounded-lg bg-red-600/90 text-white flex items-center justify-center text-xs hover:bg-red-700 transition-colors shadow-md">
-            🗑️
-          </button>
+  @if (!cargando() && listaAdjuntos().length > 0) {
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-2">
+      @for (adjunto of listaAdjuntos(); track adjunto.id) {
+        <div
+          (click)="abrirFotoCompleta(adjunto)"
+          class="group relative aspect-square rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 cursor-pointer hover:border-[#FFCC00] transition-all shadow-md"
+        >
+          <img
+            [src]="normalizarUrl(adjunto.url_secure)"
+            [alt]="adjunto.nombre_archivo"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+
+          <!-- Badge de Servicio Asociado (Siempre Visible si existe) -->
+          @if (adjunto.item_presupuesto_descripcion) {
+            <div class="absolute top-1.5 left-1.5 max-w-[85%] z-10">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[10px] font-bold text-[#FFCC00] border border-[#FFCC00]/40 truncate shadow">
+                <span class="material-symbols-outlined text-[11px]">build</span>
+                <span class="truncate">{{ adjunto.item_presupuesto_descripcion }}</span>
+              </span>
+            </div>
+          }
+
+          <!-- Overlay de Hover -->
+          <div
+            class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between"
+          >
+            <div class="flex justify-end gap-1">
+              @if (!modoLectura) {
+                <button
+                  type="button"
+                  (click)="eliminarAdjunto(adjunto, $event)"
+                  title="Eliminar foto"
+                  class="w-7 h-7 rounded-lg bg-red-600/90 text-white flex items-center justify-center text-xs hover:bg-red-700 transition-colors shadow-md"
+                >
+                  <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+              }
+            </div>
+            <div>
+              <p class="text-[10px] font-bold text-white truncate">{{ adjunto.nombre_archivo }}</p>
+              <p class="text-[9px] text-zinc-300">
+                {{ adjunto.creado_en | date: 'dd/MM/yyyy HH:mm' }}
+              </p>
+            </div>
+          </div>
         </div>
-        <div>
-          <p class="text-[10px] font-bold text-white truncate">{{ adjunto.nombre_archivo }}</p>
-          <p class="text-[9px] text-zinc-300">{{ adjunto.creado_en | date:'dd/MM/yyyy HH:mm' }}</p>
-        </div>
-      </div>
+      }
     </div>
-  </div>
+  }
 
   <!-- Sin fotos cargadas -->
-  <div *ngIf="!cargando() && listaAdjuntos().length === 0" class="py-6 text-center text-zinc-500 text-xs border border-zinc-800/60 rounded-xl bg-zinc-900/30">
-    No hay fotos de diagnóstico cargadas aún en esta Orden de Trabajo.
-  </div>
+  @if (!cargando() && listaAdjuntos().length === 0) {
+    <div
+      class="py-6 text-center text-zinc-500 text-xs border border-zinc-800/60 rounded-xl bg-zinc-900/30 flex flex-col items-center gap-1"
+    >
+      <span class="material-symbols-outlined text-zinc-600 text-2xl">no_photography</span>
+      <p>No hay fotos de diagnóstico cargadas aún en esta Orden de Trabajo.</p>
+    </div>
+  }
 
-  <!-- Modal de Previsualización a Tamaño Completo -->
-  <div *ngIf="fotoSeleccionada()" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4" (click)="cerrarModalFoto()">
-    <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" (click)="$event.stopPropagation()">
-      <button type="button" (click)="cerrarModalFoto()" class="absolute -top-10 right-0 text-white hover:text-[#FFCC00] text-xl font-bold p-2">
-        ✕ Cerrar
-      </button>
-      <img [src]="fotoSeleccionada()?.url_secure" [alt]="fotoSeleccionada()?.nombre_archivo" class="max-w-full max-h-[80vh] rounded-xl object-contain shadow-2xl border border-zinc-800">
-      <div class="mt-3 text-center">
-        <p class="text-sm font-bold text-white">{{ fotoSeleccionada()?.nombre_archivo }}</p>
-        <p class="text-xs text-zinc-400">Subida el {{ fotoSeleccionada()?.creado_en | date:'dd/MM/yyyy HH:mm' }} por {{ fotoSeleccionada()?.creado_por_nombre }}</p>
+  <!-- Modal de Previsualización a Tamaño Completo con Zoom -->
+  @if (fotoSeleccionada()) {
+    <div
+      class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+      (click)="cerrarModalFoto()"
+    >
+      <div
+        class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Barra Superior de Herramientas del Modal -->
+        <div class="w-full flex items-center justify-between pb-3 text-white">
+          <div class="flex items-center gap-2">
+            @if (fotoSeleccionada()?.item_presupuesto_descripcion) {
+              <span class="px-2.5 py-1 bg-[#FFCC00]/20 text-[#FFCC00] text-xs font-bold rounded-lg border border-[#FFCC00]/40 flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">build</span>
+                Servicio: {{ fotoSeleccionada()?.item_presupuesto_descripcion }}
+              </span>
+            } @else {
+              <span class="px-2.5 py-1 bg-zinc-800 text-zinc-400 text-xs font-semibold rounded-lg">
+                Foto General de la Orden
+              </span>
+            }
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Botón Zoom -->
+            <button
+              type="button"
+              (click)="toggleZoom()"
+              class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-lg flex items-center gap-1 transition-colors"
+              title="Aumentar / Reducir Zoom"
+            >
+              <span class="material-symbols-outlined text-sm">
+                {{ zoomNivel() === 1 ? 'zoom_in' : 'zoom_out' }}
+              </span>
+              {{ zoomNivel() === 1 ? 'Zoom 175%' : 'Restablecer' }}
+            </button>
+
+            <!-- Botón Eliminar desde Modal -->
+            @if (!modoLectura) {
+              <button
+                type="button"
+                (click)="eliminarAdjunto(fotoSeleccionada()!, $event)"
+                class="px-2.5 py-1.5 bg-red-600/80 hover:bg-red-700 text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-colors"
+                title="Eliminar esta foto"
+              >
+                <span class="material-symbols-outlined text-sm">delete</span>
+                Eliminar
+              </button>
+            }
+
+            <!-- Botón Cerrar -->
+            <button
+              type="button"
+              (click)="cerrarModalFoto()"
+              class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-[#FFCC00] text-xs font-bold rounded-lg flex items-center gap-1 transition-colors"
+            >
+              <span class="material-symbols-outlined text-base">close</span>
+              Cerrar
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenedor con Scroll/Zoom de la Imagen -->
+        <div class="w-full max-h-[75vh] overflow-auto flex items-center justify-center rounded-xl bg-zinc-950 border border-zinc-800 p-2">
+          <img
+            [src]="normalizarUrl(fotoSeleccionada()?.url_secure)"
+            [alt]="fotoSeleccionada()?.nombre_archivo"
+            class="max-w-full max-h-[70vh] rounded-lg object-contain transition-transform duration-200 shadow-2xl cursor-zoom-in"
+            [style.transform]="'scale(' + zoomNivel() + ')'"
+            (click)="toggleZoom()"
+          />
+        </div>
+
+        <!-- Metadatos de la Foto -->
+        <div class="mt-3 text-center">
+          <p class="text-sm font-bold text-white">{{ fotoSeleccionada()?.nombre_archivo }}</p>
+          <p class="text-xs text-zinc-400 mt-0.5">
+            Subida el {{ fotoSeleccionada()?.creado_en | date: 'dd/MM/yyyy HH:mm:ss' }}
+            @if (fotoSeleccionada()?.creado_por_nombre) {
+              por <span class="text-zinc-200 font-semibold">{{ fotoSeleccionada()?.creado_por_nombre }}</span>
+            }
+          </p>
+        </div>
       </div>
     </div>
-  </div>
+  }
+
+  <!-- Modal de Cámara en Vivo con MediaDevices (Navegador PC y Móvil) -->
+  @if (camaraAbierta()) {
+    <div
+      class="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+      (click)="cerrarCamara()"
+    >
+      <div
+        class="relative max-w-2xl w-full flex flex-col items-center bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden p-5 shadow-2xl space-y-4"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Header del Modal de Cámara -->
+        <div class="w-full flex items-center justify-between text-white border-b border-zinc-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></span>
+            <h4 class="text-sm font-bold text-white tracking-wide uppercase">Cámara en Vivo</h4>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarCamara()"
+            class="text-zinc-400 hover:text-white p-1 rounded-lg transition-colors"
+          >
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        <!-- Alerta si hubo error de permisos -->
+        @if (errorCamara()) {
+          <div class="w-full p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
+            <span class="material-symbols-outlined text-base shrink-0">warning</span>
+            <span>{{ errorCamara() }}</span>
+          </div>
+        }
+
+        <!-- Viewfinder (Video o Preview Capturado) -->
+        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-zinc-800 flex items-center justify-center">
+          @if (!capturaPreview()) {
+            <!-- Video Stream en Vivo -->
+            <video
+              id="videoCamara"
+              autoplay
+              playsinline
+              muted
+              class="w-full h-full object-cover"
+            ></video>
+
+            <!-- Retícula Guía de Encuadre -->
+            <div class="absolute inset-4 pointer-events-none border border-white/20 rounded-lg flex flex-col justify-between p-2">
+              <div class="flex justify-between text-[#FFCC00] text-xs font-mono">
+                <span>[ REC ]</span>
+                <span>HD</span>
+              </div>
+              <div class="text-center text-white/50 text-[10px] font-sans">
+                Alinea la evidencia mecánica dentro del encuadre
+              </div>
+            </div>
+          } @else {
+            <!-- Foto Capturada (Preview) -->
+            <img
+              [src]="capturaPreview()"
+              alt="Captura de Cámara"
+              class="w-full h-full object-contain"
+            />
+          }
+        </div>
+
+        <!-- Botones de Control de la Cámara -->
+        <div class="w-full flex items-center justify-center gap-4 pt-2">
+          @if (!capturaPreview()) {
+            <!-- Botón Shutter / Disparador -->
+            <button
+              type="button"
+              (click)="capturarFotoCamara()"
+              class="w-16 h-16 rounded-full bg-[#FFCC00] hover:bg-[#e6b800] border-4 border-black/40 flex items-center justify-center shadow-lg shadow-[#FFCC00]/20 active:scale-90 transition-transform"
+              title="Disparar Foto"
+            >
+              <span class="material-symbols-outlined text-black text-2xl font-bold">photo_camera</span>
+            </button>
+          } @else {
+            <!-- Botones de Decisión (Reintentar o Confirmar) -->
+            <button
+              type="button"
+              (click)="reintentarCaptura()"
+              class="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-colors"
+            >
+              <span class="material-symbols-outlined text-base">replay</span>
+              Tomar Otra Foto
+            </button>
+
+            <button
+              type="button"
+              (click)="confirmarSubidaCamara()"
+              class="px-5 py-2.5 bg-[#FFCC00] hover:bg-[#e6b800] text-black font-black rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-[#FFCC00]/20 transition-all"
+            >
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              Confirmar y Subir Evidencia
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>
+

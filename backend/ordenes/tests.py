@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import patch
 from decimal import Decimal
 from django.test import TestCase
@@ -760,19 +761,21 @@ class OrdenTrabajoEmailTest(TestCase):
 
     @patch("ordenes.signals.enviar_email_orden_background")
     def test_creacion_orden_dispara_senal_email(self, mock_enviar_email):
-        orden = OrdenTrabajo.objects.create(
-            vehiculo=self.vehiculo,
-            descripcion_problema="Alineación y balanceo"
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            orden = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema="Alineación y balanceo"
+            )
         mock_enviar_email.assert_called_once_with(orden.id)
 
     @patch("threading.Thread")
     def test_senal_tolerancia_a_errores_de_hilo(self, mock_thread):
         mock_thread.return_value.start.side_effect = Exception("Fallo al iniciar el hilo de pruebas")
-        orden = OrdenTrabajo.objects.create(
-            vehiculo=self.vehiculo,
-            descripcion_problema="Revisión general"
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            orden = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema="Revisión general"
+            )
         self.assertIsNotNone(orden.id)
 
 
@@ -1123,6 +1126,357 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertIn("está cancelado", str(ctx.exception))
+
+
+class ExportarOrdenPDFViewTest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email='admin_pdf@taller.com',
+            nombre='Admin',
+            apellido='PDF',
+            password='password123',
+            rol='admin'
+        )
+        self.user_cliente = User.objects.create_user(
+            email='cliente_pdf@taller.com',
+            nombre='Cliente',
+            apellido='PDF',
+            password='password123',
+            rol='cliente'
+        )
+        self.user_otro_cliente = User.objects.create_user(
+            email='otro_pdf@taller.com',
+            nombre='Otro',
+            apellido='PDF',
+            password='password123',
+            rol='cliente'
+        )
+
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Carlos",
+            apellido="Gómez",
+            tipo_documento="DNI",
+            dni_cuit="20334455667",
+            condicion_iva="CF",
+            telefono="1122334455"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="PDF123",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Ruido en tren delantero y frenos",
+            complejidad='media'
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Revisión tren delantero",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("15000.00")
+        )
+
+    def test_admin_puede_descargar_pdf_orden(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('inline; filename="orden_trabajo_', response['Content-Disposition'])
+        self.assertTrue(len(response.content) > 0)
+
+    def test_cliente_propietario_puede_descargar_pdf(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_cliente_ajeno_recibe_forbidden(self):
+        self.client.force_authenticate(user=self.user_otro_cliente)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_orden_inexistente_retorna_404(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('exportar-orden-pdf', kwargs={'pk': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import AdjuntoDiagnostico
+
+
+class AdjuntoDiagnosticoAPITest(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_adjuntos@fccapp.com",
+            password="Password123!",
+            rol="admin"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="22334455",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AC123BD",
+            marca="Ford",
+            modelo="Ranger",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Fallo en bomba de combustible",
+            fecha_ingreso="2026-09-19"
+        )
+        self.item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Reemplazo de bomba de nafta",
+            precio_unitario=Decimal("15000.00"),
+            cantidad=Decimal("1.00")
+        )
+
+    def test_subir_adjunto_vinculado_a_servicio_y_notificar_ws(self):
+        self.client.force_authenticate(user=self.admin)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        foto_mock = SimpleUploadedFile("bomba.jpg", b"fake image bytes", content_type="image/jpeg")
+
+        with patch('ordenes.services.notificar_adjunto_diagnostico_websocket') as mock_ws:
+            response = self.client.post(url, {
+                'archivo': foto_mock,
+                'item_presupuesto_id': str(self.item.id)
+            }, format='multipart')
+
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(response.data['item_presupuesto_id'], str(self.item.id))
+            self.assertEqual(response.data['item_presupuesto_descripcion'], "Reemplazo de bomba de nafta")
+            self.assertTrue(mock_ws.called)
+            self.assertEqual(mock_ws.call_args[1]['accion'], 'creado')
+
+    def test_eliminar_adjunto_y_notificar_ws(self):
+        self.client.force_authenticate(user=self.admin)
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/test.jpg",
+            public_id="diagnosticos/test.jpg",
+            nombre_archivo="test.jpg"
+        )
+        url = reverse('eliminar-adjunto-diagnostico', kwargs={'adjunto_id': adjunto.id})
+
+        with patch('ordenes.services.notificar_adjunto_diagnostico_websocket') as mock_ws:
+            response = self.client.delete(url)
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+            self.assertFalse(AdjuntoDiagnostico.objects.filter(id=adjunto.id).exists())
+            self.assertTrue(mock_ws.called)
+            self.assertEqual(mock_ws.call_args[1]['accion'], 'eliminado')
+
+
+class DetalleOrdenTrabajoAPITestCase(APITestCase):
+    def setUp(self):
+        self.user_admin = User.objects.create_user(
+            email="admin_detalle@taller.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="password123"
+        )
+        self.user_tecnico = User.objects.create_user(
+            email="tecnico_detalle@taller.com",
+            nombre="Tecnico",
+            apellido="Taller",
+            rol="tecnico",
+            password="password123"
+        )
+        self.user_cliente = User.objects.create_user(
+            email="cliente_detalle@taller.com",
+            nombre="Cliente",
+            apellido="Propietario",
+            rol="cliente",
+            password="password123"
+        )
+        self.user_ajeno = User.objects.create_user(
+            email="ajeno_detalle@taller.com",
+            nombre="Cliente",
+            apellido="Ajeno",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Cliente",
+            apellido="Propietario",
+            tipo_documento="DNI",
+            dni_cuit="22333444",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA123BB",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.user_tecnico,
+            descripcion_problema="Problema de frenos y revisión general",
+            fecha_ingreso="2026-09-15"
+        )
+
+    def test_consultar_detalle_orden_admin_exito(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.orden.id))
+        self.assertEqual(response.data['numero_ot'], self.orden.numero_ot)
+        self.assertEqual(response.data['vehiculo_patente'], "AA123BB")
+        self.assertEqual(response.data['cliente_nombre'], "Cliente Propietario")
+
+    def test_consultar_detalle_orden_tecnico_exito(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.orden.id))
+
+    def test_consultar_detalle_orden_cliente_duenio_exito(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], str(self.orden.id))
+        self.assertEqual(response.data['vehiculo_patente'], "AA123BB")
+
+    def test_consultar_detalle_orden_cliente_ajeno_restringido(self):
+        self.client.force_authenticate(user=self.user_ajeno)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_consultar_detalle_orden_inexistente(self):
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': uuid.uuid4()})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_consultar_detalle_orden_no_autenticado_restringido(self):
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class RegistrarPagoOrdenAPITestCase(APITestCase):
+    def setUp(self):
+        self.user_admin = User.objects.create_superuser(
+            email="admin_cobro@example.com",
+            nombre="Admin",
+            apellido="Taller",
+            rol="admin",
+            password="adminpassword"
+        )
+        self.user_tecnico = User.objects.create_user(
+            email="tecnico_cobro@example.com",
+            nombre="Tecnico",
+            apellido="Taller",
+            rol="tecnico",
+            password="tecnicopassword"
+        )
+        self.user_cliente = User.objects.create_user(
+            email="cliente_cobro@example.com",
+            nombre="Cliente",
+            apellido="Taller",
+            rol="cliente",
+            password="clientepassword"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Roberto",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="28444333",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="CC999DD",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.user_tecnico,
+            descripcion_problema="Service programado 50.000km",
+            estado=EstadoOrden.FINALIZADO
+        )
+        self.url = reverse('orden-registrar-pago', kwargs={'id': self.orden.id})
+
+    def test_registrar_pago_exitoso_efectivo(self):
+        self.client.force_authenticate(user=self.user_admin)
+        payload = {
+            "metodo_pago": "efectivo",
+            "comentario": "Pago abonado en efectivo en mostrador",
+            "entregar_orden": False
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["message"], "Cobro registrado exitosamente.")
+        self.assertEqual(response.data["orden"]["estado_cobro"], "cobrado")
+        self.assertEqual(response.data["orden"]["metodo_pago"], "efectivo")
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado_cobro, "cobrado")
+        self.assertEqual(self.orden.metodo_pago, "efectivo")
+        self.assertIsNotNone(self.orden.fecha_cobro)
+        self.assertEqual(self.orden.estado, EstadoOrden.FINALIZADO)
+
+    def test_registrar_pago_con_entrega_orden(self):
+        self.client.force_authenticate(user=self.user_tecnico)
+        payload = {
+            "metodo_pago": "transferencia",
+            "comentario": "Transferencia comprobante #987654",
+            "entregar_orden": True
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["orden"]["estado_cobro"], "cobrado")
+        self.assertEqual(response.data["orden"]["estado"], EstadoOrden.ENTREGADO)
+
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.ENTREGADO)
+        self.assertIsNotNone(self.orden.fecha_entrega)
+
+    def test_registrar_pago_metodo_invalido(self):
+        self.client.force_authenticate(user=self.user_admin)
+        payload = {
+            "metodo_pago": "metodo_inexistente"
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("metodo_pago", response.data)
+
+    def test_registrar_pago_cliente_restringido(self):
+        self.client.force_authenticate(user=self.user_cliente)
+        payload = {
+            "metodo_pago": "debito"
+        }
+        response = self.client.post(self.url, payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+
 
 
 

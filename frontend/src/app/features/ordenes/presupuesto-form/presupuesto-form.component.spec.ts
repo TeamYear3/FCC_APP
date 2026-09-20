@@ -1,3 +1,4 @@
+import { describe, beforeEach, it, expect, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PresupuestoFormComponent } from './presupuesto-form.component';
 import { OrdenService, ItemPresupuesto } from '../../../core/services/orden.service';
@@ -35,7 +36,7 @@ describe('PresupuestoFormComponent', () => {
       agregarManoDeObra: vi.fn().mockReturnValue(of(itemsMock[1])),
       agregarRepuesto: vi.fn().mockReturnValue(of(itemsMock[0])),
       marcarItemCompletado: vi.fn().mockReturnValue(of({ ...itemsMock[1], completado: true })),
-      eliminarItemPresupuesto: vi.fn().mockReturnValue(of({ message: 'OK', monto_total: 8000 }))
+      eliminarItemPresupuesto: vi.fn().mockReturnValue(of({ message: 'OK', monto_total: 12000 }))
     };
 
     await TestBed.configureTestingModule({
@@ -99,12 +100,49 @@ describe('PresupuestoFormComponent', () => {
     expect(ordenServiceMock.marcarItemCompletado).toHaveBeenCalledWith('orden-123', 'item-2', true);
   });
 
-  it('debe eliminar un ítem del presupuesto', () => {
+  it('debe eliminar un ítem del presupuesto y actualizar reactivamente el monto total', () => {
     fixture.detectChanges();
+    expect(component.items().length).toBe(2);
+    expect(component.montoTotal()).toBe(20000);
 
-    const itemTarget = itemsMock[0]; // item-1
+    const spyTotal = vi.spyOn(component.totalActualizado, 'emit');
+    const spyItems = vi.spyOn(component.itemsActualizados, 'emit');
+
+    const itemTarget = itemsMock[0]; // item-1 ($8000)
     component.eliminarItem(itemTarget);
 
     expect(ordenServiceMock.eliminarItemPresupuesto).toHaveBeenCalledWith('orden-123', 'item-1');
+    expect(component.items().length).toBe(1);
+    expect(component.montoTotal()).toBe(12000);
+    expect(spyTotal).toHaveBeenCalledWith(12000);
+    expect(spyItems).toHaveBeenCalled();
+  });
+
+  it('debe filtrar sugerencias predictivas según el tipo y texto ingresado (TK104)', () => {
+    fixture.detectChanges();
+    component.nuevoTipo.set('mano_de_obra');
+    component.nuevaDescripcion.set('Aceite');
+
+    const sugerencias = component.sugerenciasFiltradas();
+    expect(sugerencias.length).toBeGreaterThan(0);
+    expect(sugerencias[0].descripcion.toLowerCase()).toContain('aceite');
+    expect(sugerencias[0].tipo).toBe('mano_de_obra');
+  });
+
+  it('debe autocompletar descripcion y precio sugerido al seleccionar una sugerencia (TK104)', () => {
+    fixture.detectChanges();
+    component.nuevoTipo.set('repuesto');
+    
+    const sugerencia = {
+      tipo: 'repuesto' as const,
+      descripcion: 'Filtro de Aceite Original',
+      precioSugerido: 18000,
+      categoria: 'Mantenimiento'
+    };
+
+    component.seleccionarSugerencia(sugerencia);
+
+    expect(component.nuevaDescripcion()).toBe('Filtro de Aceite Original');
+    expect(component.nuevoPrecioUnitario()).toBe(18000);
   });
 });

@@ -1,14 +1,14 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-acceso-denegado',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './acceso-denegado.component.html',
-  styleUrl: './acceso-denegado.component.css'
+  styleUrl: './acceso-denegado.component.css',
 })
 export class AccesoDenegadoComponent {
   readonly authService = inject(AuthService);
