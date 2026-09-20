@@ -1,5 +1,5 @@
 <div
-  class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg relative overflow-hidden select-none"
+  class="min-h-screen bg-color-bg-main text-color-text-primary flex flex-col justify-between p-md sm:p-lg pb-28 sm:pb-8 relative overflow-hidden select-none"
 >
   <!-- Contenedor Principal con z-index superior y grilla isometría FCC APP -->
   <div class="max-w-[1650px] mx-auto w-full relative z-10 flex-1">
@@ -287,8 +287,116 @@
           </div>
         </div>
       } @else {
-        <!-- Tabla Responsive de Órdenes -->
-        <div class="overflow-x-auto">
+        <!-- Vista Móvil de Tarjetas Táctiles (< 640px) (TK105) -->
+        <div class="block sm:hidden space-y-3">
+          @for (orden of listaOrdenes(); track orden.id) {
+            <div
+              (click)="seleccionarOrden(orden, true)"
+              class="p-4 rounded-2xl border transition-all cursor-pointer space-y-3"
+              [ngClass]="{
+                'bg-color-primary-accent/15 border-color-primary-accent shadow-lg': orden.id === ordenActiva()?.id,
+                'bg-black/40 border-white/10 hover:border-white/20': orden.id !== ordenActiva()?.id
+              }"
+            >
+              <!-- Cabecera de la Tarjeta Móvil -->
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <span class="font-mono text-xs px-2 py-0.5 rounded bg-black/60 border border-white/15 text-color-primary-accent font-bold">
+                    #{{ orden.numero_ot || orden.id.slice(0, 8) }}
+                  </span>
+                  <h3 class="text-sm font-bold text-white mt-1">
+                    {{ orden.vehiculo_marca_modelo || 'Vehículo ' + (orden.vehiculo_patente || '') }}
+                  </h3>
+                  <div class="font-mono text-xs text-zinc-300 font-bold mt-0.5">
+                    Patente: <span class="text-white px-1.5 py-0.5 rounded bg-black/60 border border-white/10">{{ orden.vehiculo_patente || 'S/D' }}</span>
+                  </div>
+                </div>
+                <div class="text-right flex flex-col items-end gap-1">
+                  <span
+                    class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide inline-block"
+                    [ngClass]="getEstadoBadgeClass(orden.estado)"
+                  >
+                    {{ orden.estado.replace('_', ' ') }}
+                  </span>
+                  <span
+                    class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
+                    [ngClass]="{
+                      'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30': orden.estado_cobro === 'cobrado',
+                      'bg-zinc-800 text-zinc-400 border border-zinc-700': orden.estado_cobro !== 'cobrado'
+                    }"
+                  >
+                    {{ orden.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Datos de Cliente y Monto -->
+              <div class="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-zinc-400">
+                <div>
+                  <span class="text-white font-medium block">{{ orden.cliente_nombre || 'Cliente General' }}</span>
+                  <span class="text-[11px]">{{ orden.fecha_ingreso | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-[10px] text-zinc-500 block uppercase">Total</span>
+                  <span class="text-sm font-mono font-extrabold text-color-primary-accent">
+                    $ {{ (orden.monto_total || 0) | number:'1.2-2' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Botones de Acción Táctiles (Mínimo 44px de alto) (TK105) -->
+              <div class="pt-2 border-t border-white/5 grid grid-cols-4 gap-2" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  (click)="seleccionarOrden(orden, true)"
+                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-color-primary-accent hover:text-black text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
+                  title="Ver Expediente"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  (click)="abrirModalEstado(orden)"
+                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
+                  title="Cambiar Estado"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  (click)="abrirModalCobro(orden)"
+                  class="min-h-[44px] rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-400 font-bold text-xs flex items-center justify-center gap-1 transition-all border border-emerald-500/30 cursor-pointer"
+                  title="Registrar Cobro"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  (click)="imprimirOT(orden)"
+                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
+                  title="Descargar PDF"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Tabla Responsive de Órdenes (Visible en >= 640px) -->
+        <div class="hidden sm:block overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
             <thead>
               <tr class="border-b border-white/10 text-zinc-400 font-semibold uppercase tracking-wider text-[11px]">
@@ -387,13 +495,13 @@
 
                   <!-- Columna Acciones Rápidas -->
                   <td class="py-3 px-3 text-center whitespace-nowrap">
-                    <div class="inline-flex items-center gap-1" (click)="$event.stopPropagation()">
+                    <div class="inline-flex items-center gap-1.5" (click)="$event.stopPropagation()">
                       <!-- Botón Ver Expediente -->
                       <button
                         type="button"
                         (click)="seleccionarOrden(orden, true)"
                         title="Ver Expediente"
-                        class="p-1.5 rounded-lg bg-white/5 hover:bg-color-primary-accent hover:text-black text-zinc-300 transition-colors border-0 cursor-pointer"
+                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-color-primary-accent hover:text-black text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -406,7 +514,7 @@
                         type="button"
                         (click)="abrirModalEstado(orden)"
                         title="Cambiar Estado de la Orden"
-                        class="p-1.5 rounded-lg bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer"
+                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -418,7 +526,7 @@
                         type="button"
                         (click)="abrirModalCobro(orden)"
                         title="Registrar Cobro"
-                        class="p-1.5 rounded-lg bg-white/5 hover:bg-emerald-500/20 text-emerald-400 transition-colors border-0 cursor-pointer"
+                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500 hover:text-black text-emerald-400 transition-colors border border-emerald-500/30 cursor-pointer flex items-center justify-center"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -430,7 +538,7 @@
                         type="button"
                         (click)="imprimirOT(orden)"
                         title="Descargar Comprobante PDF"
-                        class="p-1.5 rounded-lg bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer"
+                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -443,7 +551,7 @@
                           type="button"
                           (click)="pausarOReanudarOrden(orden)"
                           [title]="orden.estado === 'en_proceso' ? 'Pausar Orden' : 'Reanudar Orden'"
-                          class="p-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 transition-colors border-0 cursor-pointer"
+                          class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-amber-500/20 text-amber-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             @if (orden.estado === 'en_proceso') {
