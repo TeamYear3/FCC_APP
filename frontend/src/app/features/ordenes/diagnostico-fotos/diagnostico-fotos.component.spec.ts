@@ -11,6 +11,7 @@ describe('DiagnosticoFotosComponent', () => {
     obtenerAdjuntosDiagnostico: ReturnType<typeof vi.fn>;
     subirAdjuntoDiagnostico: ReturnType<typeof vi.fn>;
     eliminarAdjuntoDiagnostico: ReturnType<typeof vi.fn>;
+    obtenerItemsPresupuesto: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
@@ -37,7 +38,8 @@ describe('DiagnosticoFotosComponent', () => {
         mime_type: 'image/jpeg',
         creado_en: '2026-08-14T12:05:00Z'
       })),
-      eliminarAdjuntoDiagnostico: vi.fn().mockReturnValue(of(void 0))
+      eliminarAdjuntoDiagnostico: vi.fn().mockReturnValue(of(void 0)),
+      obtenerItemsPresupuesto: vi.fn().mockReturnValue(of([]))
     };
 
     await TestBed.configureTestingModule({

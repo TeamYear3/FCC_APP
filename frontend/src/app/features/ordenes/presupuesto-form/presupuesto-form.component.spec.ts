@@ -36,7 +36,7 @@ describe('PresupuestoFormComponent', () => {
       agregarManoDeObra: vi.fn().mockReturnValue(of(itemsMock[1])),
       agregarRepuesto: vi.fn().mockReturnValue(of(itemsMock[0])),
       marcarItemCompletado: vi.fn().mockReturnValue(of({ ...itemsMock[1], completado: true })),
-      eliminarItemPresupuesto: vi.fn().mockReturnValue(of({ message: 'OK', monto_total: 8000 }))
+      eliminarItemPresupuesto: vi.fn().mockReturnValue(of({ message: 'OK', monto_total: 12000 }))
     };
 
     await TestBed.configureTestingModule({
