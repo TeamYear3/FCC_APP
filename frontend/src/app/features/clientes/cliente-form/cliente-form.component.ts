@@ -45,7 +45,7 @@ export class ClienteFormComponent implements OnInit {
       } else {
         dniCuitControl.setValidators([
           Validators.required,
-          Validators.pattern(/^\d{2}-\d{8}-\d{1}$/),
+          Validators.pattern(/^(\d{2}-?\d{8}-?\d{1}|\d{11})$/),
         ]);
       }
       dniCuitControl.updateValueAndValidity();
@@ -84,9 +84,19 @@ export class ClienteFormComponent implements OnInit {
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
+    const formRaw = this.clienteForm.value;
+    let dniCuitVal = (formRaw.dni_cuit || '').trim();
+    if (this.tipoDocumentoSeleccionado === 'CUIT') {
+      const limpio = dniCuitVal.replace(/\D/g, '');
+      if (limpio.length === 11) {
+        dniCuitVal = `${limpio.slice(0, 2)}-${limpio.slice(2, 10)}-${limpio.slice(10)}`;
+      }
+    }
+
     // En Angular, form.value excluye automáticamente los controles deshabilitados
     const payload: Partial<ClientePayload> = {
-      ...this.clienteForm.value,
+      ...formRaw,
+      dni_cuit: dniCuitVal,
     };
 
     const request$ = this.isEditMode()

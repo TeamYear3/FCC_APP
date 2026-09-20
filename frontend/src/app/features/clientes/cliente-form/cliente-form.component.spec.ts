@@ -56,16 +56,20 @@ describe('ClienteFormComponent', () => {
     expect(dniControl?.valid).toBe(true);
   });
 
-  it('debe alternar la validación y exigir el formato XX-XXXXXXXX-X cuando se selecciona CUIT', () => {
+  it('debe alternar la validación y aceptar CUIT con guiones o de 11 dígitos puros', () => {
     const tipoControl = component.clienteForm.get('tipo_documento');
     const dniCuitControl = component.clienteForm.get('dni_cuit');
 
     tipoControl?.setValue('CUIT');
-    
-    // CUIT sin guiones debe ser inválido
-    dniCuitControl?.setValue('20301234569');
+
+    // CUIT con longitud incorrecta debe ser inválido
+    dniCuitControl?.setValue('2030123');
     expect(dniCuitControl?.valid).toBe(false);
     expect(dniCuitControl?.errors?.['pattern']).toBeTruthy();
+
+    // CUIT con 11 dígitos puros debe ser válido
+    dniCuitControl?.setValue('20301234569');
+    expect(dniCuitControl?.valid).toBe(true);
 
     // CUIT con guiones oficial debe ser válido
     dniCuitControl?.setValue('20-30123456-9');
