@@ -171,7 +171,7 @@ export class OrdenFormComponent implements OnInit {
       if (tipo === 'DNI') {
         dniCtrl?.setValidators([Validators.required, Validators.pattern(/^\d{7,8}$/)]);
       } else {
-        dniCtrl?.setValidators([Validators.required, Validators.pattern(/^\d{2}-\d{8}-\d{1}$/)]);
+        dniCtrl?.setValidators([Validators.required, Validators.pattern(/^(\d{2}-?\d{8}-?\d{1}|\d{11})$/)]);
       }
       dniCtrl?.updateValueAndValidity();
     });
@@ -219,11 +219,19 @@ export class OrdenFormComponent implements OnInit {
     this.errorModalCliente.set(null);
 
     const formVal = this.clienteFormInSitu.value;
+    let dniCuitVal = (formVal.dni_cuit || '').trim();
+    if (formVal.tipo_documento === 'CUIT') {
+      const limpio = dniCuitVal.replace(/\D/g, '');
+      if (limpio.length === 11) {
+        dniCuitVal = `${limpio.slice(0, 2)}-${limpio.slice(2, 10)}-${limpio.slice(10)}`;
+      }
+    }
+
     const payload: ClientePayload = {
       nombre: formVal.nombre.trim(),
       apellido: formVal.apellido.trim(),
       tipo_documento: formVal.tipo_documento,
-      dni_cuit: formVal.dni_cuit.trim(),
+      dni_cuit: dniCuitVal,
       condicion_iva: formVal.condicion_iva,
       telefono: formVal.telefono ? formVal.telefono.trim() : undefined,
       domicilio: formVal.domicilio ? formVal.domicilio.trim() : undefined
