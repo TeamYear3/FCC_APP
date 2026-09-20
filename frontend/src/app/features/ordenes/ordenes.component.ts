@@ -156,7 +156,7 @@ export class OrdenesComponent implements OnInit {
     this.cargarItemsDeOrden(orden.id);
     if (scrollToExpediente && typeof document !== 'undefined') {
       const elem = document.getElementById('expediente-activo');
-      if (elem) {
+      if (elem && typeof elem.scrollIntoView === 'function') {
         elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }

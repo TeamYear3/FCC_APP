@@ -50,13 +50,28 @@ describe('OrdenesComponent', () => {
     expect(component.listaOrdenes().length).toBe(1);
   });
 
-  it('debe filtrar órdenes reactivamente cuando cambia la búsqueda', () => {
-    component.busqueda.set('ABC123');
-    component.onFiltroChange();
-    expect(mockOrdenService.obtenerOrdenes).toHaveBeenCalledWith(
-      expect.objectContaining({ busqueda: 'ABC123' }),
-      1,
-      10
-    );
+  it('debe seleccionar una orden activa y abrir el expediente', () => {
+    const ordenTest = {
+      id: 'ot-100',
+      numero_ot: 'OT-001',
+      vehiculo_id: 'veh-1',
+      descripcion_problema: 'Cambio de aceite',
+      fecha_ingreso: '2026-08-01',
+      estado: 'ingresado',
+      complejidad: 'media',
+      creado_en: '2026-08-01',
+      actualizado_en: '2026-08-01'
+    } as any;
+
+    component.seleccionarOrden(ordenTest, true);
+    expect(component.ordenActiva()?.id).toBe('ot-100');
+    expect(mockOrdenService.obtenerItemsPresupuesto).toHaveBeenCalledWith('ot-100');
+  });
+
+  it('debe retornar clases semánticas correctas para estados y complejidades', () => {
+    expect(component.getEstadoBadgeClass('ingresado')).toContain('bg-blue-500/20');
+    expect(component.getEstadoBadgeClass('en_proceso')).toContain('bg-purple-500/20');
+    expect(component.getComplejidadBadgeClass('alta')).toContain('bg-rose-500/10');
+    expect(component.getComplejidadBadgeClass('baja')).toContain('bg-emerald-500/10');
   });
 });

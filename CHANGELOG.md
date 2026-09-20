@@ -45,6 +45,14 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Reestructuración definitiva del expediente técnico en 3 pestañas operativas: `Resumen`, `Carga de Mano de Obra y Repuestos` e `Imágenes` (TK126).
 - Lista de servicios y repuestos reales sincronizados con base de datos en la pestaña Resumen con checkboxes de completado y barra de progreso porcentual (TK126).
 - Botón operativo "Finalizar Orden y Pasar a Control" conectado con confirmación y transición formal de estado (TK127).
+- Creación rápida e in situ de clientes y vehículos desde el formulario de órdenes de trabajo con modales integrados y auto-selección reactiva instantánea (TK096).
+- Sugerencias predictivas y autocompletado inteligente de servicios y mano de obra con precarga de valores estándar y tiempos estimados (TK110).
+- Restricción de permisos y modo Solo Lectura en la agenda de turnos para el rol de mecánicos/técnicos (TK102).
+- Modal de registro de cobro y modalidad de pago (efectivo, transferencia, tarjeta) con actualización reactiva de badges de cobro en expediente (TK103).
+- Autocompletado inteligente y cruzado de vehículo por cliente y de cliente por patente con debounce reactivo de 300ms en el formulario de OT (TK104).
+- Flujo multicanal de confirmación y aprobación de presupuestos (WhatsApp, llamada, presencial) con conversión directa a estado EN PROCESO (TK091).
+- Optimización Mobile-First y ergonomía táctil en taller: tarjetas condensadas en pantallas < 640px, targets táctiles mínimos de 44px y padding seguro para navegación móvil (TK105).
+- Rediseño y expansión exhaustiva de la documentación `README.md` con arquitectura orientada a microservicios (diagrama Mermaid), guías de despliegue con y sin Docker, credenciales de prueba y catálogo integral de endpoints REST y WebSockets (TK080).
 
 ### Modificado
 
