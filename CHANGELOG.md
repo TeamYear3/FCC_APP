@@ -6,6 +6,15 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [0.3.1] - 2026-09-29
+
+### Agregado
+
+- Soporte para carga dinámica de variables de entorno mediante `python-dotenv` en `settings/base.py` buscando `.env` en la raíz del proyecto o en `backend/`.
+- Configuración de `STATIC_ROOT` en Django para la recolección de archivos estáticos (`collectstatic`) en entornos de despliegue y producción.
+
+---
+
 ## [0.3.0] - 2026-09-19 (Sprint 3)
 
 ### Agregado
