@@ -1,6 +1,6 @@
 export const environment = {
-  production: false,
+  production: true,
   googleClientId: 'GOOGLE_OAUTH_CLIENT_ID',
-  apiUrl: 'http://localhost:8000/api',
-  wsUrl: 'ws://localhost:8000/ws/ordenes/'
+  apiUrl: 'https://api.fcc-app.com.ar/api',
+  wsUrl: 'wss://api.fcc-app.com.ar/ws/ordenes/'
 };
