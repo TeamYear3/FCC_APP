@@ -5,6 +5,16 @@ from pathlib import Path
 # __file__ es config/settings/base.py, por lo que retrocedemos 3 niveles.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# Cargar variables de entorno desde la raíz (FCC_APP/.env) o backend (.env)
+try:
+    from dotenv import load_dotenv
+    env_file = BASE_DIR.parent / ".env"
+    if not env_file.exists():
+        env_file = BASE_DIR / ".env"
+    load_dotenv(dotenv_path=env_file)
+except ImportError:
+    pass
+
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-fcc-app-default-key-2026-change-me")
 
 INSTALLED_APPS = [
@@ -115,6 +125,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
