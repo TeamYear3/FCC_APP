@@ -86,9 +86,18 @@ export class AuthService {
 
   /**
    * Inicializa el SDK de Google Identity Services consumiendo las variables de entorno.
+   * Garantiza idempotencia: si ya está inicializado, no repite la inicialización.
    */
   initializeGoogleAuth(): Promise<void> {
+    if (this.isSdkInitialized()) {
+      return Promise.resolve();
+    }
+
     return this.loadGoogleScript().then(() => {
+      if (this.isSdkInitialized()) {
+        return;
+      }
+
       if (typeof window !== 'undefined' && window.google?.accounts?.id) {
         const clientId =
           (typeof window !== 'undefined' && (window as any).__env?.GOOGLE_CLIENT_ID) ||
@@ -393,9 +402,19 @@ export class AuthService {
   /**
    * Permite renderizar opcionalmente un botón nativo de Google o enlazar con contenedores externos.
    */
-  renderButton(element: HTMLElement, options: Record<string, unknown> = { theme: 'outline', size: 'large' }): void {
-    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      window.google.accounts.id.renderButton(element, options);
+  renderButton(element: HTMLElement, options: Record<string, unknown> = { theme: 'outline', size: 'large', shape: 'pill', width: 320 }): void {
+    if (this.isSdkInitialized()) {
+      if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+        window.google.accounts.id.renderButton(element, options);
+      }
+    } else {
+      this.initializeGoogleAuth().then(() => {
+        if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+          window.google.accounts.id.renderButton(element, options);
+        }
+      }).catch(err => {
+        console.warn('No se pudo inicializar Google SDK para renderButton:', err);
+      });
     }
   }
 
