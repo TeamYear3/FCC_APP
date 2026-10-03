@@ -24,6 +24,13 @@ export class AutenticacionComponent implements OnInit {
   readonly isInitializing = signal<boolean>(true);
   readonly isSubmitting = signal<boolean>(false);
 
+  // Señales de visibilidad de contraseñas (TK139)
+  readonly showLoginPassword = signal<boolean>(false);
+  readonly showRegisterPassword = signal<boolean>(false);
+  readonly showRegisterConfirmPassword = signal<boolean>(false);
+  readonly showResetPassword = signal<boolean>(false);
+  readonly showResetConfirmPassword = signal<boolean>(false);
+
   loginForm!: FormGroup;
   registroForm!: FormGroup;
   resetRequestForm!: FormGroup;
@@ -109,11 +116,40 @@ export class AutenticacionComponent implements OnInit {
   changeMode(newMode: 'login' | 'registro' | 'reset-request' | 'reset-confirm'): void {
     this.clearMessages();
     this.mode.set(newMode);
+    this.resetPasswordVisibility();
 
     if (newMode === 'login') this.loginForm.reset();
     if (newMode === 'registro') this.registroForm.reset();
     if (newMode === 'reset-request') this.resetRequestForm.reset();
     if (newMode === 'reset-confirm') this.resetConfirmForm.reset();
+  }
+
+  toggleLoginPassword(): void {
+    this.showLoginPassword.update((v) => !v);
+  }
+
+  toggleRegisterPassword(): void {
+    this.showRegisterPassword.update((v) => !v);
+  }
+
+  toggleRegisterConfirmPassword(): void {
+    this.showRegisterConfirmPassword.update((v) => !v);
+  }
+
+  toggleResetPassword(): void {
+    this.showResetPassword.update((v) => !v);
+  }
+
+  toggleResetConfirmPassword(): void {
+    this.showResetConfirmPassword.update((v) => !v);
+  }
+
+  private resetPasswordVisibility(): void {
+    this.showLoginPassword.set(false);
+    this.showRegisterPassword.set(false);
+    this.showRegisterConfirmPassword.set(false);
+    this.showResetPassword.set(false);
+    this.showResetConfirmPassword.set(false);
   }
 
   onLoginSubmit(): void {
