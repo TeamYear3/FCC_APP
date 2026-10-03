@@ -251,6 +251,39 @@ describe('AuthService', () => {
 
       delete (window as any).google;
     });
+
+    it('should link Google account with password credentials and persist returned tokens (TK137)', () => {
+      const mockAccess = generateMockJwt({ sub: '123', email: 'vinculado@fcc.com', rol: 'admin' });
+      const mockRefresh = 'mock-refresh-linked-456';
+      let responseReceived: any = null;
+
+      service.vincularGoogle('vinculado@fcc.com', 'SecurePass123!', 'mock-google-id-token').subscribe(res => {
+        responseReceived = res;
+      });
+
+      const req = httpTestingController.expectOne(`${environment.apiUrl}/auth/vincular-google/`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        email: 'vinculado@fcc.com',
+        password: 'SecurePass123!',
+        id_token: 'mock-google-id-token'
+      });
+
+      req.flush({
+        mensaje: 'Cuenta de Google vinculada exitosamente.',
+        access: mockAccess,
+        refresh: mockRefresh
+      });
+
+      expect(responseReceived).toEqual({
+        mensaje: 'Cuenta de Google vinculada exitosamente.',
+        access: mockAccess,
+        refresh: mockRefresh
+      });
+      expect(localStorage.getItem('fcc_auth_token')).toBe(mockAccess);
+      expect(localStorage.getItem('fcc_refresh_token')).toBe(mockRefresh);
+      expect(service.isAuthenticated()).toBe(true);
+    });
   });
 });
 
