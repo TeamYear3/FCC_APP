@@ -756,6 +756,38 @@ class PoliticasSimpleJWTTest(TestCase):
         self.assertTrue(simple_jwt.get("BLACKLIST_AFTER_ROTATION"))
 
 
+class LoginCustomErrorMessagesTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('login')
+        self.user = User.objects.create_user(
+            email="test_login@ejemplo.com",
+            nombre="Juan",
+            apellido="Pérez",
+            password="Password123*",
+        )
+
+    def test_login_credenciales_invalidas_retorna_mensaje_en_espanol(self):
+        data = {
+            "email": "test_login@ejemplo.com",
+            "password": "PasswordIncorrecto"
+        }
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("detail", res.data)
+        self.assertEqual(res.data["detail"], "Correo electrónico o contraseña incorrectos.")
+
+    def test_login_usuario_inexistente_retorna_mensaje_en_espanol(self):
+        data = {
+            "email": "noexiste@ejemplo.com",
+            "password": "Password123*"
+        }
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("detail", res.data)
+        self.assertEqual(res.data["detail"], "Correo electrónico o contraseña incorrectos.")
+
+
+
 
 
 
