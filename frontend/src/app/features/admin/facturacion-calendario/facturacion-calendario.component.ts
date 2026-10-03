@@ -253,6 +253,10 @@ export class FacturacionCalendarioComponent implements OnInit {
     this.generarMatrizCalendario();
   }
 
+  get diasConFacturas(): CalendarDay[] {
+    return this.calendarDays().filter((d) => d.isCurrentMonth && d.facturas.length > 0);
+  }
+
   get nombreMesActual(): string {
     return `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
   }
