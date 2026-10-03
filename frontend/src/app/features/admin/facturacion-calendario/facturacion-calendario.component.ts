@@ -81,19 +81,9 @@ export class FacturacionCalendarioComponent implements OnInit {
     });
   }
 
-  /**
-   * Formatea un objeto Date a formato YYYY-MM-DD usando la zona horaria local (TK187)
-   */
-  formatDateLocal(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
   private cargarFallbackCalendario(): void {
     const hoy = new Date();
-    const formato = (d: Date) => this.formatDateLocal(d);
+    const formato = (d: Date) => d.toISOString().split('T')[0];
 
     const d1 = new Date(hoy.getFullYear(), hoy.getMonth(), 5);
     const d2 = new Date(hoy.getFullYear(), hoy.getMonth(), 12);
@@ -177,13 +167,13 @@ export class FacturacionCalendarioComponent implements OnInit {
     const totalDaysInMonth = lastDayOfMonth.getDate();
 
     const days: CalendarDay[] = [];
-    const todayString = this.formatDateLocal(new Date());
+    const todayString = new Date().toISOString().split('T')[0];
 
     // Días del mes anterior para rellenar la primera semana
     const prevMonthLastDay = new Date(year, month, 0).getDate();
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
       const d = new Date(year, month - 1, prevMonthLastDay - i);
-      const dateStr = this.formatDateLocal(d);
+      const dateStr = d.toISOString().split('T')[0];
       days.push({
         date: d,
         dateString: dateStr,
@@ -197,7 +187,7 @@ export class FacturacionCalendarioComponent implements OnInit {
     // Días del mes actual
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const d = new Date(year, month, day);
-      const dateStr = this.formatDateLocal(d);
+      const dateStr = d.toISOString().split('T')[0];
       days.push({
         date: d,
         dateString: dateStr,
@@ -212,7 +202,7 @@ export class FacturacionCalendarioComponent implements OnInit {
     const remainingCells = (7 - (days.length % 7)) % 7;
     for (let i = 1; i <= remainingCells; i++) {
       const d = new Date(year, month + 1, i);
-      const dateStr = this.formatDateLocal(d);
+      const dateStr = d.toISOString().split('T')[0];
       days.push({
         date: d,
         dateString: dateStr,
@@ -228,10 +218,7 @@ export class FacturacionCalendarioComponent implements OnInit {
 
   obtenerFacturasPorFecha(dateStr: string): FacturaCalendarioItem[] {
     return this.facturas().filter((f) => {
-      let fecha = f.fecha_vencimiento_pago || f.fecha_emision;
-      if (fecha && fecha.includes('T')) {
-        fecha = fecha.split('T')[0];
-      }
+      const fecha = f.fecha_vencimiento_pago || f.fecha_emision;
       const coincideFecha = fecha === dateStr;
       const coincideFiltro = !this.filtroSemaforo || f.semaforo === this.filtroSemaforo;
       return coincideFecha && coincideFiltro;
@@ -251,10 +238,6 @@ export class FacturacionCalendarioComponent implements OnInit {
   hoy(): void {
     this.currentDate = new Date();
     this.generarMatrizCalendario();
-  }
-
-  get diasConFacturas(): CalendarDay[] {
-    return this.calendarDays().filter((d) => d.isCurrentMonth && d.facturas.length > 0);
   }
 
   get nombreMesActual(): string {

@@ -1,15 +1,14 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { ReactiveFormsModule, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { FullCalendarModule } from '@fullcalendar/angular';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 // @ts-ignore
 import esLocale from '@fullcalendar/core/locales/es';
-import { forkJoin, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, catchError, finalize } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 
 import { TurnoService, TurnoResponse } from '../../../core/services/turno.service';
 import { ClienteService, ClienteResponse } from '../../../core/services/cliente.service';
@@ -41,10 +40,6 @@ export class TurnosAgendaComponent implements OnInit {
   ordenes = signal<OrdenResponse[]>([]);
   clientes = signal<ClienteResponse[]>([]);
   vehiculosFiltrados = signal<VehiculoResponse[]>([]);
-  readonly clienteSearchControl = new FormControl('');
-  readonly clientesSugeridos = signal<ClienteResponse[]>([]);
-  readonly buscandoClientes = signal<boolean>(false);
-  readonly clienteSeleccionado = signal<ClienteResponse | null>(null);
 
   // Estados de Modales e Alertas
   mostrarModalCrear = signal(false);
@@ -114,38 +109,19 @@ export class TurnosAgendaComponent implements OnInit {
       motivo: ['', [Validators.required, Validators.maxLength(255)]],
       estado: ['pendiente', Validators.required]
     });
-
-    // Búsqueda reactiva con debounce de 300 ms (TK155)
-    this.clienteSearchControl.valueChanges
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        switchMap((termino) => {
-          if (!termino || typeof termino !== 'string' || termino.trim().length < 2) {
-            this.buscandoClientes.set(false);
-            return of([]);
-          }
-          this.buscandoClientes.set(true);
-          return this.clienteService.buscarClientes(termino.trim()).pipe(
-            catchError(() => of([])),
-            finalize(() => this.buscandoClientes.set(false))
-          );
-        })
-      )
-      .subscribe((res) => {
-        this.clientesSugeridos.set(res || []);
-      });
   }
 
   cargarDatos(): void {
     this.cargando.set(true);
 
-    // Cargar en paralelo turnos y órdenes de trabajo (TK122 y TK155: clientes bajo demanda con debounce)
+    // Cargar en paralelo clientes, turnos y órdenes de trabajo (TK122 & TK078)
     forkJoin({
+      clientes: this.clienteService.obtenerClientes(),
       turnos: this.turnoService.obtenerTurnos(),
       ordenesRes: this.ordenService.obtenerOrdenes({}, 1, 100)
     }).subscribe({
       next: (res) => {
+        this.clientes.set(res.clientes);
         this.turnos.set(res.turnos);
         const listaOrdenes = res.ordenesRes?.results || [];
         this.ordenes.set(listaOrdenes);
@@ -233,22 +209,6 @@ export class TurnosAgendaComponent implements OnInit {
     }));
   }
 
-  seleccionarCliente(cliente: ClienteResponse): void {
-    this.clienteSeleccionado.set(cliente);
-    this.turnoForm.patchValue({ cliente: cliente.id });
-    this.clienteSearchControl.setValue(`${cliente.nombre} ${cliente.apellido}`, { emitEvent: false });
-    this.clientesSugeridos.set([]);
-    this.onClienteChange(cliente.id);
-  }
-
-  limpiarCliente(): void {
-    this.clienteSeleccionado.set(null);
-    this.turnoForm.patchValue({ cliente: '', vehiculo: '' });
-    this.clienteSearchControl.setValue('', { emitEvent: false });
-    this.clientesSugeridos.set([]);
-    this.vehiculosFiltrados.set([]);
-  }
-
   onClienteChange(clienteId: string): void {
     this.turnoForm.get('vehiculo')?.setValue('');
     if (!clienteId) {
@@ -282,7 +242,6 @@ export class TurnosAgendaComponent implements OnInit {
     // Pre-cargar a las 09:00 hs como inicio laboral común
     const fechaHoraStr = `${yyyy}-${mm}-${dd}T09:00`;
     
-    this.limpiarCliente();
     this.fechaSeleccionada.set(fechaHoraStr);
     this.turnoForm.reset({
       cliente: '',
@@ -401,21 +360,6 @@ export class TurnosAgendaComponent implements OnInit {
   cancelarEdicion(): void {
     this.modoEdicion.set(false);
     this.mensajeError.set('');
-  }
-
-  iniciarOTDesdeTurno(): void {
-    const turno = this.turnoSeleccionado();
-    if (!turno) return;
-
-    this.cerrarModalDetalle();
-    this.router.navigate(['/ordenes/nueva'], {
-      queryParams: {
-        turno_id: turno.id,
-        vehiculo_id: turno.vehiculo,
-        cliente_id: turno.cliente,
-        motivo: turno.motivo
-      }
-    });
   }
 
   guardarTurno(): void {
@@ -611,7 +555,6 @@ export class TurnosAgendaComponent implements OnInit {
 
   cerrarModalCrear(): void {
     this.mostrarModalCrear.set(false);
-    this.limpiarCliente();
     this.turnoForm.reset();
     this.mensajeError.set('');
   }

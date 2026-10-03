@@ -574,12 +574,10 @@ class PerfilUsuarioAPITest(APITestCase):
         self.assertEqual(response.data["apellido"], "Zárate")
         self.assertEqual(response.data["rol"], "admin")
 
-    def test_obtener_perfil_cliente_exitoso(self):
+    def test_obtener_perfil_no_admin_denegado(self):
         self.client.force_authenticate(user=self.cliente_user)
         response = self.client.get(self.perfil_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["email"], "cliente_perfil@taller.com")
-        self.assertEqual(response.data["rol"], "cliente")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_actualizar_perfil_nombre_apellido_exitoso(self):
         self.client.force_authenticate(user=self.admin)
@@ -725,16 +723,13 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
         res_post = self.client.post(reverse('crear-vehiculo'), data)
         self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_tecnico_habilitado_creacion_bloqueado_modificacion_turnos(self):
+    def test_tecnico_bloqueado_en_creacion_modificacion_turnos(self):
         data = {
             "fecha_hora": "2026-10-01T10:00:00Z",
             "motivo": "Revisión técnica"
         }
         res_post = self.client.post(reverse('turno-list'), data)
-        self.assertNotEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
-
-        res_put = self.client.put('/api/turnos/1/', data)
-        self.assertEqual(res_put.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_tecnico_bloqueado_en_modulo_facturacion(self):
         res_emitir = self.client.post(reverse('factura-emitir'), {})
@@ -742,39 +737,6 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
 
         res_resumen = self.client.get(reverse('factura-list'))
         self.assertEqual(res_resumen.status_code, status.HTTP_403_FORBIDDEN)
-
-
-class CustomTokenObtainPairSerializerTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email="testclaims@ejemplo.com",
-            nombre="Carlos",
-            apellido="Gómez",
-            password="password123",
-            rol="cliente"
-        )
-
-    def test_claims_jwt_incluyen_nombre_y_apellido(self):
-        from usuarios.serializers import CustomTokenObtainPairSerializer
-        token = CustomTokenObtainPairSerializer.get_token(self.user)
-        self.assertEqual(token["nombre"], "Carlos")
-        self.assertEqual(token["apellido"], "Gómez")
-        self.assertEqual(token["email"], "testclaims@ejemplo.com")
-        self.assertEqual(token["rol"], "cliente")
-
-    def test_validate_devuelve_nombre_y_apellido(self):
-        from usuarios.serializers import CustomTokenObtainPairSerializer
-        serializer = CustomTokenObtainPairSerializer(data={
-            "email": "testclaims@ejemplo.com",
-            "password": "password123"
-        })
-        self.assertTrue(serializer.is_valid())
-        data = serializer.validated_data
-        self.assertEqual(data["nombre"], "Carlos")
-        self.assertEqual(data["apellido"], "Gómez")
-        self.assertEqual(data["email"], "testclaims@ejemplo.com")
-        self.assertEqual(data["rol"], "cliente")
-
 
 
 
