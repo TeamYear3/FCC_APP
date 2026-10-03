@@ -101,10 +101,10 @@ export class AutenticacionComponent implements OnInit {
       });
 
     this.route.queryParams.subscribe((params) => {
-      this.resetUid = params['uid'] || null;
+      this.resetUid = params['uid'] || params['uidb64'] || null;
       this.resetToken = params['token'] || null;
 
-      if (this.resetUid && this.resetToken) {
+      if (this.resetToken) {
         this.mode.set('reset-confirm');
       }
     });
@@ -226,12 +226,12 @@ export class AutenticacionComponent implements OnInit {
   }
 
   onResetConfirmSubmit(): void {
-    if (this.resetConfirmForm.invalid || !this.resetUid || !this.resetToken) return;
+    if (this.resetConfirmForm.invalid || !this.resetToken) return;
     this.clearMessages();
     this.isSubmitting.set(true);
 
     const { password } = this.resetConfirmForm.value;
-    this.authService.confirmPasswordReset(this.resetUid, this.resetToken, password).subscribe({
+    this.authService.confirmPasswordReset(this.resetUid || '', this.resetToken, password).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
         this.successMessage.set(
@@ -240,7 +240,7 @@ export class AutenticacionComponent implements OnInit {
         this.changeMode('login');
 
         this.router.navigate([], {
-          queryParams: { uid: null, token: null },
+          queryParams: { uid: null, uidb64: null, token: null, action: null },
           queryParamsHandling: 'merge',
         });
       },

@@ -279,6 +279,7 @@ export class AuthService {
     return this.http.post<any>(`${environment.apiUrl}/auth/password-reset-confirm/`, {
       uid,
       token,
+      password: newPassword,
       new_password: newPassword
     });
   }
