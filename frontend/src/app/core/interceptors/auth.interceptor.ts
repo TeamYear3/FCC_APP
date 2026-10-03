@@ -9,19 +9,22 @@ import {
   HttpErrorResponse
 } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, catchError, switchMap, throwError } from 'rxjs';
+import { Observable, BehaviorSubject, catchError, filter, switchMap, take, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { ToastService } from '../services/toast.service';
 
 /**
  * AuthInterceptor adjunta el token JWT (si existe) en el encabezado Authorization
- * de cada request HTTP saliente hacia el Backend Django y renueva tokens ante 401.
+ * de cada request HTTP saliente hacia el Backend Django y renueva tokens ante 401 de forma sincronizada.
  */
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
+
+  private isRefreshing = false;
+  private readonly refreshTokenSubject = new BehaviorSubject<string | null>(null);
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     const token = this.authService.getToken();
@@ -36,22 +39,51 @@ export class AuthInterceptor implements HttpInterceptor {
     return next.handle(authReq).pipe(
       catchError((error: HttpErrorResponse) => {
         if (error.status === 401 && !request.url.includes('/auth/')) {
-          return this.authService.refreshToken().pipe(
-            switchMap(newToken => {
-              if (newToken) {
+          if (!this.isRefreshing) {
+            this.isRefreshing = true;
+            this.refreshTokenSubject.next(null);
+
+            return this.authService.refreshToken().pipe(
+              switchMap(newToken => {
+                this.isRefreshing = false;
+                if (newToken) {
+                  this.refreshTokenSubject.next(newToken);
+                  const retryReq = request.clone({
+                    setHeaders: {
+                      Authorization: `Bearer ${newToken}`
+                    }
+                  });
+                  return next.handle(retryReq);
+                }
+                this.refreshTokenSubject.next(null);
+                this.toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+                this.authService.logout();
+                this.router.navigate(['/autenticacion']);
+                return throwError(() => error);
+              }),
+              catchError(refreshError => {
+                this.isRefreshing = false;
+                this.refreshTokenSubject.next(null);
+                this.toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+                this.authService.logout();
+                this.router.navigate(['/autenticacion']);
+                return throwError(() => refreshError);
+              })
+            );
+          } else {
+            return this.refreshTokenSubject.pipe(
+              filter(token => token !== null),
+              take(1),
+              switchMap(token => {
                 const retryReq = request.clone({
                   setHeaders: {
-                    Authorization: `Bearer ${newToken}`
+                    Authorization: `Bearer ${token}`
                   }
                 });
                 return next.handle(retryReq);
-              }
-              this.toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-              this.authService.logout();
-              this.router.navigate(['/autenticacion']);
-              return throwError(() => error);
-            })
-          );
+              })
+            );
+          }
         }
         return throwError(() => error);
       })
