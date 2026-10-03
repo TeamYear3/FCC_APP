@@ -204,6 +204,53 @@ describe('AuthService', () => {
       (environment as any).googleClientId = originalClientId;
       delete (window as any).google;
     });
+
+    it('should not re-initialize Google GIS SDK when initializeGoogleAuth is called multiple times (TK136)', async () => {
+      const initializeSpy = vi.fn();
+      (window as any).google = {
+        accounts: {
+          id: {
+            initialize: initializeSpy,
+            prompt: vi.fn(),
+            renderButton: vi.fn(),
+            disableAutoSelect: vi.fn(),
+            revoke: vi.fn()
+          }
+        }
+      };
+
+      await service.initializeGoogleAuth();
+      expect(initializeSpy).toHaveBeenCalledTimes(1);
+
+      // Segunda llamada
+      await service.initializeGoogleAuth();
+      expect(initializeSpy).toHaveBeenCalledTimes(1);
+
+      delete (window as any).google;
+    });
+
+    it('should call renderButton on Google SDK with element and options (TK136)', () => {
+      const renderButtonSpy = vi.fn();
+      (window as any).google = {
+        accounts: {
+          id: {
+            initialize: vi.fn(),
+            prompt: vi.fn(),
+            renderButton: renderButtonSpy,
+            disableAutoSelect: vi.fn(),
+            revoke: vi.fn()
+          }
+        }
+      };
+
+      service.isSdkInitialized.set(true);
+      const dummyDiv = document.createElement('div');
+      service.renderButton(dummyDiv, { theme: 'outline', size: 'large' });
+
+      expect(renderButtonSpy).toHaveBeenCalledWith(dummyDiv, { theme: 'outline', size: 'large' });
+
+      delete (window as any).google;
+    });
   });
 });
 
