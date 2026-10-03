@@ -8,11 +8,12 @@ class GoogleAuthSerializer(serializers.Serializer):
 
     def validate_id_token(self, value):
         try:
-            # Valida el token con Google y el ID de cliente de la app
+            client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None) or None
+            # Valida el token con Google y el ID de cliente de la app si está configurado
             idinfo = id_token.verify_oauth2_token(
                 value,
                 requests.Request(),
-                settings.GOOGLE_CLIENT_ID
+                client_id
             )
             return idinfo
         except Exception:

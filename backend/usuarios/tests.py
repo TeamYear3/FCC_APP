@@ -787,6 +787,14 @@ class LoginCustomErrorMessagesTest(APITestCase):
         self.assertEqual(res.data["detail"], "Correo electrónico o contraseña incorrectos.")
 
 
+class GoogleConfiguracionDinamicaTest(TestCase):
+    def test_google_client_id_configurado_como_string_sin_hardcode(self):
+        client_id = getattr(settings, "GOOGLE_CLIENT_ID", "")
+        self.assertIsInstance(client_id, str)
+        self.assertNotEqual(client_id, "default-google-client-id-change-me")
+
+
+
 
 
 
