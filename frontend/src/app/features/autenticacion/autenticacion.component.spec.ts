@@ -189,6 +189,31 @@ describe('AutenticacionComponent', () => {
         'Ya existe un usuario registrado con este correo electrónico.',
       );
     });
+
+    it('should submit reset password confirmation and transition to login on success (TK194)', () => {
+      mockAuthService.confirmPasswordReset.mockReturnValue(
+        of({ detail: 'Contraseña restablecida con éxito.' })
+      );
+
+      component.resetUid = 'user-uid-abc';
+      component.resetToken = 'token-reset-xyz';
+      component.changeMode('reset-confirm');
+      component.resetConfirmForm.setValue({
+        password: 'NewValidPassword123!',
+        confirmPassword: 'NewValidPassword123!',
+      });
+
+      component.onResetConfirmSubmit();
+      fixture.detectChanges();
+
+      expect(mockAuthService.confirmPasswordReset).toHaveBeenCalledWith(
+        'user-uid-abc',
+        'token-reset-xyz',
+        'NewValidPassword123!'
+      );
+      expect(component.successMessage()).toBe('Contraseña restablecida con éxito.');
+      expect(component.mode()).toBe('login');
+    });
   });
 });
 

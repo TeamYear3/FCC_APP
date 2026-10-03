@@ -284,6 +284,26 @@ describe('AuthService', () => {
       expect(localStorage.getItem('fcc_refresh_token')).toBe(mockRefresh);
       expect(service.isAuthenticated()).toBe(true);
     });
+
+    it('should send uid, token, password and new_password when confirmPasswordReset is called (TK194)', () => {
+      let responseReceived: any = null;
+
+      service.confirmPasswordReset('uid-user-123', 'mock-reset-token-456', 'NewSecurePass2026!').subscribe(res => {
+        responseReceived = res;
+      });
+
+      const req = httpTestingController.expectOne(`${environment.apiUrl}/auth/password-reset-confirm/`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({
+        uid: 'uid-user-123',
+        token: 'mock-reset-token-456',
+        password: 'NewSecurePass2026!',
+        new_password: 'NewSecurePass2026!'
+      });
+
+      req.flush({ detail: 'Contraseña restablecida correctamente.' });
+      expect(responseReceived).toEqual({ detail: 'Contraseña restablecida correctamente.' });
+    });
   });
 });
 

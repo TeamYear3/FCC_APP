@@ -234,10 +234,10 @@ export class AutenticacionComponent implements OnInit {
     this.authService.confirmPasswordReset(this.resetUid || '', this.resetToken, password).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
+        this.changeMode('login');
         this.successMessage.set(
           res.detail || 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.',
         );
-        this.changeMode('login');
 
         this.router.navigate([], {
           queryParams: { uid: null, uidb64: null, token: null, action: null },
