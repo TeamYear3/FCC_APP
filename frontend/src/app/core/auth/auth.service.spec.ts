@@ -4,6 +4,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { Router } from '@angular/router';
 import { vi } from 'vitest';
 import { AuthService, GoogleCredentialResponse } from './auth.service';
+import { environment } from '../../../environments/environment';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -21,6 +22,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     localStorage.clear();
     routerSpy = { navigate: vi.fn(), createUrlTree: vi.fn() };
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -48,7 +50,7 @@ describe('AuthService', () => {
 
     service.handleCredentialResponse(mockResponse);
 
-    const req = httpTestingController.expectOne('http://localhost:8000/api/auth/google/');
+    const req = httpTestingController.expectOne(`${environment.apiUrl}/auth/google/`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ id_token: 'mock-jwt-id-token-xyz123' });
     req.flush({ access: 'mock-jwt-id-token-xyz123', refresh: 'mock-refresh' });
@@ -86,4 +88,59 @@ describe('AuthService', () => {
     expect(service.getToken()).toBeNull();
     expect(service.getUserRole()).toBeNull();
   });
+
+  it('should return null in refreshToken() if no refresh token is stored in localStorage', () => {
+    let resultToken: string | null = 'not-null';
+    service.refreshToken().subscribe(token => {
+      resultToken = token;
+    });
+
+    expect(resultToken).toBeNull();
+    httpTestingController.expectNone(`${environment.apiUrl}/auth/token/refresh/`);
+  });
+
+  it('should refresh tokens and persist both access and rotated refresh token in localStorage', () => {
+    localStorage.setItem('fcc_refresh_token', 'initial-refresh-token-123');
+    const newAccessToken = generateMockJwt({ sub: '100', email: 'kary@fcc.com', rol: 'admin' });
+    const rotatedRefreshToken = 'rotated-refresh-token-456';
+
+    let emittedToken: string | null = null;
+    service.refreshToken().subscribe(token => {
+      emittedToken = token;
+    });
+
+    const req = httpTestingController.expectOne(`${environment.apiUrl}/auth/token/refresh/`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ refresh: 'initial-refresh-token-123' });
+
+    req.flush({ access: newAccessToken, refresh: rotatedRefreshToken });
+
+    expect(emittedToken).toBe(newAccessToken);
+    expect(service.getToken()).toBe(newAccessToken);
+    expect(localStorage.getItem('fcc_auth_token')).toBe(newAccessToken);
+    expect(localStorage.getItem('fcc_refresh_token')).toBe(rotatedRefreshToken);
+  });
+
+  it('should logout and redirect to /autenticacion when refresh fails with 401', () => {
+    localStorage.setItem('fcc_refresh_token', 'invalid-or-blacklisted-token');
+
+    let emittedToken: string | null = 'waiting';
+    service.refreshToken().subscribe(token => {
+      emittedToken = token;
+    });
+
+    const req = httpTestingController.expectOne(`${environment.apiUrl}/auth/token/refresh/`);
+    req.flush({ detail: 'Token is blacklisted' }, { status: 401, statusText: 'Unauthorized' });
+
+    // Consumir el logout disparado tras el fallo
+    const logoutReq = httpTestingController.match(`${environment.apiUrl}/auth/logout/`);
+    if (logoutReq.length > 0) {
+      logoutReq[0].flush({ detail: 'Sesión cerrada' });
+    }
+
+    expect(emittedToken).toBeNull();
+    expect(service.isAuthenticated()).toBe(false);
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/autenticacion']);
+  });
 });
+
