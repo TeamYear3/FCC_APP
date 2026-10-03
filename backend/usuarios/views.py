@@ -426,7 +426,7 @@ class BusquedaUniversalView(APIView):
 
 
 class PerfilUsuarioView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EsAdministrador]
 
     def get(self, request, *args, **kwargs):
         serializer = PerfilUsuarioSerializer(request.user)

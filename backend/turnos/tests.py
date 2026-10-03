@@ -34,13 +34,6 @@ class TurnoAPITests(APITestCase):
             apellido="Gómez",
             rol="cliente"
         )
-        self.tecnico_user = Usuario.objects.create_user(
-            email="tecnico@test.com",
-            password="password123",
-            nombre="Carlos",
-            apellido="Técnico",
-            rol="tecnico"
-        )
 
         # Crear perfiles de cliente
         self.cliente_a = Cliente.objects.create(
@@ -274,16 +267,3 @@ class TurnoAPITests(APITestCase):
         # Si intenta acceder directamente al turno del Cliente B, debe dar un 404 (ocultamiento seguro)
         response = self.client.get(f"/api/turnos/{turno_b.id}/")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_tecnico_puede_crear_turno_rapido(self):
-        """Prueba que un usuario con rol 'tecnico' tiene autorización para crear turnos (TK196)."""
-        self.client.force_authenticate(user=self.tecnico_user)
-        payload = {
-            "cliente": str(self.cliente_a.id),
-            "vehiculo": str(self.vehiculo_a.id),
-            "fecha_hora": self.fecha_base.isoformat(),
-            "motivo": "Turno rápido creado por técnico"
-        }
-        response = self.client.post("/api/turnos/", payload, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["motivo"], "Turno rápido creado por técnico")

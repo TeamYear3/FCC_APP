@@ -77,24 +77,6 @@ export class NavbarComponent implements OnInit {
     return res.clientes.length > 0 || res.vehiculos.length > 0 || res.ordenes.length > 0;
   }
 
-  getNombreUsuario(): string {
-    const user = this.authService.getUserFromToken();
-    if (user) {
-      const full = `${user.nombre || ''} ${user.apellido || ''}`.trim();
-      if (full) return full;
-      if (user.email) return user.email;
-    }
-    const decoded = this.authService.getDecodedToken();
-    if (decoded) {
-      const nombre = decoded['nombre'];
-      const apellido = decoded['apellido'];
-      const full = `${nombre || ''} ${apellido || ''}`.trim();
-      if (full) return full;
-      if (decoded['email']) return decoded['email'];
-    }
-    return 'Administrador';
-  }
-
   getEmail(): string {
     const decoded = this.authService.getDecodedToken();
     return decoded ? decoded['email'] || 'admin@fcc-taller.com' : 'admin@fcc-taller.com';

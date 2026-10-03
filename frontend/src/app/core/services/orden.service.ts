@@ -28,12 +28,10 @@ export interface OrdenResponse {
   actualizado_en: string;
   vehiculo_patente?: string;
   vehiculo_marca_modelo?: string;
-  cliente_id?: string;
   cliente_nombre?: string;
   cliente_telefono?: string;
   cliente_documento?: string;
   cliente_dni_cuit?: string;
-  cliente_condicion_iva?: string;
   monto_total?: number | string;
   estado_cobro?: 'pendiente' | 'cobrado' | string;
   metodo_pago?: string | null;
@@ -241,7 +239,7 @@ export class OrdenService {
    */
   registrarPago(
     ordenId: string,
-    payload: { metodo_pago: string; comentario?: string; entregar_orden?: boolean; condicion_iva?: string }
+    payload: { metodo_pago: string; comentario?: string; entregar_orden?: boolean }
   ): Observable<{ message: string; orden: OrdenResponse }> {
     return this.http.post<{ message: string; orden: OrdenResponse }>(
       `${this.apiUrl}${ordenId}/registrar-pago/`,

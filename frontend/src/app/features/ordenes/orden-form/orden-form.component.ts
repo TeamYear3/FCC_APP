@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { OrdenService, OrdenPayload } from '../../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, VehiculoCreatePayload } from '../../../core/services/vehiculo.service';
 import { ClienteService, ClienteResponse, ClientePayload } from '../../../core/services/cliente.service';
@@ -26,7 +26,6 @@ export class OrdenFormComponent implements OnInit {
   private readonly turnoService = inject(TurnoService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
 
   readonly isSubmitting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
@@ -40,23 +39,18 @@ export class OrdenFormComponent implements OnInit {
   readonly turnos = signal<TurnoResponse[]>([]);
   readonly cargandoTurnos = signal<boolean>(false);
 
-  // Estados de modales In-Situ (TK102 y TK153)
+  // Estados de modales In-Situ (TK102)
   readonly mostrarModalCliente = signal<boolean>(false);
   readonly mostrarModalVehiculo = signal<boolean>(false);
-  readonly mostrarModalTurnoRapido = signal<boolean>(false);
   readonly guardandoClienteInSitu = signal<boolean>(false);
   readonly guardandoVehiculoInSitu = signal<boolean>(false);
-  readonly guardandoTurnoRapido = signal<boolean>(false);
   readonly errorModalCliente = signal<string | null>(null);
   readonly errorModalVehiculo = signal<string | null>(null);
-  readonly errorModalTurnoRapido = signal<string | null>(null);
   readonly listaClientes = signal<ClienteResponse[]>([]);
-  readonly vehiculosTurnoRapido = signal<VehiculoResponse[]>([]);
 
   ordenForm!: FormGroup;
   clienteFormInSitu!: FormGroup;
   vehiculoFormInSitu!: FormGroup;
-  turnoRapidoForm!: FormGroup;
 
   ngOnInit(): void {
     this.returnUrl.set(this.router.url.startsWith('/admin') ? '/admin/ordenes' : '/ordenes');
@@ -123,45 +117,6 @@ export class OrdenFormComponent implements OnInit {
         }
       });
     });
-
-    // Reacción ante selección de turno para autocompletar vehículo y síntomas si están vacíos
-    this.ordenForm.get('turno_id')?.valueChanges.subscribe((turnoId: string | null) => {
-      if (!turnoId) return;
-      const t = this.turnos().find((x) => x.id === turnoId);
-      if (t) {
-        if (t.vehiculo && !this.ordenForm.get('vehiculo_id')?.value) {
-          this.ordenForm.patchValue({ vehiculo_id: t.vehiculo });
-        }
-        if (t.motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-          this.ordenForm.patchValue({ descripcion_problema: t.motivo });
-        }
-      }
-    });
-
-    // Procesar parámetros de consulta (query params) para precarga (TK153)
-    this.route.queryParams.subscribe((params) => {
-      const turnoId = params['turno_id'] || params['turno'];
-      const vehiculoId = params['vehiculo_id'] || params['vehiculo'];
-      const motivo = params['motivo'];
-
-      if (turnoId || vehiculoId) {
-        this.ordenForm.patchValue({
-          modo: 'ORDEN_TRABAJO'
-        });
-      }
-
-      if (turnoId) {
-        this.ordenForm.patchValue({ turno_id: turnoId });
-      }
-
-      if (vehiculoId) {
-        this.ordenForm.patchValue({ vehiculo_id: vehiculoId });
-      }
-
-      if (motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-        this.ordenForm.patchValue({ descripcion_problema: motivo });
-      }
-    });
   }
 
   cargarTurnos(): void {
@@ -172,20 +127,6 @@ export class OrdenFormComponent implements OnInit {
         const activos = lista.filter(t => t.estado !== 'cancelado');
         this.turnos.set(activos.length > 0 ? activos : lista);
         this.cargandoTurnos.set(false);
-
-        // Si ya hay un turno seleccionado, chequear si falta autocompletar vehículo o motivo
-        const currentTurnoId = this.ordenForm.get('turno_id')?.value;
-        if (currentTurnoId) {
-          const t = this.turnos().find((x) => x.id === currentTurnoId);
-          if (t) {
-            if (t.vehiculo && !this.ordenForm.get('vehiculo_id')?.value) {
-              this.ordenForm.patchValue({ vehiculo_id: t.vehiculo });
-            }
-            if (t.motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-              this.ordenForm.patchValue({ descripcion_problema: t.motivo });
-            }
-          }
-        }
       },
       error: (err) => {
         console.error('Error al cargar turnos disponibles:', err);
@@ -244,25 +185,6 @@ export class OrdenFormComponent implements OnInit {
       kilometraje: [0, [Validators.min(0)]],
       color: ['', [Validators.maxLength(30)]],
       numero_chasis: ['', [Validators.maxLength(50)]]
-    });
-
-    this.turnoRapidoForm = this.fb.group({
-      cliente: ['', [Validators.required]],
-      vehiculo: ['', [Validators.required]],
-      fecha_hora: ['', [Validators.required]],
-      motivo: ['', [Validators.required, Validators.minLength(3)]]
-    });
-
-    this.turnoRapidoForm.get('cliente')?.valueChanges.subscribe((clienteId: string) => {
-      this.turnoRapidoForm.get('vehiculo')?.setValue('');
-      if (!clienteId) {
-        this.vehiculosTurnoRapido.set([]);
-        return;
-      }
-      this.vehiculoService.getVehiculos(clienteId).subscribe({
-        next: (vehs) => this.vehiculosTurnoRapido.set(vehs || []),
-        error: () => this.vehiculosTurnoRapido.set([])
-      });
     });
   }
 
@@ -396,100 +318,6 @@ export class OrdenFormComponent implements OnInit {
         this.guardandoVehiculoInSitu.set(false);
         const msg = err.error?.patente || err.error?.cliente_id || err.error?.detail || err.error?.error || 'Error al registrar vehículo in-situ.';
         this.errorModalVehiculo.set(Array.isArray(msg) ? msg[0] : msg);
-      }
-    });
-  }
-
-  // Métodos Modal Turno Rápido (TK153)
-  abrirModalTurnoRapido(): void {
-    this.cargarListaClientes();
-    const clientePreId = this.selectedClienteDetails()?.id || this.selectedVehiculoDetails()?.cliente_id || '';
-    const vehiculoPreId = this.ordenForm.get('vehiculo_id')?.value || '';
-    const motivoPre = this.ordenForm.get('descripcion_problema')?.value || 'Revisión y diagnóstico en taller';
-    
-    const ahora = new Date();
-    const yyyy = ahora.getFullYear();
-    const mm = String(ahora.getMonth() + 1).padStart(2, '0');
-    const dd = String(ahora.getDate()).padStart(2, '0');
-    const hh = String(ahora.getHours()).padStart(2, '0');
-    const min = String(ahora.getMinutes()).padStart(2, '0');
-    const fechaHoraStr = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-
-    this.turnoRapidoForm.reset({
-      cliente: clientePreId,
-      vehiculo: vehiculoPreId,
-      fecha_hora: fechaHoraStr,
-      motivo: motivoPre
-    });
-
-    if (clientePreId) {
-      this.vehiculoService.getVehiculos(clientePreId).subscribe({
-        next: (vehs) => {
-          this.vehiculosTurnoRapido.set(vehs || []);
-          if (vehiculoPreId) {
-            this.turnoRapidoForm.patchValue({ vehiculo: vehiculoPreId });
-          }
-        },
-        error: () => this.vehiculosTurnoRapido.set([])
-      });
-    } else {
-      this.vehiculosTurnoRapido.set([]);
-    }
-
-    this.errorModalTurnoRapido.set(null);
-    this.mostrarModalTurnoRapido.set(true);
-  }
-
-  cerrarModalTurnoRapido(): void {
-    this.mostrarModalTurnoRapido.set(false);
-  }
-
-  guardarTurnoRapido(): void {
-    if (this.turnoRapidoForm.invalid) {
-      this.turnoRapidoForm.markAllAsTouched();
-      return;
-    }
-
-    this.guardandoTurnoRapido.set(true);
-    this.errorModalTurnoRapido.set(null);
-
-    const formVal = this.turnoRapidoForm.value;
-    const payload = {
-      cliente: formVal.cliente,
-      vehiculo: formVal.vehiculo,
-      fecha_hora: new Date(formVal.fecha_hora).toISOString(),
-      motivo: formVal.motivo.trim(),
-      force_booking: true
-    };
-
-    this.turnoService.crearTurno(payload).subscribe({
-      next: (turnoCreado) => {
-        this.guardandoTurnoRapido.set(false);
-        this.toastService.exito('Turno rápido agendado y vinculado exitosamente.');
-        
-        // Agregar a la lista de turnos y seleccionarlo
-        this.turnos.update((prev) => [turnoCreado, ...prev]);
-        this.ordenForm.patchValue({
-          turno_id: turnoCreado.id,
-          modo: 'ORDEN_TRABAJO'
-        });
-
-        // Si el vehículo aún no estaba seleccionado en la orden principal, cargarlo
-        if (!this.ordenForm.get('vehiculo_id')?.value && turnoCreado.vehiculo) {
-          this.ordenForm.patchValue({ vehiculo_id: turnoCreado.vehiculo });
-        }
-
-        // Si la descripción del problema está vacía, pre-llenar con el motivo del turno
-        if (!this.ordenForm.get('descripcion_problema')?.value && turnoCreado.motivo) {
-          this.ordenForm.patchValue({ descripcion_problema: turnoCreado.motivo });
-        }
-
-        this.cerrarModalTurnoRapido();
-      },
-      error: (err) => {
-        this.guardandoTurnoRapido.set(false);
-        const msg = err.error?.detail || err.error?.fecha_hora || err.error?.non_field_errors || err.error?.error || 'Error al agendar turno rápido.';
-        this.errorModalTurnoRapido.set(Array.isArray(msg) ? msg[0] : (typeof msg === 'string' ? msg : JSON.stringify(msg)));
       }
     });
   }

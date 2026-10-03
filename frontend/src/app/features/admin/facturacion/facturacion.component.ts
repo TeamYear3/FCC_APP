@@ -12,7 +12,6 @@ export interface OrdenPendienteFacturar {
   numero_ot: string;
   cliente: string;
   dni_cuit: string;
-  condicion_iva?: string;
   vehiculo: string;
   patente: string;
   monto: number;
@@ -47,10 +46,9 @@ export class FacturacionComponent implements OnInit {
   filtroTipo: string = '';
   busqueda: string = '';
 
-  // Formulario de emisión (TK098 / TK156)
+  // Formulario de emisión
   ordenSeleccionadaId: string = '';
   tipoComprobanteSeleccionado: TipoComprobante = 'B';
-  condicionIvaSeleccionada: string = 'CF';
   puntoVentaSeleccionado: number = 1;
   diasVencimientoSeleccionado: number = 15;
   observacionesEmision: string = '';
@@ -74,7 +72,6 @@ export class FacturacionComponent implements OnInit {
           numero_ot: o.numero_ot || `OT-${o.id.slice(0, 4)}`,
           cliente: o.cliente_nombre || 'Cliente General',
           dni_cuit: o.cliente_dni_cuit || o.cliente_documento || 'Consumidor Final',
-          condicion_iva: o.cliente_condicion_iva || 'CF',
           vehiculo: o.vehiculo_marca_modelo || 'Vehículo Registrado',
           patente: o.vehiculo_patente || 'S/D',
           monto: typeof o.monto_total === 'number' ? o.monto_total : parseFloat(String(o.monto_total || '0'))
@@ -111,40 +108,19 @@ export class FacturacionComponent implements OnInit {
 
   abrirModalEmision(orden?: OrdenPendienteFacturar): void {
     const lista = this.ordenesParaFacturar();
-    let ord = orden;
-    if (ord) {
-      this.ordenSeleccionadaId = ord.id;
+    if (orden) {
+      this.ordenSeleccionadaId = orden.id;
     } else if (lista.length > 0) {
-      ord = lista[0];
-      this.ordenSeleccionadaId = ord.id;
+      this.ordenSeleccionadaId = lista[0].id;
     } else {
       this.ordenSeleccionadaId = '';
     }
-    this.condicionIvaSeleccionada = ord?.condicion_iva || 'CF';
-    this.tipoComprobanteSeleccionado = this.condicionIvaSeleccionada === 'RI' ? 'A' : 'B';
+    this.tipoComprobanteSeleccionado = 'B';
     this.puntoVentaSeleccionado = 1;
     this.diasVencimientoSeleccionado = 15;
     this.observacionesEmision = '';
     this.error.set(null);
     this.modalEmisionAbierto.set(true);
-  }
-
-  onOrdenSeleccionadaChange(id: string): void {
-    this.ordenSeleccionadaId = id;
-    const ord = this.ordenesParaFacturar().find(o => o.id === id);
-    if (ord?.condicion_iva) {
-      this.condicionIvaSeleccionada = ord.condicion_iva;
-      this.tipoComprobanteSeleccionado = this.condicionIvaSeleccionada === 'RI' ? 'A' : 'B';
-    }
-  }
-
-  onCondicionIvaChange(condicion: string): void {
-    this.condicionIvaSeleccionada = condicion;
-    if (condicion === 'RI') {
-      this.tipoComprobanteSeleccionado = 'A';
-    } else {
-      this.tipoComprobanteSeleccionado = 'B';
-    }
   }
 
   cerrarModalEmision(): void {
@@ -165,8 +141,7 @@ export class FacturacionComponent implements OnInit {
       tipo_comprobante: this.tipoComprobanteSeleccionado,
       punto_venta: this.puntoVentaSeleccionado,
       dias_vencimiento_pago: this.diasVencimientoSeleccionado,
-      observaciones: this.observacionesEmision,
-      condicion_iva: this.condicionIvaSeleccionada
+      observaciones: this.observacionesEmision
     }).subscribe({
       next: (nuevaFactura) => {
         this.emitirEnProgreso.set(false);

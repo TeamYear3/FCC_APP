@@ -251,22 +251,6 @@ import {
                 </div>
               </div>
 
-              <!-- Condición Tributaria del Cliente (TK156) -->
-              <div class="space-y-1.5">
-                <label class="text-xs font-semibold text-gray-300 block">Condición Tributaria del Cliente (IVA)</label>
-                <select
-                  [ngModel]="condicionIva()"
-                  (ngModelChange)="condicionIva.set($event)"
-                  class="w-full bg-[#121212] border border-[#2A2A2A] rounded-xl px-3 py-2.5 text-white text-xs focus:outline-none focus:border-[#FFCC00] cursor-pointer"
-                >
-                  <option value="CF">Consumidor Final</option>
-                  <option value="RI">Responsable Inscripto</option>
-                  <option value="MT">Monotributista</option>
-                  <option value="EX">Exento</option>
-                </select>
-                <span class="text-[11px] text-gray-400">Actualiza la condición fiscal del cliente para este cobro y posterior facturación.</span>
-              </div>
-
               <!-- Medio de Pago -->
               <div class="space-y-2">
                 <label class="text-xs font-semibold text-gray-300 block">Medio de Pago</label>
@@ -410,9 +394,8 @@ export class OrdenEstadoModalComponent implements OnChanges {
   readonly nuevoEstado = signal<string>('ingresado');
   readonly comentario = signal<string>('');
   
-  // Campos de cobro (TK103 / TK156)
+  // Campos de cobro (TK103)
   readonly metodoPago = signal<string>('efectivo');
-  readonly condicionIva = signal<string>('CF');
   readonly entregarOrden = signal<boolean>(false);
   readonly comentarioCobro = signal<string>('');
 
@@ -427,7 +410,6 @@ export class OrdenEstadoModalComponent implements OnChanges {
       this.nuevoEstado.set(this.orden.estado || 'ingresado');
       this.comentario.set('');
       this.metodoPago.set(this.orden.metodo_pago || 'efectivo');
-      this.condicionIva.set(this.orden.cliente_condicion_iva || 'CF');
       this.entregarOrden.set(this.orden.estado === 'finalizado');
       this.comentarioCobro.set('');
       this.mensajeExito.set(null);
@@ -508,7 +490,6 @@ export class OrdenEstadoModalComponent implements OnChanges {
     this.ordenService
       .registrarPago(this.orden.id, {
         metodo_pago: this.metodoPago(),
-        condicion_iva: this.condicionIva(),
         comentario: this.comentarioCobro(),
         entregar_orden: this.entregarOrden(),
       })

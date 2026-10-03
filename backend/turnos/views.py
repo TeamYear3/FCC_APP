@@ -11,7 +11,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
             return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
         elif self.request.method == 'POST':
-            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+            return [IsAuthenticated(), (EsAdministrador | EsCliente)()]
         return [IsAuthenticated(), EsAdministrador()]
 
     def get_queryset(self):
