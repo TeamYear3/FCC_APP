@@ -40,6 +40,7 @@ export interface PerfilUsuarioResponse {
   apellido: string;
   rol: string;
   telefono?: string;
+  google_vinculado?: boolean;
 }
 
 export interface ActualizarPerfilRequest {
@@ -280,6 +281,24 @@ export class AuthService {
       token,
       new_password: newPassword
     });
+  }
+
+  /**
+   * Vincula una cuenta local existente con Google Identity Services.
+   */
+  vincularGoogle(email: string, password: string, idToken: string): Observable<{ access: string; refresh: string; detail?: string }> {
+    return this.http.post<{ access: string; refresh: string; detail?: string }>(`${environment.apiUrl}/auth/vincular-google/`, {
+      email,
+      password,
+      id_token: idToken
+    }).pipe(
+      tap((res) => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('fcc_refresh_token', res.refresh);
+        }
+        this.setToken(res.access);
+      })
+    );
   }
 
   /**

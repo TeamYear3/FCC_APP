@@ -26,6 +26,7 @@ export class ConfiguracionPerfilModalComponent implements OnInit {
   readonly guardando = signal<boolean>(false);
   readonly mensajeExito = signal<string | null>(null);
   readonly mensajeError = signal<string | null>(null);
+  readonly googleVinculado = signal<boolean>(false);
 
   readonly mostrarPasswordActual = signal<boolean>(false);
   readonly mostrarNuevaPassword = signal<boolean>(false);
@@ -57,6 +58,7 @@ export class ConfiguracionPerfilModalComponent implements OnInit {
     this.authService.obtenerPerfil().subscribe({
       next: (res: PerfilUsuarioResponse) => {
         this.initialEmail = res.email || '';
+        this.googleVinculado.set(!!res.google_vinculado);
         this.perfilForm.patchValue({
           nombre: res.nombre || '',
           apellido: res.apellido || '',
