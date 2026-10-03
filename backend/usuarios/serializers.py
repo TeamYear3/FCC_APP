@@ -97,18 +97,56 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         return user
 
 
+class VincularGoogleSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
+    id_token = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        email = attrs.get("email", "").strip().lower()
+        password = attrs.get("password")
+        id_token_val = attrs.get("id_token")
+
+        user = Usuario.objects.filter(email__iexact=email).first()
+        if not user or not user.check_password(password):
+            raise serializers.ValidationError({"password": "La contraseña ingresada es incorrecta o el usuario no existe."})
+
+        try:
+            client_id = getattr(settings, "GOOGLE_CLIENT_ID", None) or None
+            idinfo = id_token.verify_oauth2_token(
+                id_token_val,
+                requests.Request(),
+                client_id
+            )
+            token_email = idinfo.get("email", "").strip().lower()
+            if token_email != email:
+                raise serializers.ValidationError({"id_token": "El correo de la cuenta de Google no coincide con el usuario."})
+            attrs["idinfo"] = idinfo
+            attrs["user"] = user
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            raise serializers.ValidationError({"id_token": "Token de Google inválido o expirado."})
+
+        return attrs
+
+
 class PerfilUsuarioSerializer(serializers.ModelSerializer):
     telefono = serializers.SerializerMethodField()
+    google_vinculado = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
-        fields = ("id", "email", "nombre", "apellido", "rol", "telefono")
-        read_only_fields = ("id", "rol")
+        fields = ("id", "email", "nombre", "apellido", "rol", "telefono", "google_vinculado")
+        read_only_fields = ("id", "rol", "google_vinculado")
 
     def get_telefono(self, obj):
         if hasattr(obj, "cliente_perfil") and obj.cliente_perfil:
             return obj.cliente_perfil.telefono
         return getattr(obj, "telefono", "")
+
+    def get_google_vinculado(self, obj):
+        return bool(obj.google_id)
 
 
 class ActualizarPerfilSerializer(serializers.Serializer):

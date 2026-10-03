@@ -164,8 +164,88 @@ class GoogleAuthViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Token de Google inválido o expirado", str(response.data))
 
-    def test_login_google_payload_incompleto(self):
-        response = self.client.post(self.url, {})
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_login_google_exitoso_cuenta_vinculada_previamente(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "vinculado@ejemplo.com",
+            "given_name": "Vinculado",
+            "family_name": "User",
+            "sub": "google_uid_987654"
+        }
+
+        # Crear usuario con contraseña local Y google_id vinculado
+        User.objects.create_user(
+            email="vinculado@ejemplo.com",
+            nombre="Vinculado",
+            apellido="User",
+            password="localpassword123",
+            google_id="google_uid_987654"
+        )
+
+        response = self.client.post(self.url, {"id_token": "valid_token_vinculado"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+
+class VincularGoogleViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('vincular-google')
+        self.user = User.objects.create_user(
+            email="usuario_vincular@ejemplo.com",
+            nombre="Pedro",
+            apellido="Vincular",
+            password="PasswordLocalSeguro123!"
+        )
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_vincular_google_exitoso(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "usuario_vincular@ejemplo.com",
+            "given_name": "Pedro",
+            "family_name": "Vincular",
+            "sub": "google_sub_123456"
+        }
+
+        data = {
+            "email": "usuario_vincular@ejemplo.com",
+            "password": "PasswordLocalSeguro123!",
+            "id_token": "google_id_token_mock_123"
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertIn("detail", response.data)
+
+        # Verificar persistencia del google_id en base de datos
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.google_id, "google_sub_123456")
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_vincular_google_password_incorrecta_falla(self, mock_verify):
+        data = {
+            "email": "usuario_vincular@ejemplo.com",
+            "password": "PasswordEquivocado!",
+            "id_token": "google_id_token_mock_123"
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_vincular_google_email_token_no_coincide_falla(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "otro_email_distinto@ejemplo.com",
+            "sub": "google_sub_999999"
+        }
+
+        data = {
+            "email": "usuario_vincular@ejemplo.com",
+            "password": "PasswordLocalSeguro123!",
+            "id_token": "google_id_token_mock_123"
+        }
+        response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("id_token", response.data)
 

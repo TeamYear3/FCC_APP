@@ -26,6 +26,7 @@ from .serializers import (
     PasswordResetSerializer,
     PerfilUsuarioSerializer,
     ActualizarPerfilSerializer,
+    VincularGoogleSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -154,14 +155,18 @@ class GoogleAuthView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        google_sub = idinfo.get("sub", "")
         nombre = idinfo.get("given_name", "")
         apellido = idinfo.get("family_name", "")
 
         try:
-            user = Usuario.objects.get(email=email)
-            
-            # Si el usuario ya existe y tiene contraseña local establecida (login clásico)
-            if user.has_usable_password():
+            user = Usuario.objects.get(email__iexact=email)
+
+            # 1. Si la cuenta ya tiene este google_id vinculado, permitir acceso directo
+            if user.google_id and user.google_id == google_sub:
+                pass
+            # 2. Si tiene contraseña local y NO tiene google_id vinculado, requerir vinculación
+            elif user.has_usable_password() and not user.google_id:
                 return Response(
                     {
                         "error": "Esta cuenta de correo ya se encuentra registrada con inicio de sesión local.",
@@ -170,15 +175,20 @@ class GoogleAuthView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+            # 3. Si no tenía contraseña local ni google_id, asociar google_id
+            elif not user.google_id and google_sub:
+                user.google_id = google_sub
+                user.save()
+
         except Usuario.DoesNotExist:
-            # Crear nuevo usuario OAuth con rol "cliente" y password inutilizable
+            # Crear nuevo usuario OAuth con rol "cliente", google_id y password inutilizable
             user = Usuario.objects.create_user(
                 email=email,
                 nombre=nombre,
                 apellido=apellido,
                 password=None,
-                rol="cliente"
+                rol="cliente",
+                google_id=google_sub or None
             )
 
         # Generar JWT locales con claims personalizados para el Frontend
@@ -187,6 +197,33 @@ class GoogleAuthView(APIView):
         refresh["email"] = user.email
 
         return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }, status=status.HTTP_200_OK)
+
+
+class VincularGoogleView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = VincularGoogleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+        idinfo = serializer.validated_data["idinfo"]
+        google_sub = idinfo.get("sub")
+
+        # Vincular identificador de Google al usuario existente
+        user.google_id = google_sub
+        user.save()
+
+        refresh = RefreshToken.for_user(user)
+        refresh["rol"] = user.rol
+        refresh["email"] = user.email
+
+        return Response({
+            "detail": "Cuenta vinculada exitosamente con Google.",
             "access": str(refresh.access_token),
             "refresh": str(refresh)
         }, status=status.HTTP_200_OK)
