@@ -362,6 +362,21 @@ export class TurnosAgendaComponent implements OnInit {
     this.mensajeError.set('');
   }
 
+  iniciarOTDesdeTurno(): void {
+    const turno = this.turnoSeleccionado();
+    if (!turno) return;
+
+    this.cerrarModalDetalle();
+    this.router.navigate(['/ordenes/nueva'], {
+      queryParams: {
+        turno_id: turno.id,
+        vehiculo_id: turno.vehiculo,
+        cliente_id: turno.cliente,
+        motivo: turno.motivo
+      }
+    });
+  }
+
   guardarTurno(): void {
     if (this.turnoForm.invalid) return;
 
