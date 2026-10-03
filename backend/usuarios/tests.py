@@ -559,6 +559,45 @@ class PasswordResetConfirmViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
 
+    def test_confirmar_reset_con_uid_y_new_password_exitoso(self):
+        from usuarios.models import PasswordResetToken
+
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+
+        response = self.client.post(self.url, {
+            "uid": str(self.user.id),
+            "token": token_obj.token,
+            "new_password": "AngularPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("AngularPassword2026!"))
+
+        token_obj.refresh_from_db()
+        self.assertTrue(token_obj.usado)
+
+    def test_confirmar_reset_con_uid_invalido_retorna_400(self):
+        from usuarios.models import PasswordResetToken
+
+        otro_usuario = User.objects.create_user(
+            email="otro@ejemplo.com",
+            nombre="Otro",
+            apellido="Usuario",
+            password="password_123"
+        )
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+
+        response = self.client.post(self.url, {
+            "uid": str(otro_usuario.id),
+            "token": token_obj.token,
+            "password": "NewPassword2026!",
+            "password_confirm": "NewPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
     def test_passwords_no_coinciden_retorna_400(self):
         from usuarios.models import PasswordResetToken
         token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
