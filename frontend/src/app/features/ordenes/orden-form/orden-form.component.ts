@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { OrdenService, OrdenPayload } from '../../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, VehiculoCreatePayload } from '../../../core/services/vehiculo.service';
 import { ClienteService, ClienteResponse, ClientePayload } from '../../../core/services/cliente.service';
@@ -26,6 +26,7 @@ export class OrdenFormComponent implements OnInit {
   private readonly turnoService = inject(TurnoService);
   private readonly toastService = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly isSubmitting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
@@ -117,6 +118,45 @@ export class OrdenFormComponent implements OnInit {
         }
       });
     });
+
+    // Reacción ante selección de turno para autocompletar vehículo y síntomas si están vacíos
+    this.ordenForm.get('turno_id')?.valueChanges.subscribe((turnoId: string | null) => {
+      if (!turnoId) return;
+      const t = this.turnos().find((x) => x.id === turnoId);
+      if (t) {
+        if (t.vehiculo && !this.ordenForm.get('vehiculo_id')?.value) {
+          this.ordenForm.patchValue({ vehiculo_id: t.vehiculo });
+        }
+        if (t.motivo && !this.ordenForm.get('descripcion_problema')?.value) {
+          this.ordenForm.patchValue({ descripcion_problema: t.motivo });
+        }
+      }
+    });
+
+    // Procesar parámetros de consulta (query params) para precarga (TK153)
+    this.route.queryParams.subscribe((params) => {
+      const turnoId = params['turno_id'] || params['turno'];
+      const vehiculoId = params['vehiculo_id'] || params['vehiculo'];
+      const motivo = params['motivo'];
+
+      if (turnoId || vehiculoId) {
+        this.ordenForm.patchValue({
+          modo: 'ORDEN_TRABAJO'
+        });
+      }
+
+      if (turnoId) {
+        this.ordenForm.patchValue({ turno_id: turnoId });
+      }
+
+      if (vehiculoId) {
+        this.ordenForm.patchValue({ vehiculo_id: vehiculoId });
+      }
+
+      if (motivo && !this.ordenForm.get('descripcion_problema')?.value) {
+        this.ordenForm.patchValue({ descripcion_problema: motivo });
+      }
+    });
   }
 
   cargarTurnos(): void {
@@ -127,6 +167,20 @@ export class OrdenFormComponent implements OnInit {
         const activos = lista.filter(t => t.estado !== 'cancelado');
         this.turnos.set(activos.length > 0 ? activos : lista);
         this.cargandoTurnos.set(false);
+
+        // Si ya hay un turno seleccionado, chequear si falta autocompletar vehículo o motivo
+        const currentTurnoId = this.ordenForm.get('turno_id')?.value;
+        if (currentTurnoId) {
+          const t = this.turnos().find((x) => x.id === currentTurnoId);
+          if (t) {
+            if (t.vehiculo && !this.ordenForm.get('vehiculo_id')?.value) {
+              this.ordenForm.patchValue({ vehiculo_id: t.vehiculo });
+            }
+            if (t.motivo && !this.ordenForm.get('descripcion_problema')?.value) {
+              this.ordenForm.patchValue({ descripcion_problema: t.motivo });
+            }
+          }
+        }
       },
       error: (err) => {
         console.error('Error al cargar turnos disponibles:', err);
