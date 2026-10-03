@@ -151,5 +151,60 @@ describe('AuthService', () => {
     expect(service.isAuthenticated()).toBe(false);
     expect(routerSpy.navigate).toHaveBeenCalledWith(['/autenticacion']);
   });
+
+  describe('Google Auth SDK Initialization (TK135)', () => {
+    it('should initialize Google GIS client with client_id when window.google is present', async () => {
+      const initializeSpy = vi.fn();
+      (window as any).google = {
+        accounts: {
+          id: {
+            initialize: initializeSpy,
+            prompt: vi.fn(),
+            renderButton: vi.fn(),
+            disableAutoSelect: vi.fn(),
+            revoke: vi.fn()
+          }
+        }
+      };
+
+      await service.initializeGoogleAuth();
+
+      expect(initializeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          client_id: expect.any(String),
+          auto_select: false,
+          cancel_on_tap_outside: true
+        })
+      );
+      expect(service.isSdkInitialized()).toBe(true);
+
+      delete (window as any).google;
+    });
+
+    it('should handle missing client_id gracefully without throwing unhandled exceptions', async () => {
+      const originalClientId = environment.googleClientId;
+      (environment as any).googleClientId = '';
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      (window as any).google = {
+        accounts: {
+          id: {
+            initialize: vi.fn(),
+            prompt: vi.fn()
+          }
+        }
+      };
+
+      await service.initializeGoogleAuth();
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Google Client ID no configurado'));
+      expect(service.isSdkInitialized()).toBe(false);
+
+      warnSpy.mockRestore();
+      (environment as any).googleClientId = originalClientId;
+      delete (window as any).google;
+    });
+  });
 });
+
 
