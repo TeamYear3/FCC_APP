@@ -6,11 +6,12 @@ import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, MantenimientoProgramadoResponse } from '../../core/services/vehiculo.service';
 import { WebSocketService } from '../../core/services/websocket.service';
+import { ConfiguracionPerfilModalComponent } from '../configuracion/configuracion-perfil-modal.component';
 
 @Component({
   selector: 'app-portal-cliente',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ConfiguracionPerfilModalComponent],
   templateUrl: './portal-cliente.component.html',
   styleUrl: './portal-cliente.component.css'
 })
@@ -37,6 +38,9 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly historialDatos = signal<OrdenHistorialResponse | null>(null);
   readonly cargandoHistorial = signal<boolean>(false);
   readonly mostrarModalHistorial = signal<boolean>(false);
+
+  // Modal para perfil del cliente (TK201)
+  readonly mostrarModalPerfil = signal<boolean>(false);
 
   private socketSub: Subscription | null = null;
 
@@ -209,6 +213,19 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
       case 'finalizado': return 'Finalizado';
       case 'rechazado': return 'Rechazado';
       default: return estado || 'N/A';
+    }
+  }
+
+  abrirModalPerfil(): void {
+    this.mostrarModalPerfil.set(true);
+  }
+
+  cerrarModalPerfil(): void {
+    this.mostrarModalPerfil.set(false);
+    const user = this.authService.getUserFromToken();
+    if (user) {
+      const full = `${user.nombre || ''} ${user.apellido || ''}`.trim();
+      this.userName.set(full || user.email || 'Cliente');
     }
   }
 
