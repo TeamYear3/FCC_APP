@@ -4,6 +4,8 @@ from django.db import IntegrityError
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
+from django.conf import settings
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -743,6 +745,15 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
 
         res_resumen = self.client.get(reverse('factura-list'))
         self.assertEqual(res_resumen.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class PoliticasSimpleJWTTest(TestCase):
+    def test_politicas_duracion_y_rotacion_tokens(self):
+        simple_jwt = getattr(settings, "SIMPLE_JWT", {})
+        self.assertEqual(simple_jwt.get("ACCESS_TOKEN_LIFETIME"), timedelta(minutes=30))
+        self.assertEqual(simple_jwt.get("REFRESH_TOKEN_LIFETIME"), timedelta(days=1))
+        self.assertTrue(simple_jwt.get("ROTATE_REFRESH_TOKENS"))
+        self.assertTrue(simple_jwt.get("BLACKLIST_AFTER_ROTATION"))
 
 
 
