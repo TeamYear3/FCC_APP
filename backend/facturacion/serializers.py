@@ -118,6 +118,7 @@ class EmitirFacturaSerializer(serializers.Serializer):
     punto_venta = serializers.IntegerField(default=1, min_value=1, required=False)
     dias_vencimiento_pago = serializers.IntegerField(default=15, min_value=1, required=False)
     observaciones = serializers.CharField(required=False, allow_blank=True, default="")
+    condicion_iva = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_orden_trabajo_id(self, value):
         orden = OrdenTrabajo.objects.filter(id=value).first()
