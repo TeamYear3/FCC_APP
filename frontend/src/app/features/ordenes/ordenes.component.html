@@ -1033,24 +1033,36 @@
       </div>
     }
 
-    <!-- PESTAÑA 2: CARGA DE MANO DE OBRA Y REPUESTOS -->
+    <!-- PESTAÑA 2: CARGA DE MANO DE OBRA Y REPUESTOS (TK175) -->
     @if (activeTab() === 'Carga de Mano de Obra y Repuestos') {
       <div class="mb-lg">
-        <app-presupuesto-form
-          [ordenId]="ordenIdActiva"
-          (itemsActualizados)="onItemsActualizados($event)"
-          (totalActualizado)="onTotalPresupuestoActualizado($event)"
-        ></app-presupuesto-form>
+        @defer (on viewport) {
+          <app-presupuesto-form
+            [ordenId]="ordenIdActiva"
+            (itemsActualizados)="onItemsActualizados($event)"
+            (totalActualizado)="onTotalPresupuestoActualizado($event)"
+          ></app-presupuesto-form>
+        } @placeholder {
+          <div class="p-8 text-center bg-black/20 border border-white/5 rounded-card text-zinc-400 text-xs">
+            Cargando formulario de presupuesto...
+          </div>
+        }
       </div>
     }
 
-    <!-- PESTAÑA 3: IMÁGENES Y EVIDENCIAS -->
+    <!-- PESTAÑA 3: IMÁGENES Y EVIDENCIAS (TK175) -->
     @if (activeTab() === 'Imágenes') {
       <div class="mb-lg">
-        <app-diagnostico-fotos
-          [ordenId]="ordenIdActiva"
-          [itemsPresupuesto]="itemsPresupuesto()"
-        ></app-diagnostico-fotos>
+        @defer (on viewport) {
+          <app-diagnostico-fotos
+            [ordenId]="ordenIdActiva"
+            [itemsPresupuesto]="itemsPresupuesto()"
+          ></app-diagnostico-fotos>
+        } @placeholder {
+          <div class="p-8 text-center bg-black/20 border border-white/5 rounded-card text-zinc-400 text-xs">
+            Cargando galería de evidencias de diagnóstico...
+          </div>
+        }
       </div>
     }
 
@@ -1080,14 +1092,16 @@
       <span>Expediente #OT-1257 protegido y auditado</span>
     </div>
     <span>Material Design 3 · Dark Mode Optimizado</span>
-    <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103) -->
-    <app-orden-estado-modal
-      [mostrar]="mostrarModalEstado()"
-      [orden]="ordenSeleccionadaEstado()"
-      [modoInicial]="modoModalEstado()"
-      (cerrado)="mostrarModalEstado.set(false)"
-      (estadoActualizado)="onEstadoActualizado()"
-    ></app-orden-estado-modal>
+    <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103 & TK171) -->
+    @defer (when mostrarModalEstado()) {
+      <app-orden-estado-modal
+        [mostrar]="mostrarModalEstado()"
+        [orden]="ordenSeleccionadaEstado()"
+        [modoInicial]="modoModalEstado()"
+        (cerrado)="mostrarModalEstado.set(false)"
+        (estadoActualizado)="onEstadoActualizado()"
+      ></app-orden-estado-modal>
+    }
   </div>
 
   <!-- Modal para Aprobar Presupuesto y Convertir en OT con Selección de Canal (TK091) -->
