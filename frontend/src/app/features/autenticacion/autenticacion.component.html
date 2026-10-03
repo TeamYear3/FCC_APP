@@ -60,6 +60,7 @@
               placeholder="ejemplo@correo.com"
               class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
+            <app-field-error [control]="loginForm.get('email')"></app-field-error>
           </div>
           <div>
             <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Contraseña</label>
@@ -88,6 +89,7 @@
                 }
               </button>
             </div>
+            <app-field-error [control]="loginForm.get('password')"></app-field-error>
           </div>
 
           <div class="text-right">
@@ -150,6 +152,7 @@
                 placeholder="Juan"
                 class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
+              <app-field-error [control]="registroForm.get('nombre')"></app-field-error>
             </div>
             <div>
               <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Apellido</label>
@@ -159,6 +162,7 @@
                 placeholder="Pérez"
                 class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
+              <app-field-error [control]="registroForm.get('apellido')"></app-field-error>
             </div>
           </div>
           <div>
@@ -169,6 +173,7 @@
                 placeholder="juan@correo.com"
                 class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
+            <app-field-error [control]="registroForm.get('email')"></app-field-error>
           </div>
           <div>
             <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Contraseña</label>
@@ -197,6 +202,7 @@
                 }
               </button>
             </div>
+            <app-field-error [control]="registroForm.get('password')"></app-field-error>
           </div>
           <div>
             <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Confirmar Contraseña</label>
@@ -225,6 +231,7 @@
                 }
               </button>
             </div>
+            <app-field-error [control]="registroForm.get('confirmPassword')"></app-field-error>
             @if (registroForm.hasError('mismatch') && registroForm.get('confirmPassword')?.touched) {
               <span class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
             }
@@ -265,6 +272,7 @@
               placeholder="ejemplo@correo.com"
               class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
+            <app-field-error [control]="resetRequestForm.get('email')"></app-field-error>
           </div>
 
           <button
@@ -320,6 +328,7 @@
                 }
               </button>
             </div>
+            <app-field-error [control]="resetConfirmForm.get('password')"></app-field-error>
           </div>
           <div>
             <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Confirmar Contraseña</label>
@@ -348,6 +357,7 @@
                 }
               </button>
             </div>
+            <app-field-error [control]="resetConfirmForm.get('confirmPassword')"></app-field-error>
             @if (resetConfirmForm.hasError('mismatch') && resetConfirmForm.get('confirmPassword')?.touched) {
               <span class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
             }

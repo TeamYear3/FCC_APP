@@ -4,11 +4,13 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { GoogleLoginButtonComponent } from '../../shared/components/google-login-button/google-login-button.component';
+import { FieldErrorComponent } from '../../shared/components/field-error/field-error.component';
+import { extractApiErrorMessage } from '../../core/utils/error-formatter.util';
 
 @Component({
   selector: 'app-autenticacion',
   standalone: true,
-  imports: [ReactiveFormsModule, GoogleLoginButtonComponent],
+  imports: [ReactiveFormsModule, GoogleLoginButtonComponent, FieldErrorComponent],
   templateUrl: './autenticacion.component.html',
   styleUrl: './autenticacion.component.css',
 })
@@ -172,16 +174,7 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        let msg =
-          err.error?.detail || err.error?.error || 'Credenciales inválidas o error de conexión.';
-        if (
-          typeof msg === 'string' &&
-          (msg.toLowerCase().includes('no active account') ||
-            msg.toLowerCase().includes('given credentials') ||
-            msg.toLowerCase().includes('invalid credentials'))
-        ) {
-          msg = 'Correo electrónico o contraseña incorrectos.';
-        }
+        const msg = extractApiErrorMessage(err, 'Correo electrónico o contraseña incorrectos.');
         this.errorMessage.set(msg);
       },
     });
@@ -201,11 +194,7 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.email?.[0] ||
-          err.error?.password?.[0] ||
-          err.error?.error ||
-          'No se pudo completar el registro.';
+        const msg = extractApiErrorMessage(err, 'No se pudo completar el registro.');
         this.errorMessage.set(msg);
       },
     });
@@ -227,10 +216,10 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.email?.[0] ||
-          err.error?.error ||
-          'No se pudo solicitar la recuperación de contraseña.';
+        const msg = extractApiErrorMessage(
+          err,
+          'No se pudo solicitar la recuperación de contraseña.',
+        );
         this.errorMessage.set(msg);
       },
     });
@@ -257,11 +246,10 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.password?.[0] ||
-          err.error?.token?.[0] ||
-          err.error?.error ||
-          'Token inválido o expirado. Vuelve a solicitar la recuperación.';
+        const msg = extractApiErrorMessage(
+          err,
+          'Token inválido o expirado. Vuelve a solicitar la recuperación.',
+        );
         this.errorMessage.set(msg);
       },
     });
