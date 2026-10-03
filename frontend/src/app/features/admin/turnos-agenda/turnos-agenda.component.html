@@ -85,36 +85,77 @@
           }
         </div>
         <form [formGroup]="turnoForm" class="p-6 space-y-4" (ngSubmit)="guardarTurno()">
-          <!-- Cliente -->
-          <div>
-            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1"
-              >Cliente</label
-            >
-            <select
-              formControlName="cliente"
-              (change)="onClienteChange(turnoForm.get('cliente')?.value)"
-              class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent"
-            >
-              <option value="">Seleccione un cliente...</option>
-              @for (cliente of clientes(); track cliente) {
-                <option [value]="cliente.id">
-                  {{ cliente.nombre }} {{ cliente.apellido }} ({{ cliente.dni_cuit }})
-                </option>
+          <!-- Cliente con Búsqueda Reactiva y Debounce 300ms (TK155) -->
+          <div class="relative">
+            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">
+              Cliente <span class="text-color-primary-accent">*</span>
+            </label>
+            @if (clienteSeleccionado()) {
+              <div class="flex items-center justify-between p-2.5 rounded bg-white/5 border border-color-primary-accent/40">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-color-primary-accent"></span>
+                  <span class="text-xs font-bold text-white">
+                    {{ clienteSeleccionado()?.nombre }} {{ clienteSeleccionado()?.apellido }}
+                  </span>
+                  <span class="text-[10px] text-zinc-400">
+                    ({{ clienteSeleccionado()?.tipo_documento }}: {{ clienteSeleccionado()?.dni_cuit }})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  (click)="limpiarCliente()"
+                  class="text-zinc-400 hover:text-white text-xs px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                >
+                  Cambiar
+                </button>
+              </div>
+            } @else {
+              <div class="relative">
+                <input
+                  type="text"
+                  [formControl]="clienteSearchControl"
+                  placeholder="Buscar por apellido, nombre o DNI (mín. 2 letras)..."
+                  class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent pr-8"
+                />
+                @if (buscandoClientes()) {
+                  <span class="absolute right-2.5 top-2.5 text-xs text-color-primary-accent animate-pulse font-bold">
+                    ...
+                  </span>
+                }
+              </div>
+              @if (clientesSugeridos().length > 0) {
+                <div class="absolute left-0 right-0 top-full mt-1 bg-zinc-900 border border-white/15 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto divide-y divide-white/5">
+                  @for (c of clientesSugeridos(); track c.id) {
+                    <div
+                      (click)="seleccionarCliente(c)"
+                      class="p-2.5 hover:bg-white/10 cursor-pointer transition-colors text-xs flex items-center justify-between"
+                    >
+                      <span class="font-bold text-white">{{ c.nombre }} {{ c.apellido }}</span>
+                      <span class="text-zinc-400 text-[10px]">{{ c.tipo_documento }}: {{ c.dni_cuit }}</span>
+                    </div>
+                  }
+                </div>
               }
-            </select>
+            }
+            <input type="hidden" formControlName="cliente" />
+            @if (turnoForm.get('cliente')?.invalid && turnoForm.get('cliente')?.touched) {
+              <p class="text-red-400 text-[10px] mt-1">Debe buscar y seleccionar un cliente para el turno.</p>
+            }
           </div>
           <!-- Vehículo -->
           <div>
-            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1"
-              >Vehículo</label
-            >
+            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">
+              Vehículo <span class="text-color-primary-accent">*</span>
+            </label>
             <select
               formControlName="vehiculo"
               [disabled]="!turnoForm.get('cliente')?.value"
               class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">Seleccione un vehículo...</option>
-              @for (vehiculo of vehiculosFiltrados(); track vehiculo) {
+              <option value="">
+                {{ !turnoForm.get('cliente')?.value ? '-- Seleccione un cliente primero --' : (vehiculosFiltrados().length === 0 ? '-- Sin vehículos registrados --' : '-- Seleccione un vehículo --') }}
+              </option>
+              @for (vehiculo of vehiculosFiltrados(); track vehiculo.id) {
                 <option [value]="vehiculo.id">
                   {{ vehiculo.marca }} {{ vehiculo.modelo }} ({{ vehiculo.patente }})
                 </option>
@@ -122,7 +163,7 @@
             </select>
             @if (!turnoForm.get('cliente')?.value) {
               <p class="text-[10px] text-yellow-500/80 mt-1">
-                * Debe seleccionar un cliente primero para cargar sus vehículos.
+                * Debe buscar y seleccionar un cliente primero para cargar sus vehículos.
               </p>
             }
           </div>
