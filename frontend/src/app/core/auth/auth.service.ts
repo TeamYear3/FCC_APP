@@ -90,9 +90,14 @@ export class AuthService {
   initializeGoogleAuth(): Promise<void> {
     return this.loadGoogleScript().then(() => {
       if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-        const clientId = environment.googleClientId || '';
-        if (!clientId || clientId === 'GOOGLE_OAUTH_CLIENT_ID') {
-          console.warn('Google Client ID utilizando valor por defecto de entorno.');
+        const clientId =
+          (typeof window !== 'undefined' && (window as any).__env?.GOOGLE_CLIENT_ID) ||
+          environment.googleClientId ||
+          '';
+
+        if (!clientId) {
+          console.warn('Google Client ID no configurado en este entorno.');
+          return;
         }
 
         window.google.accounts.id.initialize({
