@@ -723,13 +723,16 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
         res_post = self.client.post(reverse('crear-vehiculo'), data)
         self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_tecnico_bloqueado_en_creacion_modificacion_turnos(self):
+    def test_tecnico_habilitado_creacion_bloqueado_modificacion_turnos(self):
         data = {
             "fecha_hora": "2026-10-01T10:00:00Z",
             "motivo": "Revisión técnica"
         }
         res_post = self.client.post(reverse('turno-list'), data)
-        self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertNotEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+
+        res_put = self.client.put('/api/turnos/1/', data)
+        self.assertEqual(res_put.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_tecnico_bloqueado_en_modulo_facturacion(self):
         res_emitir = self.client.post(reverse('factura-emitir'), {})
