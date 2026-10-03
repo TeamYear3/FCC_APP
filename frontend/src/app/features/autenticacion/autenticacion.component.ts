@@ -136,8 +136,16 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
+        let msg =
           err.error?.detail || err.error?.error || 'Credenciales inválidas o error de conexión.';
+        if (
+          typeof msg === 'string' &&
+          (msg.toLowerCase().includes('no active account') ||
+            msg.toLowerCase().includes('given credentials') ||
+            msg.toLowerCase().includes('invalid credentials'))
+        ) {
+          msg = 'Correo electrónico o contraseña incorrectos.';
+        }
         this.errorMessage.set(msg);
       },
     });
