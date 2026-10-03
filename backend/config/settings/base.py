@@ -140,11 +140,13 @@ REST_FRAMEWORK = {
     ),
 }
 
-# SimpleJWT Settings
+# SimpleJWT Settings - Políticas de Sesión y Expiración para Operatividad en Taller
+# - Access Token: 30 minutos (balance óptimo entre seguridad y uso continuo sin desconexiones)
+# - Refresh Token: 1 día con rotación obligatoria y lista negra inmediata (TK131/TK132/TK134)
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
