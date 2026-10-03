@@ -91,6 +91,14 @@ export class AuthInterceptor implements HttpInterceptor {
   }
 }
 
+let isRefreshingFn = false;
+const refreshTokenSubjectFn = new BehaviorSubject<string | null>(null);
+
+export function resetAuthInterceptorFnState(): void {
+  isRefreshingFn = false;
+  refreshTokenSubjectFn.next(null);
+}
+
 export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
   const authService = inject(AuthService);
   const toastService = inject(ToastService);
@@ -107,22 +115,51 @@ export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && !req.url.includes('/auth/')) {
-        return authService.refreshToken().pipe(
-          switchMap(newToken => {
-            if (newToken) {
+        if (!isRefreshingFn) {
+          isRefreshingFn = true;
+          refreshTokenSubjectFn.next(null);
+
+          return authService.refreshToken().pipe(
+            switchMap(newToken => {
+              isRefreshingFn = false;
+              if (newToken) {
+                refreshTokenSubjectFn.next(newToken);
+                const retryReq = req.clone({
+                  setHeaders: {
+                    Authorization: `Bearer ${newToken}`
+                  }
+                });
+                return next(retryReq);
+              }
+              refreshTokenSubjectFn.next(null);
+              toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+              authService.logout();
+              router.navigate(['/autenticacion']);
+              return throwError(() => error);
+            }),
+            catchError(refreshError => {
+              isRefreshingFn = false;
+              refreshTokenSubjectFn.next(null);
+              toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
+              authService.logout();
+              router.navigate(['/autenticacion']);
+              return throwError(() => refreshError);
+            })
+          );
+        } else {
+          return refreshTokenSubjectFn.pipe(
+            filter(newToken => newToken !== null),
+            take(1),
+            switchMap(newToken => {
               const retryReq = req.clone({
                 setHeaders: {
                   Authorization: `Bearer ${newToken}`
                 }
               });
               return next(retryReq);
-            }
-            toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-            authService.logout();
-            router.navigate(['/autenticacion']);
-            return throwError(() => error);
-          })
-        );
+            })
+          );
+        }
       }
       return throwError(() => error);
     })
