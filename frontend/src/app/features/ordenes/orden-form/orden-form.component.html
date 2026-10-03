@@ -263,12 +263,24 @@
             </div>
             <!-- Selector de Turno Agendado -->
             <div class="flex flex-col gap-2">
-              <label
-                for="turno_id"
-                class="typography-body-highlight text-white uppercase tracking-wide"
-              >
-                Vincular Turno Agendado <span class="text-color-primary-accent">*</span>
-              </label>
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <label
+                  for="turno_id"
+                  class="typography-body-highlight text-white uppercase tracking-wide"
+                >
+                  Vincular Turno Agendado <span class="text-color-primary-accent">*</span>
+                </label>
+                <button
+                  type="button"
+                  (click)="abrirModalTurnoRapido()"
+                  class="px-3 py-1.5 text-xs font-bold rounded-lg border border-color-primary-accent/40 bg-color-primary-accent/15 hover:bg-color-primary-accent/25 text-color-primary-accent flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>+ Turno rápido</span>
+                </button>
+              </div>
               <select
                 id="turno_id"
                 formControlName="turno_id"
@@ -758,6 +770,109 @@
               class="px-5 py-2 text-xs font-bold rounded-xl bg-color-primary-accent text-black hover:bg-opacity-90 disabled:opacity-50 cursor-pointer"
             >
               {{ guardandoVehiculoInSitu() ? 'Guardando...' : 'Guardar y Vincular' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Modal In-Situ: Alta Rápida de Turno (TK153) -->
+  @if (mostrarModalTurnoRapido()) {
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div class="bg-[#1E1E1E] border border-color-primary-accent/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 bg-color-primary-accent/15 border border-color-primary-accent/30 rounded-xl text-color-primary-accent">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white leading-tight">Agendar Turno Rápido</h3>
+              <p class="text-xs text-zinc-400">Creá y vinculá un turno operativo para esta orden</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarModalTurnoRapido()"
+            class="text-zinc-400 hover:text-white p-1 bg-transparent border-0 cursor-pointer"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        @if (errorModalTurnoRapido()) {
+          <div class="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-semibold">
+            {{ errorModalTurnoRapido() }}
+          </div>
+        }
+
+        <form [formGroup]="turnoRapidoForm" (ngSubmit)="guardarTurnoRapido()" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Cliente *</label>
+            <select
+              formControlName="cliente"
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            >
+              <option value="">Seleccione un cliente...</option>
+              @for (c of listaClientes(); track c.id) {
+                <option [value]="c.id">{{ c.nombre }} {{ c.apellido }} ({{ c.tipo_documento }}: {{ c.dni_cuit }})</option>
+              }
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Vehículo *</label>
+            <select
+              formControlName="vehiculo"
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            >
+              <option value="">Seleccione un vehículo...</option>
+              @for (v of vehiculosTurnoRapido(); track v.id) {
+                <option [value]="v.id">{{ v.patente }} - {{ v.marca }} {{ v.modelo }}</option>
+              }
+            </select>
+            @if (vehiculosTurnoRapido().length === 0 && turnoRapidoForm.get('cliente')?.value) {
+              <span class="text-zinc-500 text-[10px] block mt-1">Este cliente no posee vehículos registrados todavía.</span>
+            }
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Fecha y Hora *</label>
+            <input
+              type="datetime-local"
+              formControlName="fecha_hora"
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-zinc-300 uppercase mb-1">Motivo / Síntomas *</label>
+            <textarea
+              formControlName="motivo"
+              rows="3"
+              placeholder="Describa el motivo del turno..."
+              class="w-full bg-[#121212] border border-white/10 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+            ></textarea>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+            <button
+              type="button"
+              (click)="cerrarModalTurnoRapido()"
+              class="px-4 py-2 text-xs font-bold rounded-xl border border-white/20 bg-transparent text-zinc-300 hover:bg-white/5 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="guardandoTurnoRapido() || turnoRapidoForm.invalid"
+              class="px-5 py-2 text-xs font-bold rounded-xl bg-color-primary-accent text-black hover:bg-opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {{ guardandoTurnoRapido() ? 'Agendando...' : 'Agendar y Vincular' }}
             </button>
           </div>
         </form>
