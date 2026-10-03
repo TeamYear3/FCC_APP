@@ -91,7 +91,7 @@ class PasswordResetRequestView(APIView):
         if user:
             token_obj = PasswordResetToken.generar_token(user, duracion_horas=1)
             portal_base_url = getattr(settings, "CLIENT_PORTAL_URL", "https://fccapp.com").rstrip("/")
-            enlace_reset = f"{portal_base_url}/autenticacion?action=reset&token={token_obj.token}"
+            enlace_reset = f"{portal_base_url}/autenticacion?action=reset&uid={user.id}&token={token_obj.token}"
             nombre_usuario = f"{user.nombre} {user.apellido}".strip() or user.email
 
             threading.Thread(
@@ -116,6 +116,7 @@ class PasswordResetConfirmView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         token_str = serializer.validated_data["token"].strip()
+        uid_str = serializer.validated_data.get("uid")
         nueva_password = serializer.validated_data["password"]
 
         token_obj = PasswordResetToken.objects.filter(token=token_str).first()
@@ -124,6 +125,26 @@ class PasswordResetConfirmView(APIView):
                 {"error": "El enlace de recuperación es inválido, ya fue utilizado o ha expirado."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Validación de coherencia si se envía uid
+        if uid_str:
+            uid_str = str(uid_str).strip()
+            user_id_str = str(token_obj.usuario.id)
+            uid_matches = (uid_str == user_id_str)
+            if not uid_matches:
+                try:
+                    from django.utils.http import urlsafe_base64_decode
+                    from django.utils.encoding import force_str
+                    decoded_uid = force_str(urlsafe_base64_decode(uid_str))
+                    uid_matches = (decoded_uid == user_id_str)
+                except Exception:
+                    uid_matches = False
+
+            if not uid_matches:
+                return Response(
+                    {"error": "El identificador de usuario no coincide con el token de recuperación provisto."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         user = token_obj.usuario
         user.set_password(nueva_password)

@@ -47,16 +47,22 @@ class PasswordResetSerializer(serializers.Serializer):
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
-    token = serializers.CharField(required=False)
-    uid = serializers.CharField(required=False)
+    token = serializers.CharField(required=True)
+    uid = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     password = serializers.CharField(min_length=8, required=False, write_only=True)
     password_confirm = serializers.CharField(min_length=8, required=False, write_only=True)
-    new_password = serializers.CharField(write_only=True, required=False)
+    new_password = serializers.CharField(min_length=8, required=False, write_only=True)
 
     def validate(self, attrs):
-        if attrs.get("password") and attrs.get("password_confirm"):
-            if attrs.get("password") != attrs.get("password_confirm"):
-                raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
+        password = attrs.get("password") or attrs.get("new_password")
+        if not password:
+            raise serializers.ValidationError({"password": "La contraseña es obligatoria."})
+        
+        password_confirm = attrs.get("password_confirm")
+        if password_confirm and password != password_confirm:
+            raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
+
+        attrs["password"] = password
         return attrs
 
 
