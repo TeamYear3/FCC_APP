@@ -34,6 +34,19 @@
         }
       </div>
 
+      <!-- Mensajes de feedback (visibles en la parte superior del formulario sin requerir scroll) -->
+      @if (errorMessage()) {
+        <div class="w-full p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center font-medium animate-fadeIn">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      @if (successMessage()) {
+        <div class="w-full p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center font-medium animate-fadeIn">
+          {{ successMessage() }}
+        </div>
+      }
+
       <!-- Formularios -->
 
       <!-- 1. LOGIN FORM -->
@@ -267,19 +280,6 @@
         <div class="w-full text-center text-xs mt-2 flex items-center justify-center gap-2 text-color-primary-accent">
           <span class="inline-block w-2 h-2 rounded-full bg-color-primary-accent animate-ping"></span>
           <span>Procesando...</span>
-        </div>
-      }
-
-      <!-- Mensajes de feedback -->
-      @if (errorMessage()) {
-        <div class="w-full p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center font-medium animate-fadeIn">
-          {{ errorMessage() }}
-        </div>
-      }
-
-      @if (successMessage()) {
-        <div class="w-full p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center font-medium animate-fadeIn">
-          {{ successMessage() }}
         </div>
       }
 

@@ -17,6 +17,8 @@ describe('AutenticacionComponent', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
+
     mockAuthService = {
       initializeGoogleAuth: vi.fn().mockResolvedValue(undefined),
       loginWithGoogle: vi.fn(),
@@ -44,5 +46,12 @@ describe('AutenticacionComponent', () => {
   it('should call loginWithGoogle on service when onGoogleLogin is triggered', () => {
     component.onGoogleLogin();
     expect(mockAuthService.loginWithGoogle).toHaveBeenCalled();
+  });
+
+  it('should display error message when errorMessage signal is set', () => {
+    component.errorMessage.set('Correo electrónico o contraseña incorrectos.');
+    fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).toContain('Correo electrónico o contraseña incorrectos.');
   });
 });
