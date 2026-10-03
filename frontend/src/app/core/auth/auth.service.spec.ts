@@ -121,7 +121,19 @@ describe('AuthService', () => {
     expect(localStorage.getItem('fcc_refresh_token')).toBe(rotatedRefreshToken);
   });
 
-  it('should logout and redirect to /autenticacion when refresh fails with 401', () => {
+  it('should not send HTTP request to backend when logout(false) is called', () => {
+    localStorage.setItem('fcc_auth_token', 'mock-token');
+    localStorage.setItem('fcc_refresh_token', 'mock-refresh');
+
+    service.logout(false);
+
+    expect(service.isAuthenticated()).toBe(false);
+    expect(localStorage.getItem('fcc_refresh_token')).toBeNull();
+    expect(localStorage.getItem('fcc_auth_token')).toBeNull();
+    httpTestingController.expectNone(`${environment.apiUrl}/auth/logout/`);
+  });
+
+  it('should logout silently without calling backend when refresh fails with 401', () => {
     localStorage.setItem('fcc_refresh_token', 'invalid-or-blacklisted-token');
 
     let emittedToken: string | null = 'waiting';
@@ -132,11 +144,8 @@ describe('AuthService', () => {
     const req = httpTestingController.expectOne(`${environment.apiUrl}/auth/token/refresh/`);
     req.flush({ detail: 'Token is blacklisted' }, { status: 401, statusText: 'Unauthorized' });
 
-    // Consumir el logout disparado tras el fallo
-    const logoutReq = httpTestingController.match(`${environment.apiUrl}/auth/logout/`);
-    if (logoutReq.length > 0) {
-      logoutReq[0].flush({ detail: 'Sesión cerrada' });
-    }
+    // Verificar que NO se disparó ninguna petición a /auth/logout/
+    httpTestingController.expectNone(`${environment.apiUrl}/auth/logout/`);
 
     expect(emittedToken).toBeNull();
     expect(service.isAuthenticated()).toBe(false);
