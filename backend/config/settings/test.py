@@ -20,3 +20,11 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # MONGO_URI vacío en tests para activar el fallback seguro
 MONGO_URI = ""
+
+# Usar caché en memoria (LocMemCache) para aislar la suite de pruebas unitarias
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
