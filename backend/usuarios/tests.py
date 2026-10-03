@@ -739,6 +739,39 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
         self.assertEqual(res_resumen.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class CustomTokenObtainPairSerializerTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="testclaims@ejemplo.com",
+            nombre="Carlos",
+            apellido="Gómez",
+            password="password123",
+            rol="cliente"
+        )
+
+    def test_claims_jwt_incluyen_nombre_y_apellido(self):
+        from usuarios.serializers import CustomTokenObtainPairSerializer
+        token = CustomTokenObtainPairSerializer.get_token(self.user)
+        self.assertEqual(token["nombre"], "Carlos")
+        self.assertEqual(token["apellido"], "Gómez")
+        self.assertEqual(token["email"], "testclaims@ejemplo.com")
+        self.assertEqual(token["rol"], "cliente")
+
+    def test_validate_devuelve_nombre_y_apellido(self):
+        from usuarios.serializers import CustomTokenObtainPairSerializer
+        serializer = CustomTokenObtainPairSerializer(data={
+            "email": "testclaims@ejemplo.com",
+            "password": "password123"
+        })
+        self.assertTrue(serializer.is_valid())
+        data = serializer.validated_data
+        self.assertEqual(data["nombre"], "Carlos")
+        self.assertEqual(data["apellido"], "Gómez")
+        self.assertEqual(data["email"], "testclaims@ejemplo.com")
+        self.assertEqual(data["rol"], "cliente")
+
+
+
 
 
 
