@@ -205,10 +205,12 @@ export class AuthService {
 
   /**
    * Cierra la sesión activa del usuario y limpia tokens.
+   * Si notifyServer es true, notifica al backend para blacklistear el refresh token.
+   * Si notifyServer es false (sesión ya expirada/inválida), solo limpia el estado local.
    */
-  logout(): void {
+  logout(notifyServer: boolean = true): void {
     const refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('fcc_refresh_token') : null;
-    if (refreshToken) {
+    if (notifyServer && refreshToken) {
       this.http.post(`${environment.apiUrl}/auth/logout/`, { refresh: refreshToken }).subscribe({
         next: () => console.log('Sesión invalidada en el servidor backend.'),
         error: (err) => console.warn('Error al invalidar token en el servidor:', err)
@@ -349,7 +351,7 @@ export class AuthService {
         },
         error: (err) => {
           console.error('Error al renovar token de acceso:', err);
-          this.logout();
+          this.logout(false);
           this.router.navigate(['/autenticacion']);
           subscriber.next(null);
           subscriber.complete();

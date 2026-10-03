@@ -57,7 +57,7 @@ export class AuthInterceptor implements HttpInterceptor {
                 }
                 this.refreshTokenSubject.next(null);
                 this.toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-                this.authService.logout();
+                this.authService.logout(false);
                 this.router.navigate(['/autenticacion']);
                 return throwError(() => error);
               }),
@@ -65,7 +65,7 @@ export class AuthInterceptor implements HttpInterceptor {
                 this.isRefreshing = false;
                 this.refreshTokenSubject.next(null);
                 this.toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-                this.authService.logout();
+                this.authService.logout(false);
                 this.router.navigate(['/autenticacion']);
                 return throwError(() => refreshError);
               })
@@ -133,7 +133,7 @@ export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, 
               }
               refreshTokenSubjectFn.next(null);
               toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-              authService.logout();
+              authService.logout(false);
               router.navigate(['/autenticacion']);
               return throwError(() => error);
             }),
@@ -141,7 +141,7 @@ export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, 
               isRefreshingFn = false;
               refreshTokenSubjectFn.next(null);
               toastService.mostrarError('Tu sesión ha expirado. Por favor, vuelve a iniciar sesión.');
-              authService.logout();
+              authService.logout(false);
               router.navigate(['/autenticacion']);
               return throwError(() => refreshError);
             })
