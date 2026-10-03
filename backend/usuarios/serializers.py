@@ -60,6 +60,10 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    default_error_messages = {
+        "no_active_account": "Correo electrónico o contraseña incorrectos."
+    }
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
