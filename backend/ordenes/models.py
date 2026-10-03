@@ -87,6 +87,13 @@ class OrdenTrabajo(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-creado_en']
+        indexes = [
+            models.Index(fields=['estado', '-fecha_ingreso'], name='ot_estado_fecha_idx'),
+            models.Index(fields=['complejidad'], name='ot_complejidad_idx'),
+        ]
+
     def save(self, *args, **kwargs):
         if not self.numero_ot:
             last_ot = OrdenTrabajo.objects.all().order_by('creado_en', 'id').last()

@@ -33,6 +33,9 @@ class Turno(models.Model):
 
     class Meta:
         ordering = ["fecha_hora"]
+        indexes = [
+            models.Index(fields=['fecha_hora', 'estado'], name='turno_fecha_estado_idx'),
+        ]
 
     def __str__(self):
         return f"Turno {self.fecha_hora} - {self.cliente} ({self.estado})"
