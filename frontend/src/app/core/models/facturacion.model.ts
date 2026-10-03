@@ -41,6 +41,7 @@ export interface EmitirFacturaPayload {
   punto_venta?: number;
   dias_vencimiento_pago?: number;
   observaciones?: string;
+  condicion_iva?: string;
 }
 
 export interface FacturaCalendarioItem {

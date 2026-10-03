@@ -626,6 +626,11 @@ class RegistrarPagoOrdenView(APIView):
         metodo_pago = serializer.validated_data['metodo_pago']
         comentario = serializer.validated_data.get('comentario', '')
         entregar_orden = serializer.validated_data.get('entregar_orden', False)
+        condicion_iva = serializer.validated_data.get('condicion_iva')
+
+        if condicion_iva and orden.vehiculo and orden.vehiculo.cliente:
+            orden.vehiculo.cliente.condicion_iva = condicion_iva
+            orden.vehiculo.cliente.save(update_fields=['condicion_iva', 'actualizado_en'])
 
         orden.estado_cobro = EstadoCobro.COBRADO
         orden.metodo_pago = metodo_pago
