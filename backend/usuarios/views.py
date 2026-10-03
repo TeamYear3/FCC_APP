@@ -26,6 +26,7 @@ from .serializers import (
     PasswordResetSerializer,
     PerfilUsuarioSerializer,
     ActualizarPerfilSerializer,
+    VincularGoogleSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ class PasswordResetRequestView(APIView):
         if user:
             token_obj = PasswordResetToken.generar_token(user, duracion_horas=1)
             portal_base_url = getattr(settings, "CLIENT_PORTAL_URL", "https://fccapp.com").rstrip("/")
-            enlace_reset = f"{portal_base_url}/autenticacion?action=reset&token={token_obj.token}"
+            enlace_reset = f"{portal_base_url}/autenticacion?action=reset&uid={user.id}&token={token_obj.token}"
             nombre_usuario = f"{user.nombre} {user.apellido}".strip() or user.email
 
             threading.Thread(
@@ -115,6 +116,7 @@ class PasswordResetConfirmView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         token_str = serializer.validated_data["token"].strip()
+        uid_str = serializer.validated_data.get("uid")
         nueva_password = serializer.validated_data["password"]
 
         token_obj = PasswordResetToken.objects.filter(token=token_str).first()
@@ -123,6 +125,26 @@ class PasswordResetConfirmView(APIView):
                 {"error": "El enlace de recuperación es inválido, ya fue utilizado o ha expirado."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Validación de coherencia si se envía uid
+        if uid_str:
+            uid_str = str(uid_str).strip()
+            user_id_str = str(token_obj.usuario.id)
+            uid_matches = (uid_str == user_id_str)
+            if not uid_matches:
+                try:
+                    from django.utils.http import urlsafe_base64_decode
+                    from django.utils.encoding import force_str
+                    decoded_uid = force_str(urlsafe_base64_decode(uid_str))
+                    uid_matches = (decoded_uid == user_id_str)
+                except Exception:
+                    uid_matches = False
+
+            if not uid_matches:
+                return Response(
+                    {"error": "El identificador de usuario no coincide con el token de recuperación provisto."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         user = token_obj.usuario
         user.set_password(nueva_password)
@@ -154,14 +176,18 @@ class GoogleAuthView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        google_sub = idinfo.get("sub", "")
         nombre = idinfo.get("given_name", "")
         apellido = idinfo.get("family_name", "")
 
         try:
-            user = Usuario.objects.get(email=email)
-            
-            # Si el usuario ya existe y tiene contraseña local establecida (login clásico)
-            if user.has_usable_password():
+            user = Usuario.objects.get(email__iexact=email)
+
+            # 1. Si la cuenta ya tiene este google_id vinculado, permitir acceso directo
+            if user.google_id and user.google_id == google_sub:
+                pass
+            # 2. Si tiene contraseña local y NO tiene google_id vinculado, requerir vinculación
+            elif user.has_usable_password() and not user.google_id:
                 return Response(
                     {
                         "error": "Esta cuenta de correo ya se encuentra registrada con inicio de sesión local.",
@@ -170,15 +196,20 @@ class GoogleAuthView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+            # 3. Si no tenía contraseña local ni google_id, asociar google_id
+            elif not user.google_id and google_sub:
+                user.google_id = google_sub
+                user.save()
+
         except Usuario.DoesNotExist:
-            # Crear nuevo usuario OAuth con rol "cliente" y password inutilizable
+            # Crear nuevo usuario OAuth con rol "cliente", google_id y password inutilizable
             user = Usuario.objects.create_user(
                 email=email,
                 nombre=nombre,
                 apellido=apellido,
                 password=None,
-                rol="cliente"
+                rol="cliente",
+                google_id=google_sub or None
             )
 
         # Generar JWT locales con claims personalizados para el Frontend
@@ -192,7 +223,35 @@ class GoogleAuthView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class VincularGoogleView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = VincularGoogleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+        idinfo = serializer.validated_data["idinfo"]
+        google_sub = idinfo.get("sub")
+
+        # Vincular identificador de Google al usuario existente
+        user.google_id = google_sub
+        user.save()
+
+        refresh = RefreshToken.for_user(user)
+        refresh["rol"] = user.rol
+        refresh["email"] = user.email
+
+        return Response({
+            "detail": "Cuenta vinculada exitosamente con Google.",
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }, status=status.HTTP_200_OK)
+
+
 class LogoutView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):

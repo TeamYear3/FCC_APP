@@ -111,5 +111,19 @@ describe('ConfiguracionPerfilModalComponent', () => {
     expect(component.fortalezaPassword.nivel).toBe('fuerte');
     expect(component.fortalezaPassword.etiqueta).toBe('Fuerte');
   });
+
+  it('debe registrar estado de googleVinculado si el perfil lo tiene activo (TK137)', () => {
+    authServiceMock.obtenerPerfil.mockReturnValue(of({
+      id: 'user-admin-1',
+      email: 'admin@taller.com',
+      nombre: 'Laura',
+      apellido: 'Zárate',
+      rol: 'admin',
+      google_vinculado: true
+    }));
+
+    component.ngOnInit();
+    expect(component.googleVinculado()).toBe(true);
+  });
 });
 

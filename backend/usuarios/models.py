@@ -44,6 +44,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     )
     active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    google_id = models.CharField(max_length=255, unique=True, null=True, blank=True, db_index=True)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
