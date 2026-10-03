@@ -206,6 +206,12 @@ class LogoutViewTest(APITestCase):
         response = self.client.post(self.url, {"refresh": "invalid_refresh_token_123"})
         self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
 
+    def test_logout_con_bearer_token_expirado_responde_205(self):
+        # Enviar una cabecera Authorization con token expirado/inválido no debe bloquear el logout con 401
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer token_invalido_o_expirado_xyz')
+        response = self.client.post(self.url, {"refresh": str(self.refresh)})
+        self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
+
 
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
 
