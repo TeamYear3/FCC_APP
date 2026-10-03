@@ -327,6 +327,7 @@ export class AuthService {
 
   /**
    * Renueva el access token expirado consumiendo el refresh token con el Backend Django (/api/auth/token/refresh/).
+   * Persiste el nuevo refresh token rotado en localStorage para evitar 401 por token blacklisted.
    */
   refreshToken(): Observable<string | null> {
     const refresh = typeof localStorage !== 'undefined' ? localStorage.getItem('fcc_refresh_token') : null;
@@ -337,8 +338,11 @@ export class AuthService {
       });
     }
     return new Observable(subscriber => {
-      this.http.post<{ access: string }>(`${environment.apiUrl}/auth/token/refresh/`, { refresh }).subscribe({
+      this.http.post<{ access: string; refresh?: string }>(`${environment.apiUrl}/auth/token/refresh/`, { refresh }).subscribe({
         next: (res) => {
+          if (res.refresh && typeof localStorage !== 'undefined') {
+            localStorage.setItem('fcc_refresh_token', res.refresh);
+          }
           this.setToken(res.access);
           subscriber.next(res.access);
           subscriber.complete();
