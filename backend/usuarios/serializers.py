@@ -8,11 +8,12 @@ class GoogleAuthSerializer(serializers.Serializer):
 
     def validate_id_token(self, value):
         try:
-            # Valida el token con Google y el ID de cliente de la app
+            client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None) or None
+            # Valida el token con Google y el ID de cliente de la app si está configurado
             idinfo = id_token.verify_oauth2_token(
                 value,
                 requests.Request(),
-                settings.GOOGLE_CLIENT_ID
+                client_id
             )
             return idinfo
         except Exception:
@@ -46,20 +47,30 @@ class PasswordResetSerializer(serializers.Serializer):
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
-    token = serializers.CharField(required=False)
-    uid = serializers.CharField(required=False)
+    token = serializers.CharField(required=True)
+    uid = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     password = serializers.CharField(min_length=8, required=False, write_only=True)
     password_confirm = serializers.CharField(min_length=8, required=False, write_only=True)
-    new_password = serializers.CharField(write_only=True, required=False)
+    new_password = serializers.CharField(min_length=8, required=False, write_only=True)
 
     def validate(self, attrs):
-        if attrs.get("password") and attrs.get("password_confirm"):
-            if attrs.get("password") != attrs.get("password_confirm"):
-                raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
+        password = attrs.get("password") or attrs.get("new_password")
+        if not password:
+            raise serializers.ValidationError({"password": "La contraseña es obligatoria."})
+        
+        password_confirm = attrs.get("password_confirm")
+        if password_confirm and password != password_confirm:
+            raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
+
+        attrs["password"] = password
         return attrs
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    default_error_messages = {
+        "no_active_account": "Correo electrónico o contraseña incorrectos."
+    }
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -96,18 +107,56 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         return user
 
 
+class VincularGoogleSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
+    id_token = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        email = attrs.get("email", "").strip().lower()
+        password = attrs.get("password")
+        id_token_val = attrs.get("id_token")
+
+        user = Usuario.objects.filter(email__iexact=email).first()
+        if not user or not user.check_password(password):
+            raise serializers.ValidationError({"password": "La contraseña ingresada es incorrecta o el usuario no existe."})
+
+        try:
+            client_id = getattr(settings, "GOOGLE_CLIENT_ID", None) or None
+            idinfo = id_token.verify_oauth2_token(
+                id_token_val,
+                requests.Request(),
+                client_id
+            )
+            token_email = idinfo.get("email", "").strip().lower()
+            if token_email != email:
+                raise serializers.ValidationError({"id_token": "El correo de la cuenta de Google no coincide con el usuario."})
+            attrs["idinfo"] = idinfo
+            attrs["user"] = user
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            raise serializers.ValidationError({"id_token": "Token de Google inválido o expirado."})
+
+        return attrs
+
+
 class PerfilUsuarioSerializer(serializers.ModelSerializer):
     telefono = serializers.SerializerMethodField()
+    google_vinculado = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
-        fields = ("id", "email", "nombre", "apellido", "rol", "telefono")
-        read_only_fields = ("id", "rol")
+        fields = ("id", "email", "nombre", "apellido", "rol", "telefono", "google_vinculado")
+        read_only_fields = ("id", "rol", "google_vinculado")
 
     def get_telefono(self, obj):
         if hasattr(obj, "cliente_perfil") and obj.cliente_perfil:
             return obj.cliente_perfil.telefono
         return getattr(obj, "telefono", "")
+
+    def get_google_vinculado(self, obj):
+        return bool(obj.google_id)
 
 
 class ActualizarPerfilSerializer(serializers.Serializer):
@@ -171,4 +220,3 @@ class ActualizarPerfilSerializer(serializers.Serializer):
             user.cliente_perfil.save()
 
         return user
-
