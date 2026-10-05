@@ -38,6 +38,7 @@ describe('VehiculoHistorialComponent', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     mockVehiculoService = {
       obtenerVehiculoPorId: vi.fn().mockReturnValue(of(mockVehiculo)),
       obtenerHistorialVehiculo: vi.fn().mockReturnValue(of(mockHistorialResponse)),
