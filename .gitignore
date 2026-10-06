@@ -41,9 +41,11 @@ docker-compose.override.yml
 docs/*
 !docs/*.md
 
-# Archivos multimedia temporales
+# Archivos multimedia temporales y estáticos generados
 media/
 diagnosticos/
+staticfiles/
+backend/staticfiles/
 
 # Carpeta temporal del asistente AI
 scratch/
