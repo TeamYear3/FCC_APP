@@ -35,10 +35,18 @@ export class ClienteService {
   }
 
   /**
-   * Obtiene el listado de todos los clientes registrados desde GET /api/clientes/
+   * Obtiene el listado de clientes registrados desde GET /api/clientes/ (con soporte opcional de búsqueda ?search=)
    */
-  obtenerClientes(): Observable<ClienteResponse[]> {
-    return this.http.get<ClienteResponse[]>(this.apiUrl);
+  obtenerClientes(search?: string): Observable<ClienteResponse[]> {
+    const options = search ? { params: { search } } : {};
+    return this.http.get<ClienteResponse[]>(this.apiUrl, options);
+  }
+
+  /**
+   * Busca clientes dinámicamente mediante el parámetro ?search= (TK155)
+   */
+  buscarClientes(termino: string): Observable<ClienteResponse[]> {
+    return this.http.get<ClienteResponse[]>(this.apiUrl, { params: { search: termino } });
   }
 
   /**
