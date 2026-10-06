@@ -701,10 +701,12 @@ class PerfilUsuarioAPITest(APITestCase):
         self.assertEqual(response.data["apellido"], "Zárate")
         self.assertEqual(response.data["rol"], "admin")
 
-    def test_obtener_perfil_no_admin_denegado(self):
+    def test_obtener_perfil_cliente_exitoso(self):
         self.client.force_authenticate(user=self.cliente_user)
         response = self.client.get(self.perfil_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "cliente_perfil@taller.com")
+        self.assertEqual(response.data["rol"], "cliente")
 
     def test_actualizar_perfil_nombre_apellido_exitoso(self):
         self.client.force_authenticate(user=self.admin)

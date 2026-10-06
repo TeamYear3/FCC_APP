@@ -27,7 +27,7 @@ export class ConfiguracionPerfilModalComponent implements OnInit {
   readonly mensajeExito = signal<string | null>(null);
   readonly mensajeError = signal<string | null>(null);
   readonly googleVinculado = signal<boolean>(false);
-  readonly userRole = this.authService.userRoleSignal;
+  readonly userRole = this.authService.userRoleSignal ?? signal<string | null>('admin');
 
   readonly iniciales = computed(() => {
     const n = this.perfilForm?.get('nombre')?.value || '';

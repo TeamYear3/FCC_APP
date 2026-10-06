@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ConfiguracionPerfilModalComponent } from './configuracion-perfil-modal.component';
 import { AuthService } from '../../core/auth/auth.service';
@@ -12,6 +13,7 @@ describe('ConfiguracionPerfilModalComponent', () => {
 
   beforeEach(async () => {
     authServiceMock = {
+      userRoleSignal: signal('admin'),
       obtenerPerfil: vi.fn().mockReturnValue(of({
         id: 'user-admin-1',
         email: 'admin@taller.com',
