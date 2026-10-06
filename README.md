@@ -248,6 +248,41 @@ Dentro de la arquitectura de **FCC_APP**, el modelo de datos utiliza un enfoque 
 
 ---
 
+## 🚀 Despliegue Continuo (CI/CD en Windows Server VPS con PM2)
+
+El backend de **FCC_APP** cuenta con un pipeline de integración y despliegue continuo automatizado con **GitHub Actions** que se ejecuta directamente sobre un VPS con **Windows Server** utilizando un *Self-Hosted Runner* y el gestor de procesos **PM2**.
+
+### 1. Inicialización del servicio en el VPS (única vez)
+Desde la carpeta del backend en el servidor (ej. `C:\bot-EVV\FCC_APP\backend`):
+```powershell
+# Registrar y arrancar el servidor Daphne ASGI bajo PM2
+pm2 start ".\.venv\Scripts\daphne.exe -b 0.0.0.0 -p 8000 config.asgi:application" --name "fcc-backend"
+
+# Persistir la configuración para autoarranque con el sistema operativo
+pm2-startup install
+pm2 save
+```
+
+### 2. Flujo Automatizado de Despliegue
+Al realizar un `push` o fusionar un Pull Request hacia la rama **`main`**:
+1. El **Runner de GitHub en Windows Server** intercepta el evento automáticamente.
+2. Descarga los últimos cambios del repositorio con `git pull origin main`.
+3. Actualiza las dependencias en el entorno virtual (`pip install -r requirements.txt`).
+4. Aplica las migraciones pendientes en PostgreSQL (`python manage.py migrate --noinput`).
+5. **Recolecta los activos estáticos** (`python manage.py collectstatic --noinput`) servidos de forma optimizada mediante **WhiteNoise**.
+6. Reinicia el proceso del backend en PM2 (`pm2 restart fcc-backend`).
+
+### 3. Monitoreo del backend en el VPS
+```powershell
+# Ver estado de ejecución:
+pm2 status
+
+# Ver logs en tiempo real:
+pm2 logs fcc-backend
+```
+
+---
+
 ## 👥 Equipo de Desarrollo - ISPC TSDS 2026
 
 Proyecto integrador desarrollado en el marco de la **Tecnicatura Superior en Desarrollo de Software (TSDS)** del **Instituto Superior Politécnico Córdoba (ISPC)**.
