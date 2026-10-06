@@ -76,12 +76,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["rol"] = user.rol
         token["email"] = user.email
+        token["nombre"] = user.nombre
+        token["apellido"] = user.apellido
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
         data["rol"] = self.user.rol
         data["email"] = self.user.email
+        data["nombre"] = self.user.nombre
+        data["apellido"] = self.user.apellido
         return data
 
 
@@ -216,27 +220,3 @@ class ActualizarPerfilSerializer(serializers.Serializer):
             user.cliente_perfil.save()
 
         return user
-
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    default_error_messages = {
-        "no_active_account": "Correo electrónico o contraseña incorrectos."
-    }
-
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token["nombre"] = user.nombre
-        token["apellido"] = user.apellido
-        token["email"] = user.email
-        token["rol"] = user.rol
-        return token
-
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        data["nombre"] = self.user.nombre
-        data["apellido"] = self.user.apellido
-        data["email"] = self.user.email
-        data["rol"] = self.user.rol
-        return data
-

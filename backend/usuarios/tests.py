@@ -865,7 +865,6 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
         res_resumen = self.client.get(reverse('factura-list'))
         self.assertEqual(res_resumen.status_code, status.HTTP_403_FORBIDDEN)
 
-
 class PoliticasSimpleJWTTest(TestCase):
     def test_politicas_duracion_y_rotacion_tokens(self):
         simple_jwt = getattr(settings, "SIMPLE_JWT", {})
@@ -911,6 +910,7 @@ class GoogleConfiguracionDinamicaTest(TestCase):
         client_id = getattr(settings, "GOOGLE_CLIENT_ID", "")
         self.assertIsInstance(client_id, str)
         self.assertNotEqual(client_id, "default-google-client-id-change-me")
+
 
 class CustomTokenObtainPairSerializerTest(TestCase):
     def setUp(self):
