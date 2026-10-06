@@ -140,11 +140,13 @@ REST_FRAMEWORK = {
     ),
 }
 
-# SimpleJWT Settings
+# SimpleJWT Settings - Políticas de Sesión y Expiración para Operatividad en Taller
+# - Access Token: 30 minutos (balance óptimo entre seguridad y uso continuo sin desconexiones)
+# - Refresh Token: 1 día con rotación obligatoria y lista negra inmediata (TK131/TK132/TK134)
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
@@ -156,7 +158,8 @@ SIMPLE_JWT = {
 }
 
 # Google OAuth Config
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "default-google-client-id-change-me")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID") or os.getenv("GOOGLE_OAUTH_CLIENT_ID") or ""
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET") or os.getenv("GOOGLE_OAUTH_CLIENT_SECRET") or ""
 
 # Email / SMTP Configuration
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")

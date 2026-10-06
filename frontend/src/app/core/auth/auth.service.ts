@@ -40,6 +40,7 @@ export interface PerfilUsuarioResponse {
   apellido: string;
   rol: string;
   telefono?: string;
+  google_vinculado?: boolean;
 }
 
 export interface ActualizarPerfilRequest {
@@ -86,13 +87,27 @@ export class AuthService {
 
   /**
    * Inicializa el SDK de Google Identity Services consumiendo las variables de entorno.
+   * Garantiza idempotencia: si ya está inicializado, no repite la inicialización.
    */
   initializeGoogleAuth(): Promise<void> {
+    if (this.isSdkInitialized()) {
+      return Promise.resolve();
+    }
+
     return this.loadGoogleScript().then(() => {
+      if (this.isSdkInitialized()) {
+        return;
+      }
+
       if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-        const clientId = environment.googleClientId || '';
-        if (!clientId || clientId === 'GOOGLE_OAUTH_CLIENT_ID') {
-          console.warn('Google Client ID utilizando valor por defecto de entorno.');
+        const clientId =
+          (typeof window !== 'undefined' && (window as any).__env?.GOOGLE_CLIENT_ID) ||
+          environment.googleClientId ||
+          '';
+
+        if (!clientId) {
+          console.warn('Google Client ID no configurado en este entorno.');
+          return;
         }
 
         window.google.accounts.id.initialize({
@@ -205,10 +220,12 @@ export class AuthService {
 
   /**
    * Cierra la sesión activa del usuario y limpia tokens.
+   * Si notifyServer es true, notifica al backend para blacklistear el refresh token.
+   * Si notifyServer es false (sesión ya expirada/inválida), solo limpia el estado local.
    */
-  logout(): void {
+  logout(notifyServer: boolean = true): void {
     const refreshToken = typeof localStorage !== 'undefined' ? localStorage.getItem('fcc_refresh_token') : null;
-    if (refreshToken) {
+    if (notifyServer && refreshToken) {
       this.http.post(`${environment.apiUrl}/auth/logout/`, { refresh: refreshToken }).subscribe({
         next: () => console.log('Sesión invalidada en el servidor backend.'),
         error: (err) => console.warn('Error al invalidar token en el servidor:', err)
@@ -262,8 +279,27 @@ export class AuthService {
     return this.http.post<any>(`${environment.apiUrl}/auth/password-reset-confirm/`, {
       uid,
       token,
+      password: newPassword,
       new_password: newPassword
     });
+  }
+
+  /**
+   * Vincula una cuenta local existente con Google Identity Services.
+   */
+  vincularGoogle(email: string, password: string, idToken: string): Observable<{ access: string; refresh: string; detail?: string }> {
+    return this.http.post<{ access: string; refresh: string; detail?: string }>(`${environment.apiUrl}/auth/vincular-google/`, {
+      email,
+      password,
+      id_token: idToken
+    }).pipe(
+      tap((res) => {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('fcc_refresh_token', res.refresh);
+        }
+        this.setToken(res.access);
+      })
+    );
   }
 
   /**
@@ -327,6 +363,7 @@ export class AuthService {
 
   /**
    * Renueva el access token expirado consumiendo el refresh token con el Backend Django (/api/auth/token/refresh/).
+   * Persiste el nuevo refresh token rotado en localStorage para evitar 401 por token blacklisted.
    */
   refreshToken(): Observable<string | null> {
     const refresh = typeof localStorage !== 'undefined' ? localStorage.getItem('fcc_refresh_token') : null;
@@ -337,15 +374,18 @@ export class AuthService {
       });
     }
     return new Observable(subscriber => {
-      this.http.post<{ access: string }>(`${environment.apiUrl}/auth/token/refresh/`, { refresh }).subscribe({
+      this.http.post<{ access: string; refresh?: string }>(`${environment.apiUrl}/auth/token/refresh/`, { refresh }).subscribe({
         next: (res) => {
+          if (res.refresh && typeof localStorage !== 'undefined') {
+            localStorage.setItem('fcc_refresh_token', res.refresh);
+          }
           this.setToken(res.access);
           subscriber.next(res.access);
           subscriber.complete();
         },
         error: (err) => {
           console.error('Error al renovar token de acceso:', err);
-          this.logout();
+          this.logout(false);
           this.router.navigate(['/autenticacion']);
           subscriber.next(null);
           subscriber.complete();
@@ -382,9 +422,19 @@ export class AuthService {
   /**
    * Permite renderizar opcionalmente un botón nativo de Google o enlazar con contenedores externos.
    */
-  renderButton(element: HTMLElement, options: Record<string, unknown> = { theme: 'outline', size: 'large' }): void {
-    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-      window.google.accounts.id.renderButton(element, options);
+  renderButton(element: HTMLElement, options: Record<string, unknown> = { theme: 'outline', size: 'large', shape: 'pill', width: 320 }): void {
+    if (this.isSdkInitialized()) {
+      if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+        window.google.accounts.id.renderButton(element, options);
+      }
+    } else {
+      this.initializeGoogleAuth().then(() => {
+        if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+          window.google.accounts.id.renderButton(element, options);
+        }
+      }).catch(err => {
+        console.warn('No se pudo inicializar Google SDK para renderButton:', err);
+      });
     }
   }
 

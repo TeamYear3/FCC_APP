@@ -4,11 +4,13 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { GoogleLoginButtonComponent } from '../../shared/components/google-login-button/google-login-button.component';
+import { FieldErrorComponent } from '../../shared/components/field-error/field-error.component';
+import { extractApiErrorMessage } from '../../core/utils/error-formatter.util';
 
 @Component({
   selector: 'app-autenticacion',
   standalone: true,
-  imports: [ReactiveFormsModule, GoogleLoginButtonComponent],
+  imports: [ReactiveFormsModule, GoogleLoginButtonComponent, FieldErrorComponent],
   templateUrl: './autenticacion.component.html',
   styleUrl: './autenticacion.component.css',
 })
@@ -23,6 +25,13 @@ export class AutenticacionComponent implements OnInit {
   readonly successMessage = signal<string | null>(null);
   readonly isInitializing = signal<boolean>(true);
   readonly isSubmitting = signal<boolean>(false);
+
+  // Señales de visibilidad de contraseñas (TK139)
+  readonly showLoginPassword = signal<boolean>(false);
+  readonly showRegisterPassword = signal<boolean>(false);
+  readonly showRegisterConfirmPassword = signal<boolean>(false);
+  readonly showResetPassword = signal<boolean>(false);
+  readonly showResetConfirmPassword = signal<boolean>(false);
 
   loginForm!: FormGroup;
   registroForm!: FormGroup;
@@ -92,10 +101,10 @@ export class AutenticacionComponent implements OnInit {
       });
 
     this.route.queryParams.subscribe((params) => {
-      this.resetUid = params['uid'] || null;
+      this.resetUid = params['uid'] || params['uidb64'] || null;
       this.resetToken = params['token'] || null;
 
-      if (this.resetUid && this.resetToken) {
+      if (this.resetToken) {
         this.mode.set('reset-confirm');
       }
     });
@@ -109,11 +118,40 @@ export class AutenticacionComponent implements OnInit {
   changeMode(newMode: 'login' | 'registro' | 'reset-request' | 'reset-confirm'): void {
     this.clearMessages();
     this.mode.set(newMode);
+    this.resetPasswordVisibility();
 
     if (newMode === 'login') this.loginForm.reset();
     if (newMode === 'registro') this.registroForm.reset();
     if (newMode === 'reset-request') this.resetRequestForm.reset();
     if (newMode === 'reset-confirm') this.resetConfirmForm.reset();
+  }
+
+  toggleLoginPassword(): void {
+    this.showLoginPassword.update((v) => !v);
+  }
+
+  toggleRegisterPassword(): void {
+    this.showRegisterPassword.update((v) => !v);
+  }
+
+  toggleRegisterConfirmPassword(): void {
+    this.showRegisterConfirmPassword.update((v) => !v);
+  }
+
+  toggleResetPassword(): void {
+    this.showResetPassword.update((v) => !v);
+  }
+
+  toggleResetConfirmPassword(): void {
+    this.showResetConfirmPassword.update((v) => !v);
+  }
+
+  private resetPasswordVisibility(): void {
+    this.showLoginPassword.set(false);
+    this.showRegisterPassword.set(false);
+    this.showRegisterConfirmPassword.set(false);
+    this.showResetPassword.set(false);
+    this.showResetConfirmPassword.set(false);
   }
 
   onLoginSubmit(): void {
@@ -136,8 +174,7 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.detail || err.error?.error || 'Credenciales inválidas o error de conexión.';
+        const msg = extractApiErrorMessage(err, 'Correo electrónico o contraseña incorrectos.');
         this.errorMessage.set(msg);
       },
     });
@@ -157,11 +194,7 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.email?.[0] ||
-          err.error?.password?.[0] ||
-          err.error?.error ||
-          'No se pudo completar el registro.';
+        const msg = extractApiErrorMessage(err, 'No se pudo completar el registro.');
         this.errorMessage.set(msg);
       },
     });
@@ -183,41 +216,40 @@ export class AutenticacionComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.email?.[0] ||
-          err.error?.error ||
-          'No se pudo solicitar la recuperación de contraseña.';
+        const msg = extractApiErrorMessage(
+          err,
+          'No se pudo solicitar la recuperación de contraseña.',
+        );
         this.errorMessage.set(msg);
       },
     });
   }
 
   onResetConfirmSubmit(): void {
-    if (this.resetConfirmForm.invalid || !this.resetUid || !this.resetToken) return;
+    if (this.resetConfirmForm.invalid || !this.resetToken) return;
     this.clearMessages();
     this.isSubmitting.set(true);
 
     const { password } = this.resetConfirmForm.value;
-    this.authService.confirmPasswordReset(this.resetUid, this.resetToken, password).subscribe({
+    this.authService.confirmPasswordReset(this.resetUid || '', this.resetToken, password).subscribe({
       next: (res) => {
         this.isSubmitting.set(false);
+        this.changeMode('login');
         this.successMessage.set(
           res.detail || 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.',
         );
-        this.changeMode('login');
 
         this.router.navigate([], {
-          queryParams: { uid: null, token: null },
+          queryParams: { uid: null, uidb64: null, token: null, action: null },
           queryParamsHandling: 'merge',
         });
       },
       error: (err) => {
         this.isSubmitting.set(false);
-        const msg =
-          err.error?.password?.[0] ||
-          err.error?.token?.[0] ||
-          err.error?.error ||
-          'Token inválido o expirado. Vuelve a solicitar la recuperación.';
+        const msg = extractApiErrorMessage(
+          err,
+          'Token inválido o expirado. Vuelve a solicitar la recuperación.',
+        );
         this.errorMessage.set(msg);
       },
     });

@@ -425,7 +425,8 @@
           <div>
             <label class="block text-zinc-300 font-semibold mb-1">Orden de Trabajo Aprobada:</label>
             <select
-              [(ngModel)]="ordenSeleccionadaId"
+              [ngModel]="ordenSeleccionadaId"
+              (ngModelChange)="onOrdenSeleccionadaChange($event)"
               class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent"
             >
               @for (ord of ordenesParaFacturar(); track ord.id) {
@@ -435,8 +436,21 @@
               }
             </select>
           </div>
-          <!-- Tipo Comprobante y Punto de Venta -->
+          <!-- Condición Tributaria y Tipo Comprobante (TK156) -->
           <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-zinc-300 font-semibold mb-1">Condición Tributaria (IVA):</label>
+              <select
+                [ngModel]="condicionIvaSeleccionada"
+                (ngModelChange)="onCondicionIvaChange($event)"
+                class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent"
+              >
+                <option value="CF">Consumidor Final</option>
+                <option value="RI">Responsable Inscripto</option>
+                <option value="MT">Monotributista</option>
+                <option value="EX">Exento</option>
+              </select>
+            </div>
             <div>
               <label class="block text-zinc-300 font-semibold mb-1">Tipo de Comprobante:</label>
               <select
@@ -445,17 +459,18 @@
               >
                 <option value="B">Factura B (Consumidor Final)</option>
                 <option value="A">Factura A (Resp. Inscripto)</option>
-                <option value="C">Factura C (Monotributo)</option>
+                <option value="C">Factura C (Monotributo / Otros)</option>
               </select>
             </div>
-            <div>
-              <label class="block text-zinc-300 font-semibold mb-1">Punto de Venta:</label>
-              <input
-                type="number"
-                [(ngModel)]="puntoVentaSeleccionado"
-                class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent"
-              />
-            </div>
+          </div>
+          <!-- Punto de Venta -->
+          <div>
+            <label class="block text-zinc-300 font-semibold mb-1">Punto de Venta:</label>
+            <input
+              type="number"
+              [(ngModel)]="puntoVentaSeleccionado"
+              class="w-full px-3 py-2 rounded-card bg-black/70 border border-white/10 text-white focus:outline-none focus:border-color-primary-accent"
+            />
           </div>
           <!-- Días de Vencimiento de Pago -->
           <div>

@@ -33,13 +33,18 @@ class EmitirFacturaView(APIView):
         punto_venta = serializer.validated_data.get("punto_venta", 1)
         dias_vencimiento = serializer.validated_data.get("dias_vencimiento_pago", 15)
         observaciones = serializer.validated_data.get("observaciones", "")
+        condicion_iva_override = serializer.validated_data.get("condicion_iva", "")
 
         orden = (
             OrdenTrabajo.objects.select_related("vehiculo__cliente")
             .prefetch_related("items_presupuesto")
             .get(id=orden_id)
         )
-        cliente = orden.vehiculo.cliente
+        cliente = orden.vehiculo.cliente if orden.vehiculo else None
+
+        if condicion_iva_override and cliente:
+            cliente.condicion_iva = condicion_iva_override
+            cliente.save(update_fields=["condicion_iva", "actualizado_en"])
 
         # Llamar al WebService de ARCA para autorizar y obtener CAE
         arca_response = ArcaWSClient.solicitar_cae(

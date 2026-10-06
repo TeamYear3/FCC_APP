@@ -6,6 +6,7 @@ describe('WebSocketService', () => {
   let service: WebSocketService;
 
   beforeEach(() => {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [WebSocketService]
     });
