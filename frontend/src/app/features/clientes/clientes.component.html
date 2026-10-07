@@ -299,10 +299,12 @@
       <span>Acceso operativo para Admin y Técnico</span>
     </div>
     <span>Material Design 3 · Dark Mode Optimizado</span>
-  <!-- Drawer / Modal de Expediente Clínico de Cliente (TK087) -->
-  <app-expediente-cliente-modal
-    [mostrar]="mostrarModalExpediente()"
-    [cliente]="clienteSeleccionadoExpediente()"
-    (cerrado)="cerrarExpediente()"
-  ></app-expediente-cliente-modal>
+  <!-- Drawer / Modal de Expediente Clínico de Cliente (TK087 & TK171) -->
+  @defer (when mostrarModalExpediente()) {
+    <app-expediente-cliente-modal
+      [mostrar]="mostrarModalExpediente()"
+      [cliente]="clienteSeleccionadoExpediente()"
+      (cerrado)="cerrarExpediente()"
+    ></app-expediente-cliente-modal>
+  }
 </div>
