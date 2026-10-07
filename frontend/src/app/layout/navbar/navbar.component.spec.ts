@@ -82,10 +82,14 @@ describe('NavbarComponent (TK142 - Sticky Header & Navegación)', () => {
     expect(headerEl.classList.contains('z-40')).toBe(true);
   });
 
-  it('debe invocar toggleSidebar al hacer clic en el boton hamburguesa movil', () => {
+  it('debe invocar toggleSidebar y detener propagacion al hacer clic en el boton hamburguesa movil (TK143)', () => {
     const btnHamburguesa = fixture.debugElement.query(By.css('button[aria-label="Abrir navegación lateral"]'));
     expect(btnHamburguesa).toBeTruthy();
-    btnHamburguesa.triggerEventHandler('click', new MouseEvent('click'));
+    const mockEvent = new MouseEvent('click');
+    const stopSpy = vi.spyOn(mockEvent, 'stopPropagation');
+
+    btnHamburguesa.triggerEventHandler('click', mockEvent);
+    expect(stopSpy).toHaveBeenCalled();
     expect(mockSidebarService.toggleSidebar).toHaveBeenCalled();
   });
 
