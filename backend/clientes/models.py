@@ -42,5 +42,10 @@ class Cliente(models.Model):
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['dni_cuit'], name='cliente_dnicuit_idx'),
+        ]
+
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.tipo_documento}: {self.dni_cuit})"
