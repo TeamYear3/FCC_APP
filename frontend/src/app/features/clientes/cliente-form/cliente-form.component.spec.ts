@@ -142,5 +142,22 @@ describe('ClienteFormComponent', () => {
     expect(component.clienteForm.get('nombre')?.value).toBe('Carlos');
     expect(component.clienteForm.get('dni_cuit')?.disabled).toBe(true);
   });
+
+  it('debe asociar atributos aria-invalid y aria-describedby cuando un campo es invalido y fue tocado (TK238)', () => {
+    const nombreInput: HTMLInputElement = fixture.nativeElement.querySelector('#nombre');
+    expect(nombreInput).toBeTruthy();
+
+    component.clienteForm.get('nombre')?.setValue('');
+    component.clienteForm.get('nombre')?.markAsTouched();
+    fixture.detectChanges();
+
+    expect(nombreInput.getAttribute('aria-invalid')).toBe('true');
+    expect(nombreInput.getAttribute('aria-describedby')).toBe('error-nombre');
+
+    const errorDiv = fixture.nativeElement.querySelector('#error-nombre');
+    expect(errorDiv).toBeTruthy();
+    expect(errorDiv.getAttribute('role')).toBe('alert');
+    expect(errorDiv.getAttribute('aria-live')).toBe('polite');
+  });
 });
 
