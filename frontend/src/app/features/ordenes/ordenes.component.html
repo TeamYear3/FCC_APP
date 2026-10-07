@@ -847,12 +847,6 @@
                 >
                   {{ ordenActiva()?.estado?.replace('_', ' ') }}
                 </span>
-                <span
-                  class="px-2 py-0.5 rounded-full text-xs font-bold uppercase"
-                  [ngClass]="getComplejidadBadgeClass(ordenActiva()?.complejidad)"
-                >
-                  {{ ordenActiva()?.complejidad || 'Media' }}
-                </span>
               </div>
 
               @if (ordenActiva()?.motivo_pausa) {
