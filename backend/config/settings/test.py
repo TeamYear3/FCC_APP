@@ -20,3 +20,13 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # MONGO_URI vacío en tests para activar el fallback seguro
 MONGO_URI = ""
+
+# Storage estándar para la suite de pruebas
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
