@@ -359,7 +359,9 @@ class BusquedaUniversalView(APIView):
         from vehiculos.models import Vehiculo
         from ordenes.models import OrdenTrabajo
 
-        es_admin = getattr(request.user, 'es_administrador', True)
+        rol_usuario = getattr(request.user, 'rol', 'cliente')
+        es_admin = (rol_usuario == 'admin')
+        es_tecnico = (rol_usuario == 'tecnico')
 
         # 1. Búsqueda de Clientes
         clientes_qs = Cliente.objects.filter(
@@ -369,13 +371,20 @@ class BusquedaUniversalView(APIView):
             Q(usuario__email__icontains=query)
         ).distinct()[:5]
 
+        def _url_cliente(c_id):
+            if es_admin:
+                return f"/admin/clientes/editar/{c_id}"
+            elif es_tecnico:
+                return "/admin/clientes"
+            return "/portal-cliente"
+
         clientes = [
             {
                 'id': str(c.id),
                 'titulo': f"{c.nombre} {c.apellido}".strip(),
                 'subtitulo': f"{c.tipo_documento}: {c.dni_cuit}",
                 'tipo': 'cliente',
-                'url': f"/admin/clientes/editar/{c.id}" if es_admin else f"/clientes/editar/{c.id}"
+                'url': _url_cliente(c.id)
             }
             for c in clientes_qs
         ]
@@ -388,13 +397,18 @@ class BusquedaUniversalView(APIView):
             Q(modelo__icontains=query)
         ).distinct()[:5]
 
+        def _url_vehiculo(v_id):
+            if es_admin or es_tecnico:
+                return f"/admin/vehiculos/{v_id}/historial"
+            return "/portal-cliente"
+
         vehiculos = [
             {
                 'id': str(v.id),
                 'titulo': f"{v.marca} {v.modelo} ({v.patente})",
                 'subtitulo': f"Chasis: {v.numero_chasis or 'N/A'}",
                 'tipo': 'vehiculo',
-                'url': f"/vehiculos/historial/{v.id}"
+                'url': _url_vehiculo(v.id)
             }
             for v in vehiculos_qs
         ]
@@ -407,13 +421,18 @@ class BusquedaUniversalView(APIView):
             Q(vehiculo__cliente__apellido__icontains=query)
         ).distinct()[:5]
 
+        def _url_orden():
+            if es_admin or es_tecnico:
+                return "/admin/ordenes"
+            return "/portal-cliente"
+
         ordenes = [
             {
                 'id': str(o.id),
                 'titulo': f"Orden {o.numero_ot}",
                 'subtitulo': f"Estado: {o.get_estado_display()} - Patente: {o.vehiculo.patente if o.vehiculo else 'N/A'}",
                 'tipo': 'orden',
-                'url': f"/ordenes"
+                'url': _url_orden()
             }
             for o in ordenes_qs
         ]
