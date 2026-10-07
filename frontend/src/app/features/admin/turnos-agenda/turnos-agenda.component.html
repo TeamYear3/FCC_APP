@@ -58,7 +58,19 @@
 
   <div class="calendar-container overflow-x-auto w-full bg-black/40 rounded-lg p-2 sm:p-4 border border-white/5">
     <div class="min-w-[650px] sm:min-w-full">
-      <full-calendar [options]="calendarOptions()"></full-calendar>
+      @defer (on idle) {
+        <full-calendar [options]="calendarOptions()"></full-calendar>
+      } @placeholder {
+        <div class="h-[600px] flex flex-col items-center justify-center text-zinc-400 gap-3">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-color-primary-accent"></div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-color-text-secondary">Cargando calendario interactivo de agenda...</span>
+        </div>
+      } @loading {
+        <div class="h-[600px] flex flex-col items-center justify-center text-zinc-400 gap-3">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-color-primary-accent"></div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-color-text-secondary">Cargando módulos de agenda...</span>
+        </div>
+      }
     </div>
   </div>
 
