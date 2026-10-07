@@ -129,6 +129,7 @@ describe('OrdenEstadoModalComponent', () => {
 
     expect(mockOrdenService.registrarPago).toHaveBeenCalledWith('ot-123', {
       metodo_pago: 'transferencia',
+      condicion_iva: 'CF',
       comentario: 'Comprobante #1234',
       entregar_orden: true
     });

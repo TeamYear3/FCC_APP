@@ -8,7 +8,12 @@ import { AbstractControl } from '@angular/forms';
   imports: [CommonModule],
   template: `
     @if (errorMessage) {
-      <span class="text-xs text-red-400 mt-1 block font-medium animate-fadeIn" role="alert">
+      <span
+        [id]="errorId"
+        class="text-xs text-red-400 mt-1 block font-medium animate-fadeIn"
+        role="alert"
+        aria-live="polite"
+      >
         {{ errorMessage }}
       </span>
     }
@@ -18,6 +23,7 @@ export class FieldErrorComponent {
   @Input({ required: true }) control!: AbstractControl | null;
   @Input() customMessages: Record<string, string> = {};
   @Input() fieldLabel?: string;
+  @Input() errorId?: string;
 
   get errorMessage(): string | null {
     if (!this.control || !this.control.errors || (!this.control.touched && !this.control.dirty)) {

@@ -4,6 +4,7 @@ import { roleGuardFn } from './core/guards/role.guard';
 export const routes: Routes = [
   {
     path: 'autenticacion',
+    title: 'FCC APP | Iniciar Sesión',
     loadComponent: () =>
       import('./features/autenticacion/autenticacion.component').then(
         (m) => m.AutenticacionComponent
@@ -11,6 +12,7 @@ export const routes: Routes = [
   },
   {
     path: 'acceso-denegado',
+    title: 'FCC APP | Acceso Denegado',
     loadComponent: () =>
       import('./features/acceso-denegado/acceso-denegado.component').then(
         (m) => m.AccesoDenegadoComponent
@@ -18,6 +20,7 @@ export const routes: Routes = [
   },
   {
     path: 'portal-cliente',
+    title: 'FCC APP | Portal del Cliente',
     canActivate: [roleGuardFn],
     data: { roles: ['cliente', 'tecnico', 'admin'] },
     loadComponent: () =>
@@ -32,6 +35,7 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
+    title: 'FCC APP | Administración',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },
     loadComponent: () =>
@@ -41,6 +45,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
+        title: 'FCC APP | Panel de Control',
         loadComponent: () =>
           import('./features/admin/taller-dashboard/taller-dashboard.component').then(
             (m) => m.TallerDashboardComponent
@@ -48,6 +53,7 @@ export const routes: Routes = [
       },
       {
         path: 'clientes',
+        title: 'FCC APP | Gestión de Clientes',
         loadComponent: () =>
           import('./features/clientes/clientes.component').then(
             (m) => m.ClientesComponent
@@ -55,6 +61,7 @@ export const routes: Routes = [
       },
       {
         path: 'clientes/nuevo',
+        title: 'FCC APP | Nuevo Cliente',
         canActivate: [roleGuardFn],
         data: { roles: ['admin'] },
         loadComponent: () =>
@@ -64,6 +71,7 @@ export const routes: Routes = [
       },
       {
         path: 'clientes/editar/:id',
+        title: 'FCC APP | Editar Cliente',
         canActivate: [roleGuardFn],
         data: { roles: ['admin'] },
         loadComponent: () =>
@@ -73,6 +81,7 @@ export const routes: Routes = [
       },
       {
         path: 'ordenes',
+        title: 'FCC APP | Órdenes de Trabajo',
         loadComponent: () =>
           import('./features/ordenes/ordenes.component').then(
             (m) => m.OrdenesComponent
@@ -80,6 +89,7 @@ export const routes: Routes = [
       },
       {
         path: 'ordenes/nueva',
+        title: 'FCC APP | Nueva Orden de Trabajo',
         loadComponent: () =>
           import('./features/ordenes/orden-form/orden-form.component').then(
             (m) => m.OrdenFormComponent
@@ -87,6 +97,7 @@ export const routes: Routes = [
       },
       {
         path: 'turnos',
+        title: 'FCC APP | Agenda de Turnos',
         loadComponent: () =>
           import('./features/admin/turnos-agenda/turnos-agenda.component').then(
             (m) => m.TurnosAgendaComponent
@@ -94,6 +105,7 @@ export const routes: Routes = [
       },
       {
         path: 'facturacion',
+        title: 'FCC APP | Facturación y Pagos',
         canActivate: [roleGuardFn],
         data: { roles: ['admin'] },
         loadComponent: () =>
@@ -103,6 +115,7 @@ export const routes: Routes = [
       },
       {
         path: 'configuracion',
+        title: 'FCC APP | Configuración de Perfil',
         loadComponent: () =>
           import('./features/configuracion/configuracion-perfil-modal.component').then(
             (m) => m.ConfiguracionPerfilModalComponent
@@ -110,6 +123,7 @@ export const routes: Routes = [
       },
       {
         path: 'vehiculos/nuevo',
+        title: 'FCC APP | Nuevo Vehículo',
         canActivate: [roleGuardFn],
         data: { roles: ['admin'] },
         loadComponent: () =>
@@ -119,6 +133,7 @@ export const routes: Routes = [
       },
       {
         path: 'vehiculos/editar/:id',
+        title: 'FCC APP | Editar Vehículo',
         canActivate: [roleGuardFn],
         data: { roles: ['admin'] },
         loadComponent: () =>
@@ -128,6 +143,7 @@ export const routes: Routes = [
       },
       {
         path: 'vehiculos/:id/historial',
+        title: 'FCC APP | Historial de Vehículo',
         loadComponent: () =>
           import('./features/vehiculos/vehiculo-historial/vehiculo-historial.component').then(
             (m) => m.VehiculoHistorialComponent
@@ -142,6 +158,7 @@ export const routes: Routes = [
   },
   {
     path: 'ordenes/nueva',
+    title: 'FCC APP | Nueva Orden de Trabajo',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },
     loadComponent: () =>
@@ -151,6 +168,7 @@ export const routes: Routes = [
   },
   {
     path: 'ordenes',
+    title: 'FCC APP | Órdenes de Trabajo',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },
     loadComponent: () =>
@@ -160,6 +178,7 @@ export const routes: Routes = [
   },
   {
     path: 'clientes/editar/:id',
+    title: 'FCC APP | Editar Cliente',
     canActivate: [roleGuardFn],
     data: { roles: ['admin'] },
     loadComponent: () =>
@@ -169,6 +188,7 @@ export const routes: Routes = [
   },
   {
     path: 'clientes/nuevo',
+    title: 'FCC APP | Nuevo Cliente',
     canActivate: [roleGuardFn],
     data: { roles: ['admin'] },
     loadComponent: () =>
@@ -178,6 +198,7 @@ export const routes: Routes = [
   },
   {
     path: 'clientes',
+    title: 'FCC APP | Gestión de Clientes',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },
     loadComponent: () =>
@@ -187,6 +208,7 @@ export const routes: Routes = [
   },
   {
     path: 'vehiculos/editar/:id',
+    title: 'FCC APP | Editar Vehículo',
     canActivate: [roleGuardFn],
     data: { roles: ['admin'] },
     loadComponent: () =>
@@ -196,6 +218,7 @@ export const routes: Routes = [
   },
   {
     path: 'vehiculos/:id/historial',
+    title: 'FCC APP | Historial de Vehículo',
     canActivate: [roleGuardFn],
     data: { roles: ['admin', 'tecnico'] },
     loadComponent: () =>
@@ -205,6 +228,7 @@ export const routes: Routes = [
   },
   {
     path: 'vehiculos/nuevo',
+    title: 'FCC APP | Nuevo Vehículo',
     canActivate: [roleGuardFn],
     data: { roles: ['admin'] },
     loadComponent: () =>

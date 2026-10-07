@@ -158,8 +158,8 @@ export class OrdenFormComponent implements OnInit {
         this.ordenForm.patchValue({ vehiculo_id: vehiculoId });
       }
 
-      if (motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-        this.ordenForm.patchValue({ descripcion_problema: motivo });
+      if (motivo && !this.ordenForm?.get('descripcion_problema')?.value) {
+        this.ordenForm?.patchValue({ descripcion_problema: motivo });
       }
     });
   }
@@ -174,15 +174,15 @@ export class OrdenFormComponent implements OnInit {
         this.cargandoTurnos.set(false);
 
         // Si ya hay un turno seleccionado, chequear si falta autocompletar vehículo o motivo
-        const currentTurnoId = this.ordenForm.get('turno_id')?.value;
+        const currentTurnoId = this.ordenForm?.get('turno_id')?.value;
         if (currentTurnoId) {
           const t = this.turnos().find((x) => x.id === currentTurnoId);
           if (t) {
-            if (t.vehiculo && !this.ordenForm.get('vehiculo_id')?.value) {
-              this.ordenForm.patchValue({ vehiculo_id: t.vehiculo });
+            if (t.vehiculo && !this.ordenForm?.get('vehiculo_id')?.value) {
+              this.ordenForm?.patchValue({ vehiculo_id: t.vehiculo });
             }
-            if (t.motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-              this.ordenForm.patchValue({ descripcion_problema: t.motivo });
+            if (t.motivo && !this.ordenForm?.get('descripcion_problema')?.value) {
+              this.ordenForm?.patchValue({ descripcion_problema: t.motivo });
             }
           }
         }
