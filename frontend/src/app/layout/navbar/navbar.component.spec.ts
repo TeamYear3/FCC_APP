@@ -98,4 +98,14 @@ describe('NavbarComponent (TK142 - Sticky Header & Navegación)', () => {
     expect(mockAuthService.logout).toHaveBeenCalled();
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/autenticacion']);
   });
+  it('debe navegar hacia la URL seleccionada y limpiar la busqueda en seleccionarItem (TK145)', () => {
+    component.query.set('Ford');
+    component.desplegableAbierto.set(true);
+
+    component.seleccionarItem('/admin/vehiculos/123/historial');
+
+    expect(component.desplegableAbierto()).toBe(false);
+    expect(component.query()).toBe('');
+    expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/admin/vehiculos/123/historial');
+  });
 });
