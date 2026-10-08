@@ -372,6 +372,8 @@
           <textarea
             id="descripcion_problema"
             formControlName="descripcion_problema"
+            (input)="onDescripcionInput($event)"
+            (change)="onDescripcionInput($event)"
             rows="5"
             placeholder="Describa de manera detallada el síntoma del vehículo, falla o servicio requerido por el cliente..."
             class="w-full p-md rounded-card bg-black/40 border border-white/10 text-white typography-body-main placeholder-color-text-secondary/60 focus:outline-none focus:border-color-primary-accent transition-colors duration-200 resize-y"
