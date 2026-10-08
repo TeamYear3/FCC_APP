@@ -222,7 +222,7 @@
                 <div class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col gap-2 hover:border-color-primary-accent/40 transition-all">
                   <div class="flex items-center justify-between">
                     <span class="text-color-primary-accent font-mono font-extrabold text-sm">
-                      OT #{{ ot.numero_ot || (ot.id ? ot.id.slice(0, 8) : 'S/N') }}
+                      OT #{{ ot.numero_ot }}
                     </span>
 
                     @switch (ot.estado) {

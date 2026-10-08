@@ -248,11 +248,7 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    title: 'FCC APP | 404 Página no encontrada',
-    loadComponent: () =>
-      import('./features/not-found/not-found.component').then(
-        (m) => m.NotFoundComponent
-      )
+    redirectTo: 'autenticacion'
   }
 ];
 

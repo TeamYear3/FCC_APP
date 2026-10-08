@@ -61,7 +61,7 @@
               type="button"
               class="type-btn flex items-center justify-center gap-1.5"
               [class.active]="nuevoTipo() === 'repuesto'"
-              (click)="seleccionarTipo('repuesto')"
+              (click)="nuevoTipo.set('repuesto')"
             >
               <span class="material-symbols-outlined text-base">inventory_2</span>
               Repuesto
@@ -70,7 +70,7 @@
               type="button"
               class="type-btn flex items-center justify-center gap-1.5"
               [class.active]="nuevoTipo() === 'mano_de_obra'"
-              (click)="seleccionarTipo('mano_de_obra')"
+              (click)="nuevoTipo.set('mano_de_obra')"
             >
               <span class="material-symbols-outlined text-base">handyman</span>
               Mano de Obra
@@ -88,7 +88,6 @@
               >description</span
             >
             <input
-              #descripcionInput
               type="text"
               class="form-control"
               placeholder="Ej. Pastillas de freno, Cambio de aceite..."
