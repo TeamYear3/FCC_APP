@@ -157,5 +157,22 @@ describe('OrdenFormComponent', () => {
     component.cerrarModalVehiculo();
     expect(component.mostrarModalVehiculo()).toBe(false);
   });
+
+  describe('TK217 - Desactivación de buffer de composición y sincronización móvil', () => {
+    it('debe sincronizar inmediatamente el FormControl ante eventos de input nativo (onDescripcionInput)', () => {
+      const mockEvent = {
+        target: {
+          value: 'Falla en encendido intermitente y testigo de motor'
+        }
+      } as unknown as Event;
+
+      component.onDescripcionInput(mockEvent);
+
+      const ctrl = component.ordenForm.get('descripcion_problema');
+      expect(ctrl?.value).toBe('Falla en encendido intermitente y testigo de motor');
+      expect(ctrl?.valid).toBe(true);
+      expect(ctrl?.value.length).toBeGreaterThanOrEqual(5);
+    });
+  });
 });
 

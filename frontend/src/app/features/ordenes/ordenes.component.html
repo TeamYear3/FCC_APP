@@ -1070,30 +1070,16 @@
     </div>
   </div>
 
-  <!-- Barra de Navegación Inferior (Bottom Navigation Bar MD3 - Página 5) -->
-  <div
-    class="max-w-[1650px] mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption"
-  >
-    <div class="flex items-center gap-4">
-      <span class="flex items-center gap-1.5 text-color-status-review font-semibold">
-        <span class="w-2 h-2 rounded-full bg-color-status-review animate-ping"></span>
-        Técnico Conectado
-      </span>
-      <span>|</span>
-      <span>Expediente #OT-1257 protegido y auditado</span>
-    </div>
-    <span>Material Design 3 · Dark Mode Optimizado</span>
-    <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103 & TK171) -->
-    @defer (when mostrarModalEstado()) {
-      <app-orden-estado-modal
-        [mostrar]="mostrarModalEstado()"
-        [orden]="ordenSeleccionadaEstado()"
-        [modoInicial]="modoModalEstado()"
-        (cerrado)="mostrarModalEstado.set(false)"
-        (estadoActualizado)="onEstadoActualizado()"
-      ></app-orden-estado-modal>
-    }
-  </div>
+  <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103 & TK171) -->
+  @defer (when mostrarModalEstado()) {
+    <app-orden-estado-modal
+      [mostrar]="mostrarModalEstado()"
+      [orden]="ordenSeleccionadaEstado()"
+      [modoInicial]="modoModalEstado()"
+      (cerrado)="mostrarModalEstado.set(false)"
+      (estadoActualizado)="onEstadoActualizado()"
+    ></app-orden-estado-modal>
+  }
 
   <!-- Modal para Aprobar Presupuesto y Convertir en OT con Selección de Canal (TK091) -->
   @if (mostrarModalAprobarPresupuesto() && ordenActiva()) {
