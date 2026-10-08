@@ -157,11 +157,7 @@
 
 .type-selector {
   display: flex;
-  gap: 0.25rem;
-  background-color: #090d16;
-  padding: 0.25rem;
-  border-radius: 8px;
-  border: 1px solid #1e293b;
+  gap: 0.5rem;
 }
 
 .type-btn {
@@ -170,8 +166,8 @@
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 6px;
-  border: 1px solid transparent;
-  background-color: transparent;
+  border: 1px solid #334155;
+  background-color: #1e293b;
   color: #94a3b8;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -181,7 +177,6 @@
   background-color: rgba(255, 204, 0, 0.15);
   border-color: #ffcc00;
   color: #ffcc00;
-  box-shadow: 0 2px 8px rgba(255, 204, 0, 0.1);
 }
 
 .input-icon-wrapper {
