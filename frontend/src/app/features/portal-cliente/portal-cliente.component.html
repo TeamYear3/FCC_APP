@@ -189,7 +189,7 @@
                 >
                   <div class="flex items-center gap-3">
                     <span class="text-xl font-black text-[#FFCC00] font-mono tracking-tight">{{
-                      ot.numero_ot || (ot.id ? 'OT-' + ot.id.slice(0, 8) : 'S/N')
+                      ot.numero_ot
                     }}</span>
                     <span
                       class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
@@ -570,7 +570,7 @@
               <p class="text-xs text-gray-400">
                 OT:
                 <span class="text-[#FFCC00] font-mono font-bold">{{
-                  ordenSeleccionada()?.numero_ot || (ordenSeleccionada()?.id ? 'OT-' + ordenSeleccionada()?.id?.slice(0, 8) : 'S/N')
+                  ordenSeleccionada()?.numero_ot
                 }}</span>
               </p>
             </div>
