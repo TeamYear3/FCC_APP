@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators, COMPOSITION_BUFFER_MODE } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { OrdenService, OrdenPayload } from '../../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, VehiculoCreatePayload } from '../../../core/services/vehiculo.service';
@@ -13,6 +13,9 @@ import { VehiculoSelectorComponent } from '../../../shared/components/vehiculo-s
   selector: 'app-orden-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, VehiculoSelectorComponent],
+  providers: [
+    { provide: COMPOSITION_BUFFER_MODE, useValue: false }
+  ],
   templateUrl: './orden-form.component.html',
   styleUrls: ['./orden-form.component.css']
 })
@@ -212,6 +215,13 @@ export class OrdenFormComponent implements OnInit {
 
   get modoSeleccionado(): 'PRESUPUESTO' | 'ORDEN_TRABAJO' {
     return this.ordenForm?.get('modo')?.value || 'PRESUPUESTO';
+  }
+
+  onDescripcionInput(event: Event): void {
+    const target = event.target as HTMLTextAreaElement | null;
+    if (target && this.ordenForm) {
+      this.ordenForm.get('descripcion_problema')?.setValue(target.value, { emitEvent: true });
+    }
   }
 
   inicializarFormulariosInSitu(): void {

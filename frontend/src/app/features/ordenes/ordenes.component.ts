@@ -330,9 +330,7 @@ export class OrdenesComponent implements OnInit {
     if (servicios.length === 0) {
       const est = this.ordenActiva()?.estado;
       if (est === 'finalizado' || est === 'entregado') return 100;
-      if (est === 'en_proceso') return 50;
-      if (est === 'aprobado') return 25;
-      return 10;
+      return 0;
     }
     const completados = servicios.filter(s => s.completado).length;
     return Math.round((completados / servicios.length) * 100);
