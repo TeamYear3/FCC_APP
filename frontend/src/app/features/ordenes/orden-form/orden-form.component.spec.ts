@@ -97,6 +97,30 @@ describe('OrdenFormComponent', () => {
     expect(turnoCtrl?.validator).toBeNull();
   });
 
+  it('debe inicializar fecha_ingreso con la fecha actual en la zona horaria de Argentina (TK154)', () => {
+    const fechaEsperada = component.obtenerFechaActualArgentina();
+    expect(component.ordenForm.get('fecha_ingreso')?.value).toBe(fechaEsperada);
+  });
+
+  it('debe permitir editar fecha_ingreso para ingresos diferidos y enviarla en el payload (TK154)', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.ordenForm.patchValue({
+      modo: 'PRESUPUESTO',
+      vehiculo_id: 'veh-1',
+      complejidad: 'baja',
+      descripcion_problema: 'Ingreso programado diferido',
+      fecha_ingreso: '2026-10-25'
+    });
+
+    component.onSubmit();
+
+    expect(mockOrdenService.crearOrden).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fecha_ingreso: '2026-10-25'
+      })
+    );
+  });
+
   it('debe requerir turno_id y cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
     component.ordenForm.get('modo')?.setValue('ORDEN_TRABAJO');
     const turnoCtrl = component.ordenForm.get('turno_id');
