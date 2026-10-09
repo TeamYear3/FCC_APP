@@ -148,6 +148,10 @@ class OrdenTrabajo(models.Model):
         # Guardar cambio de estado
         self.estado = nuevo_estado
         update_fields = ['estado', 'actualizado_en']
+        # TK152: Vincular formalmente la aprobación del presupuesto a la aprobación del cliente
+        if nuevo_estado == EstadoOrden.APROBADO:
+            self.aprobado_por_cliente = True
+            update_fields.append('aprobado_por_cliente')
         if nuevo_estado == EstadoOrden.ENTREGADO and not self.fecha_entrega:
             self.fecha_entrega = timezone.now().date()
             update_fields.append('fecha_entrega')
