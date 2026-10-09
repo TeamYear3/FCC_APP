@@ -81,10 +81,11 @@ def enviar_email_bienvenida_background(email, nombre="", apellido="", rol="clien
 
 
 
-def vincular_o_crear_cliente_usuario(usuario):
+def vincular_o_crear_cliente_usuario(usuario, crear_si_no_existe=False):
     """
     TK149: Vincula un nuevo usuario con una ficha preexistente de Cliente
-    que coincida por email y esté huérfana (usuario=None), o crea una ficha base de Cliente.
+    que coincida por email y esté huérfana (usuario=None), o crea una ficha base de Cliente
+    si crear_si_no_existe=True.
     """
     if getattr(usuario, "rol", "cliente") != "cliente":
         return None
@@ -93,7 +94,7 @@ def vincular_o_crear_cliente_usuario(usuario):
         from clientes.models import Cliente
         import random
 
-        # Si ya tiene un perfil vinculado, no hacer nada
+        # Si ya tiene un perfil vinculado, retornarlo
         if hasattr(usuario, "cliente_perfil") and usuario.cliente_perfil:
             return usuario.cliente_perfil
 
@@ -114,7 +115,10 @@ def vincular_o_crear_cliente_usuario(usuario):
                 cliente_existente.save()
                 return cliente_existente
 
-        # 2. Si no existe ficha previa huérfana, generar una ficha base de Cliente
+        if not crear_si_no_existe:
+            return None
+
+        # 2. Si se solicita crear y no existe ficha previa huérfana, generar ficha base
         dni_candidato = f"{abs(hash(str(usuario.id))) % 90000000 + 10000000}"
         while Cliente.objects.filter(dni_cuit=dni_candidato).exists():
             dni_candidato = str(random.randint(10000000, 99999999))
@@ -140,11 +144,11 @@ def vincular_o_crear_cliente_usuario(usuario):
 def usuario_creado_signals(sender, instance, created, **kwargs):
     """
     Señal de Django para:
-    1. Vincular o crear ficha de Cliente al registrarse un nuevo usuario (TK149).
+    1. Vincular ficha huérfana de Cliente por email al crearse un usuario (TK149).
     2. Disparar automáticamente el correo de bienvenida en segundo plano.
     """
     if created:
-        vincular_o_crear_cliente_usuario(instance)
+        vincular_o_crear_cliente_usuario(instance, crear_si_no_existe=False)
 
         if instance.email:
             try:
@@ -158,5 +162,6 @@ def usuario_creado_signals(sender, instance, created, **kwargs):
                     f"Error al iniciar el hilo de email de bienvenida para el usuario {instance.id}: {str(e)}",
                     exc_info=True
                 )
+
 
 
