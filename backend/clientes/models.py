@@ -36,6 +36,7 @@ class Cliente(models.Model):
         choices=CONDICION_IVA_CHOICES,
         default="CF"
     )
+    email = models.EmailField(max_length=254, blank=True, null=True)
     telefono = models.CharField(max_length=50, blank=True)
     domicilio = models.CharField(max_length=255, blank=True)
     
@@ -45,7 +46,9 @@ class Cliente(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=['dni_cuit'], name='cliente_dnicuit_idx'),
+            models.Index(fields=['email'], name='cliente_email_idx'),
         ]
 
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.tipo_documento}: {self.dni_cuit})"
+
