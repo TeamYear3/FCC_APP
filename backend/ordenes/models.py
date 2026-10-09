@@ -1,6 +1,6 @@
 import uuid
 from decimal import Decimal
-from django.db import models
+from django.db import models, transaction, IntegrityError
 from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -94,19 +94,50 @@ class OrdenTrabajo(models.Model):
             models.Index(fields=['complejidad'], name='ot_complejidad_idx'),
         ]
 
+    @classmethod
+    def _obtener_siguiente_numero_ot(cls):
+        """
+        Determina de forma determinista el siguiente número correlativo de OT (OT-XXXX),
+        buscando el valor numérico máximo existente entre todos los registros.
+        """
+        try:
+            if transaction.get_connection().in_atomic_block:
+                cls.objects.select_for_update().filter(numero_ot__startswith='OT-').order_by('-id')[:1]
+        except Exception:
+            pass
+
+        existing_numbers = cls.objects.filter(numero_ot__startswith='OT-').values_list('numero_ot', flat=True)
+        max_num = 0
+        for ot_str in existing_numbers:
+            if not ot_str:
+                continue
+            try:
+                parte_num = ot_str.split('OT-')[-1]
+                num = int(parte_num)
+                if num > max_num:
+                    max_num = num
+            except (ValueError, TypeError, IndexError):
+                continue
+        return f"OT-{(max_num + 1):04d}"
+
     def save(self, *args, **kwargs):
         if not self.numero_ot:
-            last_ot = OrdenTrabajo.objects.all().order_by('creado_en', 'id').last()
-            if not last_ot:
-                self.numero_ot = 'OT-0001'
-            else:
+            max_intentos = 10
+            for intento in range(max_intentos):
                 try:
-                    last_num = int(last_ot.numero_ot.replace('OT-', ''))
-                    self.numero_ot = f'OT-{(last_num + 1):04d}'
-                except (ValueError, TypeError, AttributeError):
+                    with transaction.atomic():
+                        self.numero_ot = self._obtener_siguiente_numero_ot()
+                        super().save(*args, **kwargs)
+                    return
+                except IntegrityError:
+                    if intento == max_intentos - 1:
+                        raise
+                    self.numero_ot = None
+                    import time
                     import random
-                    self.numero_ot = f'OT-{random.randint(1000, 9999)}'
-        super().save(*args, **kwargs)
+                    time.sleep(random.uniform(0.01, 0.05))
+        else:
+            super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.numero_ot} - {self.vehiculo.patente} ({self.get_estado_display()})"

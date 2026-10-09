@@ -66,10 +66,7 @@ export class OrdenFormComponent implements OnInit {
     this.cargarTurnos();
     this.cargarListaClientes();
     this.inicializarFormulariosInSitu();
-    const hoy = new Date();
-    const hoyString = hoy.getFullYear() + '-' + 
-                      String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
-                      String(hoy.getDate()).padStart(2, '0');
+    const hoyString = this.obtenerFechaActualArgentina();
 
     this.ordenForm = this.fb.group({
       modo: ['PRESUPUESTO', [Validators.required]],
@@ -211,6 +208,19 @@ export class OrdenFormComponent implements OnInit {
     } catch {
       return `${t.fecha_hora} - ${t.motivo}`;
     }
+  }
+
+  /**
+   * Centraliza el cálculo de la fecha de ingreso actual en la zona horaria de Argentina (TK154).
+   */
+  obtenerFechaActualArgentina(): string {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(new Date());
   }
 
   get modoSeleccionado(): 'PRESUPUESTO' | 'ORDEN_TRABAJO' {
