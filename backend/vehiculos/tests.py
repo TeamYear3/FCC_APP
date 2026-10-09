@@ -616,6 +616,32 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.patch(detail_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_detalle_vehiculo_acceso_permitido_cliente_titular_tk197(self):
+        """TK197: Verificar que un cliente puede consultar el detalle de su propio vehículo (GET)."""
+        self.cliente_actual.usuario = self.cliente_user
+        self.cliente_actual.save()
+
+        self.client.force_authenticate(user=self.cliente_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["patente"], self.vehiculo.patente)
+        self.assertEqual(response.data["marca"], self.vehiculo.marca)
+
+    def test_detalle_vehiculo_acceso_denegado_cliente_ajeno_tk197(self):
+        """TK197: Verificar que un cliente recibe 403 Forbidden al consultar un vehículo perteneciente a otro cliente."""
+        otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_tk197@example.com",
+            nombre="Otro",
+            apellido="Cliente",
+            rol="cliente",
+            password="password123"
+        )
+        self.client.force_authenticate(user=otro_cliente_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_actualizar_vehiculo_patente_bloqueada(self):
         self.client.force_authenticate(user=self.admin_user)
         detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})

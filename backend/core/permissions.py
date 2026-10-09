@@ -32,10 +32,17 @@ class EsCliente(BasePermission):
         return bool(request.user and request.user.is_authenticated and getattr(request.user, 'rol', None) == 'cliente')
 
     def has_object_permission(self, request, view, obj):
-        # Si el objeto tiene un atributo 'cliente', verificar si coincide con el usuario
-        if hasattr(obj, 'cliente'):
-            return obj.cliente == request.user
-        # Si el objeto es un cliente (el propio modelo Usuario)
+        # Si el objeto tiene un atributo 'cliente'
+        if hasattr(obj, 'cliente') and obj.cliente:
+            if obj.cliente == request.user:
+                return True
+            if getattr(obj.cliente, 'usuario', None) == request.user:
+                return True
+        # Si el objeto es directamente un Cliente con FK usuario
+        if hasattr(obj, 'usuario'):
+            if getattr(obj, 'usuario', None) == request.user:
+                return True
+        # Si el objeto es el propio usuario
         if obj == request.user:
             return True
         return False
