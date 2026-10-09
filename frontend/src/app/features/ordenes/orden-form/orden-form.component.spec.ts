@@ -97,18 +97,16 @@ describe('OrdenFormComponent', () => {
     expect(turnoCtrl?.validator).toBeNull();
   });
 
-  it('debe requerir turno_id y cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
+  it('debe mantener turno_id opcional y requerir cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
     component.ordenForm.get('modo')?.setValue('ORDEN_TRABAJO');
     const turnoCtrl = component.ordenForm.get('turno_id');
     const aceptoCtrl = component.ordenForm.get('cliente_acepto');
 
-    expect(turnoCtrl?.valid).toBeFalsy();
+    // TK151: turno_id permanece opcional para órdenes de mostrador
+    expect(turnoCtrl?.valid).toBeTruthy();
     expect(aceptoCtrl?.valid).toBeFalsy();
 
-    turnoCtrl?.setValue('turno-1');
     aceptoCtrl?.setValue(true);
-
-    expect(turnoCtrl?.valid).toBeTruthy();
     expect(aceptoCtrl?.valid).toBeTruthy();
   });
 
