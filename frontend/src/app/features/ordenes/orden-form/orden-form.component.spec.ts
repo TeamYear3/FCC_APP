@@ -140,6 +140,27 @@ describe('OrdenFormComponent', () => {
     });
   });
 
+  it('debe enviar aprobado_por_cliente en true cuando el cliente acepta en modo ORDEN_TRABAJO (TK152)', () => {
+    component.ordenForm.patchValue({
+      modo: 'ORDEN_TRABAJO',
+      vehiculo_id: 'veh-1',
+      complejidad: 'media',
+      descripcion_problema: 'Cambio de amortiguadores delanteros',
+      fecha_ingreso: '2026-10-09',
+      cliente_acepto: true
+    });
+
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.onSubmit();
+
+    expect(mockOrdenService.crearOrden).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aprobado_por_cliente: true,
+        estado: 'ingresado'
+      })
+    );
+  });
+
   it('debe manejar apertura y cierre del modal in-situ de cliente (TK102)', () => {
     component.abrirModalCliente();
     expect(component.mostrarModalCliente()).toBe(true);
