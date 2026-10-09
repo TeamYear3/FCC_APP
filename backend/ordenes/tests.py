@@ -1065,25 +1065,10 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
         self.orden.transicionar_a(EstadoOrden.APROBADO)
 
-        # 1. Intentar pasar a EN_PROCESO sin turno, sin aprobacion, sin items (debe fallar)
-        with self.assertRaises(ValidationError) as ctx:
-            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
-        self.assertIn("debe tener un turno asociado", str(ctx.exception))
+        # TK152: Al pasar a APROBADO, aprobado_por_cliente se establece automáticamente en True
+        self.assertTrue(self.orden.aprobado_por_cliente)
 
-        # Asociar turno
-        self.orden.turno = self.turno
-        self.orden.save()
-
-        # 2. Intentar pasar a EN_PROCESO sin aprobacion del cliente y sin items (debe fallar)
-        with self.assertRaises(ValidationError) as ctx:
-            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
-        self.assertIn("aprobación explícita del cliente", str(ctx.exception))
-
-        # Aprobar
-        self.orden.aprobado_por_cliente = True
-        self.orden.save()
-
-        # 3. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
+        # 1. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertIn("sin ítems en el presupuesto", str(ctx.exception))
@@ -1098,13 +1083,20 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         )
         self.orden.refresh_from_db()
 
-        # 4. Transicionar con éxito cumpliendo todas las precondiciones
+        # 2. Transicionar con éxito cumpliendo todas las precondiciones
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
         # Verificar que se llamó al WebSocket
         self.assertTrue(mock_ws.called)
 
+    def test_transicionar_a_aprobado_establece_aprobado_por_cliente_automaticamente(self):
+        """TK152: Aprobar un presupuesto establece automáticamente aprobado_por_cliente = True."""
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.aprobado_por_cliente)
     def test_transicion_con_turno_cancelado_falla(self):
         self.turno.estado = "cancelado"
         self.turno.save()
