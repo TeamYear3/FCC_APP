@@ -83,6 +83,57 @@ class OrdenTrabajoModelTest(TestCase):
         )
         self.assertEqual(orden2.numero_ot, "OT-0002")
 
+    def test_generacion_secuencial_sin_duplicados_multiples_ordenes(self):
+        """TK199: Generaciones consecutivas no producen duplicados y conservan el orden correlativo."""
+        ordenes = []
+        for i in range(10):
+            ot = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema=f"Problema concurrente {i}"
+            )
+            ordenes.append(ot.numero_ot)
+        self.assertEqual(len(ordenes), 10)
+        self.assertEqual(len(set(ordenes)), 10)
+        self.assertEqual(ordenes[0], "OT-0001")
+        self.assertEqual(ordenes[-1], "OT-0010")
+
+    def test_reintento_por_colision_integridad_numero_ot(self):
+        """TK199: Simula colisión por condición de carrera donde el primer intento falla por IntegrityError y reintenta."""
+        ot1 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Primera orden"
+        )
+        self.assertEqual(ot1.numero_ot, "OT-0001")
+
+        llamadas = 0
+        original_obtener = OrdenTrabajo._obtener_siguiente_numero_ot
+
+        def mock_obtener():
+            nonlocal llamadas
+            llamadas += 1
+            if llamadas == 1:
+                return "OT-0001"
+            return original_obtener()
+
+        with patch.object(OrdenTrabajo, '_obtener_siguiente_numero_ot', side_effect=mock_obtener):
+            ot2 = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema="Segunda orden con colisión temporal"
+            )
+
+        self.assertEqual(ot2.numero_ot, "OT-0002")
+        self.assertGreaterEqual(llamadas, 2)
+
+    def test_obtener_siguiente_numero_ot_con_saltos(self):
+        """TK199: Determina correctamente el número más alto incluso con saltos en la secuencia."""
+        OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Orden con salto",
+            numero_ot="OT-0050"
+        )
+        siguiente = OrdenTrabajo._obtener_siguiente_numero_ot()
+        self.assertEqual(siguiente, "OT-0051")
+
     def test_vehiculo_obligatorio(self):
         # Intentar crear orden de trabajo sin vehiculo
         with self.assertRaises(IntegrityError):
