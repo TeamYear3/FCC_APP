@@ -84,9 +84,9 @@ class VehiculoSerializer(serializers.ModelSerializer):
         return patente_limpia
 
     def validate_numero_chasis(self, value):
-        if not value:
-            return value
-        chasis_limpio = value.upper().strip()
+        if not value or not str(value).strip():
+            return None
+        chasis_limpio = str(value).upper().strip()
         
         queryset = Vehiculo.objects.filter(numero_chasis=chasis_limpio)
         if self.instance is not None:
