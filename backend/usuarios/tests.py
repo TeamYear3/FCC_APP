@@ -949,6 +949,132 @@ class CustomTokenObtainPairSerializerTest(TestCase):
         self.assertEqual(data["rol"], "cliente")
 
 
+class VinculacionAutomaticaUsuarioClienteTest(APITestCase):
+    """
+    TK149: Pruebas de vinculación automática entre Usuario y Cliente
+    en flujos de registro local y Google OAuth.
+    """
+    def setUp(self):
+        from clientes.models import Cliente
+        self.Cliente = Cliente
+        self.registro_url = reverse("registro")
+        self.google_url = reverse("google-auth")
+
+    def test_registro_usuario_vincula_cliente_huerfano_por_email(self):
+        # 1. Cliente preexistente creado en mostrador sin usuario asociado
+        cliente_preexistente = self.Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gómez",
+            email="carlos.gomez@ejemplo.com",
+            tipo_documento="DNI",
+            dni_cuit="35123456",
+            condicion_iva="CF",
+            telefono="1122334455"
+        )
+        self.assertIsNone(cliente_preexistente.usuario)
+
+        # 2. El cliente se registra por la web con el mismo email
+        payload = {
+            "email": "carlos.gomez@ejemplo.com",
+            "nombre": "Carlos",
+            "apellido": "Gómez",
+            "password": "MiPasswordSeguro123*"
+        }
+        res = self.client.post(self.registro_url, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        # 3. Validar que la ficha preexistente quedó vinculada al nuevo usuario
+        cliente_preexistente.refresh_from_db()
+        self.assertIsNotNone(cliente_preexistente.usuario)
+        self.assertEqual(cliente_preexistente.usuario.email, "carlos.gomez@ejemplo.com")
+        self.assertEqual(cliente_preexistente.dni_cuit, "35123456")
+
+    @patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_oauth_vincula_cliente_huerfano_por_email(self, mock_verify):
+        # 1. Cliente preexistente cargado en taller físico
+        cliente_preexistente = self.Cliente.objects.create(
+            nombre="Lucía",
+            apellido="Martínez",
+            email="lucia.martinez@gmail.com",
+            tipo_documento="DNI",
+            dni_cuit="38999888",
+            condicion_iva="CF"
+        )
+        self.assertIsNone(cliente_preexistente.usuario)
+
+        # 2. Ingreso por Google OAuth por primera vez
+        mock_verify.return_value = {
+            "email": "lucia.martinez@gmail.com",
+            "given_name": "Lucía",
+            "family_name": "Martínez",
+            "sub": "google-sub-id-lucia-123"
+        }
+        res = self.client.post(self.google_url, {"id_token": "valid-token-lucia"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # 3. Validar vinculación automática
+        cliente_preexistente.refresh_from_db()
+        self.assertIsNotNone(cliente_preexistente.usuario)
+        self.assertEqual(cliente_preexistente.usuario.email, "lucia.martinez@gmail.com")
+        self.assertEqual(cliente_preexistente.usuario.google_id, "google-sub-id-lucia-123")
+
+    def test_registro_usuario_crea_nueva_ficha_cliente_si_no_existe_previa(self):
+        # Registro de un usuario completamente nuevo sin historial en el taller
+        payload = {
+            "email": "usuario.nuevo@ejemplo.com",
+            "nombre": "Mariana",
+            "apellido": "Ríos",
+            "password": "PasswordNuevo123*"
+        }
+        res = self.client.post(self.registro_url, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        user = User.objects.get(email="usuario.nuevo@ejemplo.com")
+        self.assertTrue(hasattr(user, "cliente_perfil"))
+        self.assertIsNotNone(user.cliente_perfil)
+        self.assertEqual(user.cliente_perfil.nombre, "Mariana")
+        self.assertEqual(user.cliente_perfil.apellido, "Ríos")
+        self.assertEqual(user.cliente_perfil.email, "usuario.nuevo@ejemplo.com")
+        self.assertTrue(len(user.cliente_perfil.dni_cuit) >= 7)
+
+    def test_registro_no_sobreescribe_cliente_ya_vinculado_a_otro_usuario(self):
+        # 1. Usuario original ya vinculado a su cliente
+        user_original = User.objects.create_user(
+            email="original@ejemplo.com",
+            nombre="Original",
+            apellido="Titular",
+            rol="cliente",
+            password="passOriginal123*"
+        )
+        cliente_original = self.Cliente.objects.create(
+            usuario=user_original,
+            nombre="Original",
+            apellido="Titular",
+            email="original@ejemplo.com",
+            tipo_documento="DNI",
+            dni_cuit="28444555"
+        )
+
+        # 2. Registrar usuario secundario
+        user_segundo = User.objects.create_user(
+            email="segundo@ejemplo.com",
+            nombre="Segundo",
+            apellido="Usuario",
+            rol="cliente",
+            password="passSegundo123*"
+        )
+
+        # 3. Intentar forzar vinculación
+        from usuarios.signals import vincular_o_crear_cliente_usuario
+        vincular_o_crear_cliente_usuario(user_segundo, crear_si_no_existe=True)
+
+        cliente_original.refresh_from_db()
+        # Verificar que el cliente original jamás cambió de usuario
+        self.assertEqual(cliente_original.usuario, user_original)
+        self.assertNotEqual(cliente_original.usuario, user_segundo)
+
+
+
 
 
 
