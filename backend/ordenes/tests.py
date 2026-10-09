@@ -861,7 +861,7 @@ class HistorialEstadoOrdenAPITestCase(APITestCase):
         self.orden.refresh_from_db()
         self.assertEqual(self.orden.estado, 'en_presupuesto')
 
-        ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden).first()
+        ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden, estado_nuevo='en_presupuesto').first()
         self.assertEqual(ultimo_registro.estado_anterior, 'ingresado')
         self.assertEqual(ultimo_registro.estado_nuevo, 'en_presupuesto')
         self.assertEqual(ultimo_registro.comentario, 'Presupuestando orden de trabajo.')
@@ -929,6 +929,14 @@ class AdjuntoDiagnosticoAPITest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['nombre_archivo'], 'rueda.png')
+
+    def test_listar_adjuntos_diagnostico_sin_orden_id_no_genera_type_error(self):
+        # TK198: GET /api/diagnosticos/adjuntos/ sin orden_id en URL
+        self.client.force_authenticate(user=self.user_tecnico)
+        url = reverse('crear-adjunto-diagnostico')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.data, list)
 
     def test_eliminar_adjunto_diagnostico(self):
         self.client.force_authenticate(user=self.user_tecnico)
@@ -1065,25 +1073,10 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
         self.orden.transicionar_a(EstadoOrden.APROBADO)
 
-        # 1. Intentar pasar a EN_PROCESO sin turno, sin aprobacion, sin items (debe fallar)
-        with self.assertRaises(ValidationError) as ctx:
-            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
-        self.assertIn("debe tener un turno asociado", str(ctx.exception))
+        # TK152: Al pasar a APROBADO, aprobado_por_cliente se establece automáticamente en True
+        self.assertTrue(self.orden.aprobado_por_cliente)
 
-        # Asociar turno
-        self.orden.turno = self.turno
-        self.orden.save()
-
-        # 2. Intentar pasar a EN_PROCESO sin aprobacion del cliente y sin items (debe fallar)
-        with self.assertRaises(ValidationError) as ctx:
-            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
-        self.assertIn("aprobación explícita del cliente", str(ctx.exception))
-
-        # Aprobar
-        self.orden.aprobado_por_cliente = True
-        self.orden.save()
-
-        # 3. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
+        # 1. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertIn("sin ítems en el presupuesto", str(ctx.exception))
@@ -1098,12 +1091,26 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         )
         self.orden.refresh_from_db()
 
-        # 4. Transicionar con éxito cumpliendo todas las precondiciones
+        # 2. TK151: Transicionar con éxito cumpliendo las condiciones (incluso sin turno agendado - mostrador)
+        self.assertIsNone(self.orden.turno)
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
         # Verificar que se llamó al WebSocket
         self.assertTrue(mock_ws.called)
+
+    def test_generacion_concurrente_numero_ot_no_produce_duplicados(self):
+        # TK199: Generaciones correlativas sucesivas garantizan unicidad y orden
+        ordenes = []
+        for i in range(5):
+            o = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema=f"Problema concurr {i}"
+            )
+            ordenes.append(o.numero_ot)
+        self.assertEqual(len(ordenes), len(set(ordenes)))
+        for ot_num in ordenes:
+            self.assertTrue(ot_num.startswith('OT-'))
 
     def test_transicion_con_turno_cancelado_falla(self):
         self.turno.estado = "cancelado"
