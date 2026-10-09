@@ -1124,9 +1124,8 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
         self.orden.transicionar_a(EstadoOrden.APROBADO)
 
-        # Asegurar aprobación de cliente para aislar prueba de precondiciones
-        self.orden.aprobado_por_cliente = True
-        self.orden.save()
+        # TK152: Al pasar a APROBADO, aprobado_por_cliente se establece automáticamente en True
+        self.assertTrue(self.orden.aprobado_por_cliente)
 
         # 1. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
         with self.assertRaises(ValidationError) as ctx:
@@ -1171,6 +1170,14 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.assertIsNone(self.orden.turno)
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
+
+    def test_transicionar_a_aprobado_establece_aprobado_por_cliente_automaticamente(self):
+        """TK152: Aprobar un presupuesto establece automáticamente aprobado_por_cliente = True."""
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.aprobado_por_cliente)
 
     def test_generacion_concurrente_numero_ot_no_produce_duplicados(self):
         # TK199: Generaciones correlativas sucesivas garantizan unicidad y orden
