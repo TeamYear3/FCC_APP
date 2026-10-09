@@ -42,7 +42,7 @@ export class VehiculoFormComponent implements OnInit {
   readonly datosConflicto = signal<{
     vehiculo_id?: string;
     patente?: string;
-    nro_chasis?: string;
+    nro_chasis?: string | null;
     clienteNombre?: string;
     mensaje?: string;
   } | null>(null);
@@ -189,8 +189,8 @@ export class VehiculoFormComponent implements OnInit {
     const payload: VehiculoCreatePayload = {
       cliente_id: formValue.cliente_id,
       patente: formValue.patente ? formValue.patente.toUpperCase().trim() : '',
-      numero_chasis: chasisVal,
-      nro_chasis: chasisVal,
+      numero_chasis: chasisVal || null,
+      nro_chasis: chasisVal || null,
       marca: formValue.marca.trim(),
       modelo: formValue.modelo.trim(),
       anio: formValue.anio ? Number(formValue.anio) : null,
