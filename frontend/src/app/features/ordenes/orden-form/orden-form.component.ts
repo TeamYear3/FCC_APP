@@ -518,7 +518,8 @@ export class OrdenFormComponent implements OnInit {
       descripcion_problema: formVal.descripcion_problema,
       fecha_ingreso: formVal.fecha_ingreso,
       complejidad: formVal.complejidad,
-      estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado'
+      estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado',
+      aprobado_por_cliente: Boolean(formVal.cliente_acepto)
     };
 
     this.ordenService.crearOrden(payload).subscribe({

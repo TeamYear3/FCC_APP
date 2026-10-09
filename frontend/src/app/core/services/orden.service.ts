@@ -10,6 +10,7 @@ export interface OrdenPayload {
   estado?: string;
   complejidad?: 'baja' | 'media' | 'alta';
   motivo_pausa?: string;
+  aprobado_por_cliente?: boolean;
 }
 
 export interface OrdenResponse {
