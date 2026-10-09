@@ -45,6 +45,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'estado_cobro',
             'metodo_pago',
             'fecha_cobro',
+            'aprobado_por_cliente',
             'creado_en',
             'actualizado_en'
         ]
