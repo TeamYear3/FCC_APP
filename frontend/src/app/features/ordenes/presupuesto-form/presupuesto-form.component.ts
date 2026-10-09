@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OrdenService, ItemPresupuesto } from '../../../core/services/orden.service';
@@ -64,6 +64,8 @@ export class PresupuestoFormComponent implements OnInit {
   errorMessage = signal<string>('');
   successMessage = signal<string>('');
 
+  @ViewChild('descripcionInput') descripcionInput?: ElementRef<HTMLInputElement>;
+
   // Formulario de nuevo ítem
   nuevoTipo = signal<'mano_de_obra' | 'repuesto'>('repuesto');
   nuevaDescripcion = signal<string>('');
@@ -73,6 +75,17 @@ export class PresupuestoFormComponent implements OnInit {
   // Autocompletado Predictivo (TK104)
   readonly mostrarSugerencias = signal<boolean>(false);
   readonly indiceSugerenciaSeleccionada = signal<number>(-1);
+
+  seleccionarTipo(tipo: 'mano_de_obra' | 'repuesto'): void {
+    this.nuevoTipo.set(tipo);
+    this.indiceSugerenciaSeleccionada.set(-1);
+    if (tipo === 'mano_de_obra') {
+      setTimeout(() => {
+        this.descripcionInput?.nativeElement?.focus();
+        this.mostrarSugerencias.set(true);
+      }, 50);
+    }
+  }
 
   readonly sugerenciasFiltradas = computed(() => {
     const tipoActivo = this.nuevoTipo();
