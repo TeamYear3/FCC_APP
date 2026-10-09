@@ -136,9 +136,8 @@ class OrdenTrabajo(models.Model):
 
         # Validaciones adicionales para transicionar a EN_PROCESO
         if nuevo_estado == EstadoOrden.EN_PROCESO:
-            if not self.turno:
-                raise ValidationError("La orden de trabajo debe tener un turno asociado para iniciar el proceso.")
-            if self.turno.estado == "cancelado":
+            # TK151: Las órdenes de mostrador no requieren obligatoriamente un turno previo agendado.
+            if self.turno and self.turno.estado == "cancelado":
                 raise ValidationError("El turno asociado a la orden de trabajo está cancelado.")
             if not self.aprobado_por_cliente:
                 raise ValidationError("Se requiere la aprobación explícita del cliente para iniciar el proceso.")
