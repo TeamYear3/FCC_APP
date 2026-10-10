@@ -13,6 +13,7 @@ class ClienteSerializer(serializers.ModelSerializer):
             'tipo_documento',
             'dni_cuit',
             'condicion_iva',
+            'email',
             'telefono',
             'domicilio',
             'creado_en',
