@@ -1127,10 +1127,6 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         # TK152: Al pasar a APROBADO, aprobado_por_cliente se establece automáticamente en True
         self.assertTrue(self.orden.aprobado_por_cliente)
 
-        # Asociar turno para cumplir precondiciones
-        self.orden.turno = self.turno
-        self.orden.save()
-
         # 1. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
@@ -1146,7 +1142,8 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         )
         self.orden.refresh_from_db()
 
-        # 2. Transicionar con éxito cumpliendo todas las precondiciones
+        # 2. TK151: Transicionar con éxito cumpliendo todas las precondiciones (incluso sin turno agendado - mostrador)
+        self.assertIsNone(self.orden.turno)
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
@@ -1160,6 +1157,27 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.orden.transicionar_a(EstadoOrden.APROBADO)
         self.orden.refresh_from_db()
         self.assertTrue(self.orden.aprobado_por_cliente)
+
+    @patch('ordenes.services.notificar_cambio_estado_websocket')
+    def test_transicion_en_proceso_sin_turno_mostrador_exito(self, mock_ws):
+        """TK151: Permite transicionar a EN_PROCESO cuando no existe turno previo (mostrador)."""
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.aprobado_por_cliente = True
+        self.orden.save()
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Filtro de aire",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("1500.00")
+        )
+        self.orden.refresh_from_db()
+
+        self.assertIsNone(self.orden.turno)
+        self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
     def test_generacion_concurrente_numero_ot_no_produce_duplicados(self):
         # TK199: Generaciones correlativas sucesivas garantizan unicidad y orden
