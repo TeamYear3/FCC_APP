@@ -1142,7 +1142,7 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         )
         self.orden.refresh_from_db()
 
-        # 2. TK151: Transicionar con éxito cumpliendo las condiciones (incluso sin turno agendado - mostrador)
+        # 3. TK151: Transicionar con éxito cumpliendo todas las precondiciones (incluso sin turno agendado - mostrador)
         self.assertIsNone(self.orden.turno)
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
@@ -1191,7 +1191,6 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.assertEqual(len(ordenes), len(set(ordenes)))
         for ot_num in ordenes:
             self.assertTrue(ot_num.startswith('OT-'))
-
     def test_transicion_con_turno_cancelado_falla(self):
         self.turno.estado = "cancelado"
         self.turno.save()
