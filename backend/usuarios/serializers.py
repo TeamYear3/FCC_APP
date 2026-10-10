@@ -104,6 +104,8 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
             password=validated_data["password"],
             rol="cliente",
         )
+        from .signals import vincular_o_crear_cliente_usuario
+        vincular_o_crear_cliente_usuario(user, crear_si_no_existe=True)
         return user
 
 

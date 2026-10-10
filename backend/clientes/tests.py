@@ -328,3 +328,29 @@ class ClienteAPITestCase(APITestCase):
         }
         response = self.client.patch(url_detalle, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_detalle_cliente_acceso_permitido_titular_tk197(self):
+        """TK197: Verificar que un cliente puede consultar su propia ficha de cliente (GET)."""
+        self.cliente_prueba.usuario = self.cliente_user
+        self.cliente_prueba.save()
+
+        self.client.force_authenticate(user=self.cliente_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        response = self.client.get(url_detalle)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["nombre"], self.cliente_prueba.nombre)
+        self.assertEqual(response.data["dni_cuit"], self.cliente_prueba.dni_cuit)
+
+    def test_detalle_cliente_acceso_denegado_cliente_ajeno_tk197(self):
+        """TK197: Verificar que un cliente recibe 403 Forbidden al consultar la ficha de otro cliente."""
+        otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_ficha_tk197@example.com",
+            nombre="Otro",
+            apellido="Cliente",
+            rol="cliente",
+            password="password123"
+        )
+        self.client.force_authenticate(user=otro_cliente_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        response = self.client.get(url_detalle)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
