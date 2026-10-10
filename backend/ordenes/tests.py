@@ -1142,13 +1142,21 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         )
         self.orden.refresh_from_db()
 
-        # 3. TK151: Transicionar con éxito cumpliendo todas las precondiciones (incluso sin turno agendado - mostrador)
+        # 2. TK151: Transicionar con éxito cumpliendo todas las precondiciones (incluso sin turno agendado - mostrador)
         self.assertIsNone(self.orden.turno)
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
         # Verificar que se llamó al WebSocket
         self.assertTrue(mock_ws.called)
+
+    def test_transicionar_a_aprobado_establece_aprobado_por_cliente_automaticamente(self):
+        """TK152: Aprobar un presupuesto establece automáticamente aprobado_por_cliente = True."""
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.aprobado_por_cliente)
 
     @patch('ordenes.services.notificar_cambio_estado_websocket')
     def test_transicion_en_proceso_sin_turno_mostrador_exito(self, mock_ws):
