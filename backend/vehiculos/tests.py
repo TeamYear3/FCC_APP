@@ -469,6 +469,54 @@ class VehiculoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(response.data["numero_chasis"])
 
+    def test_crear_multiples_vehiculos_sin_chasis_consecutivos_tk161(self):
+        """TK161: Verificar que se pueden registrar múltiples vehículos con chasis vacío o None sin violar restricción UNIQUE."""
+        self.client.force_authenticate(user=self.admin_user)
+        data1 = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA111AA",
+            "marca": "Fiat",
+            "modelo": "Cronos",
+            "anio": 2022,
+            "kilometraje": 15000,
+            "numero_chasis": ""
+        }
+        res1 = self.client.post(self.url, data1, format='json')
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res1.data["numero_chasis"])
+
+        data2 = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA222BB",
+            "marca": "Peugeot",
+            "modelo": "208",
+            "anio": 2023,
+            "kilometraje": 10000,
+            "numero_chasis": "   "
+        }
+        res2 = self.client.post(self.url, data2, format='json')
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res2.data["numero_chasis"])
+
+        data3 = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA333CC",
+            "marca": "Chevrolet",
+            "modelo": "Cruze",
+            "anio": 2021,
+            "kilometraje": 30000
+        }
+        res3 = self.client.post(self.url, data3, format='json')
+        self.assertEqual(res3.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res3.data["numero_chasis"])
+
+        v1 = Vehiculo.objects.get(patente="AA111AA")
+        v2 = Vehiculo.objects.get(patente="AA222BB")
+        v3 = Vehiculo.objects.get(patente="AA333CC")
+        self.assertIsNone(v1.numero_chasis)
+        self.assertIsNone(v2.numero_chasis)
+        self.assertIsNone(v3.numero_chasis)
+
     def test_crear_vehiculo_sin_kilometraje_falla(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {

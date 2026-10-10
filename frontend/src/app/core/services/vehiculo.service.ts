@@ -12,8 +12,8 @@ export interface VehiculoCreatePayload {
   tipo_motor?: string;
   kilometraje?: number | null;
   color?: string;
-  numero_chasis?: string;
-  nro_chasis?: string;
+  numero_chasis?: string | null;
+  nro_chasis?: string | null;
   foto_url?: string | null;
 }
 

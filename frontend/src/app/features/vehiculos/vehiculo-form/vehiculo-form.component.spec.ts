@@ -130,6 +130,41 @@ describe('VehiculoFormComponent', () => {
     expect(component.isSubmitting()).toBe(false);
   });
 
+  it('debe enviar numero_chasis como null al crear un vehiculo con chasis vacio (TK161)', () => {
+    component.seleccionarCliente(mockClientes[0]);
+    component.vehiculoForm.patchValue({
+      marca: 'Fiat',
+      modelo: 'Cronos',
+      anio: 2022,
+      tipo_motor: 'NAFTERO',
+      patente: 'AD999ZZ',
+      kilometraje: 15000,
+      numero_chasis: ''
+    });
+
+    vehiculoServiceSpy.crearVehiculo.mockReturnValue(of({
+      id: 'uuid-veh-null-chasis',
+      cliente_id: 'uuid-cli-1',
+      patente: 'AD999ZZ',
+      marca: 'Fiat',
+      modelo: 'Cronos',
+      anio: 2022,
+      tipo_motor: 'NAFTERO',
+      kilometraje: 15000,
+      numero_chasis: null,
+      creado_en: '2026-10-09T16:00:00Z',
+      actualizado_en: '2026-10-09T16:00:00Z'
+    }));
+
+    component.onSubmit();
+
+    expect(vehiculoServiceSpy.crearVehiculo).toHaveBeenCalledWith(expect.objectContaining({
+      patente: 'AD999ZZ',
+      numero_chasis: null,
+      nro_chasis: null
+    }));
+  });
+
   it('debe inicializar el campo tipo_motor con valor por defecto NAFTERO (TK084)', () => {
     expect(component.vehiculoForm.get('tipo_motor')?.value).toBe('NAFTERO');
   });
