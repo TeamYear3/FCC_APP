@@ -83,14 +83,13 @@ export class OrdenFormComponent implements OnInit {
       const turnoCtrl = this.ordenForm.get('turno_id');
       const aceptoCtrl = this.ordenForm.get('cliente_acepto');
 
+      // TK151: Las órdenes de trabajo directas de mostrador no requieren un turno obligatorio.
       if (modo === 'ORDEN_TRABAJO') {
-        turnoCtrl?.setValidators([Validators.required]);
         aceptoCtrl?.setValidators([Validators.requiredTrue]);
       } else {
-        turnoCtrl?.clearValidators();
         aceptoCtrl?.clearValidators();
       }
-
+      turnoCtrl?.clearValidators();
       turnoCtrl?.updateValueAndValidity();
       aceptoCtrl?.updateValueAndValidity();
     });
