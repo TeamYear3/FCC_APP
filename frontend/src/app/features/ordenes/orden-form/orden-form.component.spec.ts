@@ -121,18 +121,16 @@ describe('OrdenFormComponent', () => {
     );
   });
 
-  it('debe requerir turno_id y cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
+  it('debe mantener turno_id opcional y requerir cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
     component.ordenForm.get('modo')?.setValue('ORDEN_TRABAJO');
     const turnoCtrl = component.ordenForm.get('turno_id');
     const aceptoCtrl = component.ordenForm.get('cliente_acepto');
 
-    expect(turnoCtrl?.valid).toBeFalsy();
+    // TK151: turno_id permanece opcional para órdenes de mostrador
+    expect(turnoCtrl?.valid).toBeTruthy();
     expect(aceptoCtrl?.valid).toBeFalsy();
 
-    turnoCtrl?.setValue('turno-1');
     aceptoCtrl?.setValue(true);
-
-    expect(turnoCtrl?.valid).toBeTruthy();
     expect(aceptoCtrl?.valid).toBeTruthy();
   });
 
@@ -162,6 +160,27 @@ describe('OrdenFormComponent', () => {
     expect(navigateSpy).toHaveBeenCalledWith(['/ordenes'], {
       state: { successOT: 'OT-001' }
     });
+  });
+
+  it('debe enviar aprobado_por_cliente en true cuando el cliente acepta en modo ORDEN_TRABAJO (TK152)', () => {
+    component.ordenForm.patchValue({
+      modo: 'ORDEN_TRABAJO',
+      vehiculo_id: 'veh-1',
+      complejidad: 'media',
+      descripcion_problema: 'Cambio de amortiguadores delanteros',
+      fecha_ingreso: '2026-10-09',
+      cliente_acepto: true
+    });
+
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.onSubmit();
+
+    expect(mockOrdenService.crearOrden).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aprobado_por_cliente: true,
+        estado: 'ingresado'
+      })
+    );
   });
 
   it('debe manejar apertura y cierre del modal in-situ de cliente (TK102)', () => {

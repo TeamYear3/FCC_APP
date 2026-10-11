@@ -46,4 +46,14 @@ describe('ToastService', () => {
     expect(service.toasts().length).toBe(0);
     vi.useRealTimers();
   });
+
+  it('debe almacenar errorId cuando se proporciona en mostrarError (TK166)', () => {
+    service.mostrarError('Fallo en el servidor', 5000, 'err-uuid-1234');
+    const toasts = service.toasts();
+
+    expect(toasts.length).toBe(1);
+    expect(toasts[0].errorId).toBe('err-uuid-1234');
+    expect(toasts[0].mensaje).toBe('Fallo en el servidor');
+  });
 });
+

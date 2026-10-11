@@ -83,14 +83,13 @@ export class OrdenFormComponent implements OnInit {
       const turnoCtrl = this.ordenForm.get('turno_id');
       const aceptoCtrl = this.ordenForm.get('cliente_acepto');
 
+      // TK151: Las órdenes de trabajo directas de mostrador no requieren un turno obligatorio.
       if (modo === 'ORDEN_TRABAJO') {
-        turnoCtrl?.setValidators([Validators.required]);
         aceptoCtrl?.setValidators([Validators.requiredTrue]);
       } else {
-        turnoCtrl?.clearValidators();
         aceptoCtrl?.clearValidators();
       }
-
+      turnoCtrl?.clearValidators();
       turnoCtrl?.updateValueAndValidity();
       aceptoCtrl?.updateValueAndValidity();
     });
@@ -331,8 +330,8 @@ export class OrdenFormComponent implements OnInit {
       tipo_documento: formVal.tipo_documento,
       dni_cuit: dniCuitVal,
       condicion_iva: formVal.condicion_iva,
-      telefono: formVal.telefono ? formVal.telefono.trim() : undefined,
-      domicilio: formVal.domicilio ? formVal.domicilio.trim() : undefined
+      telefono: formVal.telefono && formVal.telefono.trim() ? formVal.telefono.trim() : null,
+      domicilio: formVal.domicilio && formVal.domicilio.trim() ? formVal.domicilio.trim() : null
     };
 
     this.clienteService.crearCliente(payload).subscribe({
@@ -529,7 +528,8 @@ export class OrdenFormComponent implements OnInit {
       descripcion_problema: formVal.descripcion_problema,
       fecha_ingreso: formVal.fecha_ingreso,
       complejidad: formVal.complejidad,
-      estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado'
+      estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado',
+      aprobado_por_cliente: Boolean(formVal.cliente_acepto)
     };
 
     this.ordenService.crearOrden(payload).subscribe({

@@ -85,6 +85,20 @@ export class AuthInterceptor implements HttpInterceptor {
             );
           }
         }
+
+        const errorId = error.error?.error_id || error.headers?.get('X-Request-ID') || error.headers?.get('X-Error-ID');
+        if (errorId) {
+          let mensaje = 'Ha ocurrido un error en la solicitud.';
+          if (typeof error.error?.error === 'string' && error.error.error.trim()) {
+            mensaje = error.error.error;
+          } else if (typeof error.error?.detail === 'string' && error.error.detail.trim()) {
+            mensaje = error.error.detail;
+          } else if (typeof error.error?.mensaje === 'string' && error.error.mensaje.trim()) {
+            mensaje = error.error.mensaje;
+          }
+          this.toastService.mostrarError(mensaje, 6000, errorId);
+        }
+
         return throwError(() => error);
       })
     );
@@ -161,6 +175,20 @@ export const authInterceptorFn: HttpInterceptorFn = (req: HttpRequest<unknown>, 
           );
         }
       }
+
+      const errorId = error.error?.error_id || error.headers?.get('X-Request-ID') || error.headers?.get('X-Error-ID');
+      if (errorId) {
+        let mensaje = 'Ha ocurrido un error en la solicitud.';
+        if (typeof error.error?.error === 'string' && error.error.error.trim()) {
+          mensaje = error.error.error;
+        } else if (typeof error.error?.detail === 'string' && error.error.detail.trim()) {
+          mensaje = error.error.detail;
+        } else if (typeof error.error?.mensaje === 'string' && error.error.mensaje.trim()) {
+          mensaje = error.error.mensaje;
+        }
+        toastService.mostrarError(mensaje, 6000, errorId);
+      }
+
       return throwError(() => error);
     })
   );

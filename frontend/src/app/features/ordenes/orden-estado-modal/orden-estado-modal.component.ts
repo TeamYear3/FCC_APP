@@ -476,8 +476,10 @@ export class OrdenEstadoModalComponent implements OnChanges {
     this.mensajeExito.set(null);
     this.mensajeError.set(null);
 
+    const comentarioVal = this.comentario()?.trim() ? this.comentario().trim() : null;
+
     this.ordenService
-      .actualizarEstado(this.orden.id, this.nuevoEstado(), this.comentario())
+      .actualizarEstado(this.orden.id, this.nuevoEstado(), comentarioVal)
       .subscribe({
         next: (res) => {
           this.isSubmitting.set(false);
@@ -505,11 +507,13 @@ export class OrdenEstadoModalComponent implements OnChanges {
     this.mensajeExito.set(null);
     this.mensajeError.set(null);
 
+    const comentarioCobroVal = this.comentarioCobro()?.trim() ? this.comentarioCobro().trim() : null;
+
     this.ordenService
       .registrarPago(this.orden.id, {
         metodo_pago: this.metodoPago(),
         condicion_iva: this.condicionIva(),
-        comentario: this.comentarioCobro(),
+        comentario: comentarioCobroVal,
         entregar_orden: this.entregarOrden(),
       })
       .subscribe({

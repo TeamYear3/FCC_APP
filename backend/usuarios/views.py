@@ -211,6 +211,8 @@ class GoogleAuthView(APIView):
                 rol="cliente",
                 google_id=google_sub or None
             )
+            from .signals import vincular_o_crear_cliente_usuario
+            vincular_o_crear_cliente_usuario(user, crear_si_no_existe=True)
 
         # Generar JWT locales con claims personalizados para el Frontend
         refresh = RefreshToken.for_user(user)

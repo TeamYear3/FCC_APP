@@ -96,6 +96,8 @@ export class ClienteFormComponent implements OnInit {
     // En Angular, form.value excluye automáticamente los controles deshabilitados
     const payload: Partial<ClientePayload> = {
       ...formRaw,
+      telefono: formRaw.telefono && formRaw.telefono.trim() ? formRaw.telefono.trim() : null,
+      domicilio: formRaw.domicilio && formRaw.domicilio.trim() ? formRaw.domicilio.trim() : null,
       dni_cuit: dniCuitVal,
     };
 

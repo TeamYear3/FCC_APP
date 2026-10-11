@@ -54,3 +54,186 @@ class EmailServiceTest(TestCase):
             recipient_list=["error@ejemplo.com"],
         )
         self.assertFalse(resultado)
+
+
+class CustomExceptionHandlerTests(TestCase):
+    """Pruebas unitarias para el manejador global de excepciones custom_exception_handler (TK164)."""
+
+    def test_custom_exception_handler_integrity_error_retorna_409_json(self):
+        """Verifica que IntegrityError devuelva HTTP 409 JSON con error_id único."""
+        import uuid
+        from django.db import IntegrityError
+        from core.exceptions import custom_exception_handler
+
+        exc = IntegrityError("duplicate key value violates unique constraint 'patente_unique'")
+        context = {"view": None}
+
+        response = custom_exception_handler(exc, context)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data.get("status_code"), 409)
+        self.assertIn("error", response.data)
+        self.assertIn("error_id", response.data)
+        self.assertTrue(uuid.UUID(response.data["error_id"]))
+        self.assertEqual(response["X-Error-ID"], response.data["error_id"])
+
+    def test_custom_exception_handler_database_error_retorna_409_json(self):
+        """Verifica que DatabaseError devuelva HTTP 409 JSON con error_id."""
+        from django.db import DatabaseError
+        from core.exceptions import custom_exception_handler
+
+        exc = DatabaseError("error de acceso a base de datos relacional")
+        context = {"view": None}
+
+        response = custom_exception_handler(exc, context)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("error_id", response.data)
+
+    def test_custom_exception_handler_excepcion_no_controlada_retorna_500_json(self):
+        """Verifica que excepciones imprevistas no devuelvan HTML sino HTTP 500 JSON con error_id."""
+        import uuid
+        from core.exceptions import custom_exception_handler
+
+        exc = RuntimeError("Fallo inesperado del sistema de archivos")
+        context = {"view": None}
+
+        response = custom_exception_handler(exc, context)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.data.get("status_code"), 500)
+        self.assertEqual(response.data.get("error"), "Se produjo un error interno en el servidor.")
+        self.assertIn("error_id", response.data)
+        self.assertTrue(uuid.UUID(response.data["error_id"]))
+        self.assertEqual(response["X-Error-ID"], response.data["error_id"])
+
+    def test_custom_exception_handler_drf_validation_error_enriquece_con_error_id(self):
+        """Verifica que excepciones estándar de DRF conserven sus detalles y se enriquezcan con error_id."""
+        import uuid
+        from rest_framework.exceptions import ValidationError
+        from core.exceptions import custom_exception_handler
+
+        exc = ValidationError({"email": ["Ingrese una dirección de correo válida."]})
+        context = {"view": None}
+
+        response = custom_exception_handler(exc, context)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("error_id", response.data)
+        self.assertTrue(uuid.UUID(response.data["error_id"]))
+        self.assertEqual(response.data.get("email"), ["Ingrese una dirección de correo válida."])
+        self.assertEqual(response["X-Error-ID"], response.data["error_id"])
+
+    def test_custom_exception_handler_drf_not_authenticated_enriquece_con_error_id(self):
+        """Verifica que excepciones de autenticación de DRF incluyan error_id y X-Error-ID."""
+        from rest_framework.exceptions import NotAuthenticated
+        from core.exceptions import custom_exception_handler
+
+        exc = NotAuthenticated()
+        context = {"view": None}
+
+        response = custom_exception_handler(exc, context)
+
+        self.assertIsNotNone(response)
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error_id", response.data)
+        self.assertEqual(response["X-Error-ID"], response.data["error_id"])
+
+
+class RequestTracingMiddlewareTests(TestCase):
+    """Pruebas unitarias para RequestTracingMiddleware y RequestIDFilter (TK165)."""
+
+    def test_middleware_genera_x_request_id_cuando_no_es_provisto(self):
+        """Verifica que el middleware genere un UUID en X-Request-ID si el cliente no lo envía."""
+        import uuid
+        from django.test import RequestFactory
+        from django.http import HttpResponse
+        from core.middleware import RequestTracingMiddleware
+
+        rf = RequestFactory()
+        request = rf.get("/api/vehiculos/")
+        middleware = RequestTracingMiddleware(lambda req: HttpResponse("OK"))
+
+        response = middleware(request)
+
+        self.assertIn("X-Request-ID", response)
+        request_id = response["X-Request-ID"]
+        self.assertTrue(uuid.UUID(request_id))
+        self.assertEqual(request.request_id, request_id)
+
+    def test_middleware_preserva_y_reutiliza_x_request_id_entrante(self):
+        """Verifica que si el cliente envía un X-Request-ID, el middleware lo preserve y retorne."""
+        from django.test import RequestFactory
+        from django.http import HttpResponse
+        from core.middleware import RequestTracingMiddleware
+
+        rf = RequestFactory()
+        custom_id = "req-custom-trace-777"
+        request = rf.get("/api/vehiculos/", HTTP_X_REQUEST_ID=custom_id)
+        middleware = RequestTracingMiddleware(lambda req: HttpResponse("OK"))
+
+        response = middleware(request)
+
+        self.assertIn("X-Request-ID", response)
+        self.assertEqual(response["X-Request-ID"], custom_id)
+        self.assertEqual(request.request_id, custom_id)
+
+    def test_request_id_filter_inyecta_request_id_activo_en_log_record(self):
+        """Verifica que RequestIDFilter asigne el request_id activo de la solicitud al registro de log."""
+        import logging
+        from django.test import RequestFactory
+        from django.http import HttpResponse
+        from core.middleware import RequestTracingMiddleware, RequestIDFilter
+
+        rf = RequestFactory()
+        custom_id = "trace-log-correlation-456"
+        request = rf.get("/api/ordenes/", HTTP_X_REQUEST_ID=custom_id)
+
+        captured_record = None
+
+        def dummy_view(req):
+            nonlocal captured_record
+            log_filter = RequestIDFilter()
+            record = logging.LogRecord(
+                name="core.test",
+                level=logging.INFO,
+                pathname="tests.py",
+                lineno=10,
+                msg="Log de prueba dentro de request",
+                args=(),
+                exc_info=None,
+            )
+            log_filter.filter(record)
+            captured_record = record
+            return HttpResponse("OK")
+
+        middleware = RequestTracingMiddleware(dummy_view)
+        middleware(request)
+
+        self.assertIsNotNone(captured_record)
+        self.assertEqual(getattr(captured_record, "request_id", None), custom_id)
+
+    def test_request_id_filter_asigna_system_fuera_del_ciclo_de_request(self):
+        """Verifica que RequestIDFilter utilice 'system' como fallback cuando se loguea sin request HTTP."""
+        import logging
+        from core.middleware import RequestIDFilter
+
+        log_filter = RequestIDFilter()
+        record = logging.LogRecord(
+            name="core.test",
+            level=logging.INFO,
+            pathname="tests.py",
+            lineno=20,
+            msg="Log fuera de contexto HTTP",
+            args=(),
+            exc_info=None,
+        )
+
+        log_filter.filter(record)
+
+        self.assertEqual(getattr(record, "request_id", None), "system")
+
