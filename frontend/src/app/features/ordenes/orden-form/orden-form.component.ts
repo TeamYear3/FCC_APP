@@ -330,8 +330,8 @@ export class OrdenFormComponent implements OnInit {
       tipo_documento: formVal.tipo_documento,
       dni_cuit: dniCuitVal,
       condicion_iva: formVal.condicion_iva,
-      telefono: formVal.telefono ? formVal.telefono.trim() : undefined,
-      domicilio: formVal.domicilio ? formVal.domicilio.trim() : undefined
+      telefono: formVal.telefono && formVal.telefono.trim() ? formVal.telefono.trim() : null,
+      domicilio: formVal.domicilio && formVal.domicilio.trim() ? formVal.domicilio.trim() : null
     };
 
     this.clienteService.crearCliente(payload).subscribe({

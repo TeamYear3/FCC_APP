@@ -159,5 +159,40 @@ describe('ClienteFormComponent', () => {
     expect(errorDiv.getAttribute('role')).toBe('alert');
     expect(errorDiv.getAttribute('aria-live')).toBe('polite');
   });
+
+  it('debe enviar null en telefono y domicilio cuando se encuentran vacios o con espacios (TK163)', () => {
+    component.clienteForm.setValue({
+      tipo_documento: 'DNI',
+      dni_cuit: '30111222',
+      nombre: 'Carlos',
+      apellido: 'Rodríguez',
+      condicion_iva: 'CF',
+      telefono: '   ',
+      domicilio: ''
+    });
+
+    clienteServiceSpy.crearCliente.mockReturnValue(of({
+      id: 'uuid-123',
+      nombre: 'Carlos',
+      apellido: 'Rodríguez',
+      tipo_documento: 'DNI',
+      dni_cuit: '30111222',
+      condicion_iva: 'CF',
+      telefono: null,
+      domicilio: null,
+      creado_en: '2026-07-21T12:00:00Z',
+      actualizado_en: '2026-07-21T12:00:00Z'
+    }));
+
+    component.onSubmit();
+
+    expect(clienteServiceSpy.crearCliente).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telefono: null,
+        domicilio: null,
+      })
+    );
+  });
 });
+
 

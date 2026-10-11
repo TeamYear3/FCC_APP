@@ -161,8 +161,12 @@ export class OrdenService {
   /**
    * Actualizar el estado de la OT (PATCH /api/ordenes/<id>/estado/) (TK033 & TK035)
    */
-  actualizarEstado(ordenId: string, estado: string, comentario: string = ''): Observable<OrdenHistorialResponse> {
-    return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, { estado, comentario });
+  actualizarEstado(ordenId: string, estado: string, comentario?: string | null): Observable<OrdenHistorialResponse> {
+    const comentarioNormalizado = comentario && comentario.trim() ? comentario.trim() : null;
+    return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, {
+      estado,
+      comentario: comentarioNormalizado,
+    });
   }
 
   /**
@@ -242,11 +246,17 @@ export class OrdenService {
    */
   registrarPago(
     ordenId: string,
-    payload: { metodo_pago: string; comentario?: string; entregar_orden?: boolean; condicion_iva?: string }
+    payload: { metodo_pago: string; comentario?: string | null; entregar_orden?: boolean; condicion_iva?: string }
   ): Observable<{ message: string; orden: OrdenResponse }> {
+    const payloadSanitizado = {
+      ...payload,
+      ...(payload.comentario !== undefined && {
+        comentario: payload.comentario && payload.comentario.trim() ? payload.comentario.trim() : null,
+      }),
+    };
     return this.http.post<{ message: string; orden: OrdenResponse }>(
       `${this.apiUrl}${ordenId}/registrar-pago/`,
-      payload
+      payloadSanitizado
     );
   }
 }

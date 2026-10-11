@@ -9,8 +9,8 @@ export interface ClientePayload {
   tipo_documento: 'DNI' | 'CUIT';
   dni_cuit: string;
   condicion_iva: 'CF' | 'RI' | 'MT' | 'EX';
-  telefono?: string;
-  domicilio?: string;
+  telefono?: string | null;
+  domicilio?: string | null;
 }
 
 export interface ClienteResponse extends ClientePayload {
@@ -27,11 +27,24 @@ export class ClienteService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = `${environment.apiUrl}/clientes/`;
 
+  private normalizarPayload(payload: Partial<ClientePayload>): Partial<ClientePayload> {
+    return {
+      ...payload,
+      ...(payload.telefono !== undefined && {
+        telefono: payload.telefono && payload.telefono.trim() ? payload.telefono.trim() : null,
+      }),
+      ...(payload.domicilio !== undefined && {
+        domicilio: payload.domicilio && payload.domicilio.trim() ? payload.domicilio.trim() : null,
+      }),
+    };
+  }
+
   /**
    * Envía la solicitud de registro del nuevo cliente hacia el endpoint POST /api/clientes/
    */
   crearCliente(payload: ClientePayload): Observable<ClienteResponse> {
-    return this.http.post<ClienteResponse>(this.apiUrl, payload);
+    const sanitized = this.normalizarPayload(payload) as ClientePayload;
+    return this.http.post<ClienteResponse>(this.apiUrl, sanitized);
   }
 
   /**
@@ -67,6 +80,7 @@ export class ClienteService {
    * Actualiza los datos de un cliente (PATCH /api/clientes/<id>/)
    */
   actualizarCliente(id: string, payload: Partial<ClientePayload>): Observable<ClienteResponse> {
-    return this.http.patch<ClienteResponse>(`${this.apiUrl}${id}/`, payload);
+    const sanitized = this.normalizarPayload(payload);
+    return this.http.patch<ClienteResponse>(`${this.apiUrl}${id}/`, sanitized);
   }
 }
