@@ -22,7 +22,7 @@
     },
     {
       "key": "testUserPassword",
-      "value": "Admin123*",
+      "value": "admin123",
       "type": "secret",
       "enabled": true
     }
