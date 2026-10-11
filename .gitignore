@@ -48,4 +48,9 @@ diagnosticos/
 # Carpeta temporal del asistente AI
 scratch/
 
+# Archivos de registro y logs
+*.log
+logs/
+backend/logs/
+
 

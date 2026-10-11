@@ -143,3 +143,97 @@ class CustomExceptionHandlerTests(TestCase):
         self.assertIn("error_id", response.data)
         self.assertEqual(response["X-Error-ID"], response.data["error_id"])
 
+
+class RequestTracingMiddlewareTests(TestCase):
+    """Pruebas unitarias para RequestTracingMiddleware y RequestIDFilter (TK165)."""
+
+    def test_middleware_genera_x_request_id_cuando_no_es_provisto(self):
+        """Verifica que el middleware genere un UUID en X-Request-ID si el cliente no lo envía."""
+        import uuid
+        from django.test import RequestFactory
+        from django.http import HttpResponse
+        from core.middleware import RequestTracingMiddleware
+
+        rf = RequestFactory()
+        request = rf.get("/api/vehiculos/")
+        middleware = RequestTracingMiddleware(lambda req: HttpResponse("OK"))
+
+        response = middleware(request)
+
+        self.assertIn("X-Request-ID", response)
+        request_id = response["X-Request-ID"]
+        self.assertTrue(uuid.UUID(request_id))
+        self.assertEqual(request.request_id, request_id)
+
+    def test_middleware_preserva_y_reutiliza_x_request_id_entrante(self):
+        """Verifica que si el cliente envía un X-Request-ID, el middleware lo preserve y retorne."""
+        from django.test import RequestFactory
+        from django.http import HttpResponse
+        from core.middleware import RequestTracingMiddleware
+
+        rf = RequestFactory()
+        custom_id = "req-custom-trace-777"
+        request = rf.get("/api/vehiculos/", HTTP_X_REQUEST_ID=custom_id)
+        middleware = RequestTracingMiddleware(lambda req: HttpResponse("OK"))
+
+        response = middleware(request)
+
+        self.assertIn("X-Request-ID", response)
+        self.assertEqual(response["X-Request-ID"], custom_id)
+        self.assertEqual(request.request_id, custom_id)
+
+    def test_request_id_filter_inyecta_request_id_activo_en_log_record(self):
+        """Verifica que RequestIDFilter asigne el request_id activo de la solicitud al registro de log."""
+        import logging
+        from django.test import RequestFactory
+        from django.http import HttpResponse
+        from core.middleware import RequestTracingMiddleware, RequestIDFilter
+
+        rf = RequestFactory()
+        custom_id = "trace-log-correlation-456"
+        request = rf.get("/api/ordenes/", HTTP_X_REQUEST_ID=custom_id)
+
+        captured_record = None
+
+        def dummy_view(req):
+            nonlocal captured_record
+            log_filter = RequestIDFilter()
+            record = logging.LogRecord(
+                name="core.test",
+                level=logging.INFO,
+                pathname="tests.py",
+                lineno=10,
+                msg="Log de prueba dentro de request",
+                args=(),
+                exc_info=None,
+            )
+            log_filter.filter(record)
+            captured_record = record
+            return HttpResponse("OK")
+
+        middleware = RequestTracingMiddleware(dummy_view)
+        middleware(request)
+
+        self.assertIsNotNone(captured_record)
+        self.assertEqual(getattr(captured_record, "request_id", None), custom_id)
+
+    def test_request_id_filter_asigna_system_fuera_del_ciclo_de_request(self):
+        """Verifica que RequestIDFilter utilice 'system' como fallback cuando se loguea sin request HTTP."""
+        import logging
+        from core.middleware import RequestIDFilter
+
+        log_filter = RequestIDFilter()
+        record = logging.LogRecord(
+            name="core.test",
+            level=logging.INFO,
+            pathname="tests.py",
+            lineno=20,
+            msg="Log fuera de contexto HTTP",
+            args=(),
+            exc_info=None,
+        )
+
+        log_filter.filter(record)
+
+        self.assertEqual(getattr(record, "request_id", None), "system")
+
