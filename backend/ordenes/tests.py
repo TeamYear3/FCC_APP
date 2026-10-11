@@ -1179,6 +1179,14 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
+    def test_transicionar_a_aprobado_establece_aprobado_por_cliente_automaticamente(self):
+        """TK152: Aprobar un presupuesto establece automáticamente aprobado_por_cliente = True."""
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.aprobado_por_cliente)
+
     def test_generacion_concurrente_numero_ot_no_produce_duplicados(self):
         # TK199: Generaciones correlativas sucesivas garantizan unicidad y orden
         ordenes = []
