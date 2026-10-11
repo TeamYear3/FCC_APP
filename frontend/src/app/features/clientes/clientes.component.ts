@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../core/auth/auth.service';
@@ -27,7 +28,7 @@ export interface ClienteDisplayItem {
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent],
+  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent, ScrollingModule],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css',
 })
@@ -180,5 +181,9 @@ export class ClientesComponent implements OnInit {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/autenticacion']);
+  }
+
+  trackByClienteId(_index: number, item: ClienteDisplayItem): string {
+    return item.id;
   }
 }
