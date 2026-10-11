@@ -139,6 +139,51 @@ describe('AuthInterceptor (Functional)', () => {
     expect(results).toEqual(['Clientes OK', 'Vehiculos OK', 'Ordenes OK', 'Turnos OK']);
     expect(authServiceSpy.logout).not.toHaveBeenCalled();
   });
+
+  it('debe capturar error_id de respuesta fallida y llamar a toastService.mostrarError (TK166)', () => {
+    httpClient.get('/api/v1/ordenes/').subscribe({
+      error: (err) => {
+        expect(err.status).toBe(409);
+      }
+    });
+
+    const req = httpTestingController.expectOne('/api/v1/ordenes/');
+    req.flush(
+      { error: 'Error de integridad en base de datos', error_id: 'err-uuid-9988' },
+      { status: 409, statusText: 'Conflict' }
+    );
+
+    expect(toastServiceSpy.mostrarError).toHaveBeenCalledWith(
+      'Error de integridad en base de datos',
+      6000,
+      'err-uuid-9988'
+    );
+  });
+
+  it('debe capturar X-Request-ID de los headers si el body no tiene error_id (TK166)', () => {
+    httpClient.get('/api/v1/vehiculos/').subscribe({
+      error: (err) => {
+        expect(err.status).toBe(500);
+      }
+    });
+
+    const req = httpTestingController.expectOne('/api/v1/vehiculos/');
+    req.flush(
+      { detail: 'Fallo crítico de base de datos' },
+      {
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: { 'X-Request-ID': 'trace-hdr-1234' }
+      }
+    );
+
+    expect(toastServiceSpy.mostrarError).toHaveBeenCalledWith(
+      'Fallo crítico de base de datos',
+      6000,
+      'trace-hdr-1234'
+    );
+  });
 });
+
 
 
