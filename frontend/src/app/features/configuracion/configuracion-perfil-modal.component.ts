@@ -197,7 +197,7 @@ export class ConfiguracionPerfilModalComponent implements OnInit {
       nombre: formVal.nombre.trim(),
       apellido: formVal.apellido.trim(),
       email: formVal.email.trim(),
-      telefono: formVal.telefono ? formVal.telefono.trim() : '',
+      telefono: formVal.telefono && formVal.telefono.trim() ? formVal.telefono.trim() : null,
     };
 
     if (formVal.password_actual) {
