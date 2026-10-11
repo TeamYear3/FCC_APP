@@ -37,7 +37,16 @@ import { ToastService, ToastMessage } from '../../../core/services/toast.service
               }
             }
 
-            <p class="text-xs font-semibold text-white leading-relaxed">{{ toast.mensaje }}</p>
+            <div class="flex flex-col gap-1 min-w-0">
+              <p class="text-xs font-semibold text-white leading-relaxed">{{ toast.mensaje }}</p>
+              @if (toast.errorId) {
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="inline-flex items-center text-[11px] font-mono font-medium text-rose-300 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800/60 select-all">
+                    ID de error: {{ toast.errorId }}
+                  </span>
+                </div>
+              }
+            </div>
           </div>
 
           <button 
