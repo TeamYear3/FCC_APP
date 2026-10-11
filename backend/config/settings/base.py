@@ -138,6 +138,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
 }
 
 # SimpleJWT Settings - Políticas de Sesión y Expiración para Operatividad en Taller
