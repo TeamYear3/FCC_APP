@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7b093154-1b32-4759-9943-fcc_collection_v21",
     "name": "Full Check Car - API Test Suite",
-    "description": "Colección modular de pruebas automatizadas de caja negra para la API REST de Full Check Car (Sprint 4). Incluye autenticación dinámica JWT y ciclo CRUD encadenado con propagación de ID y teardown hermético.",
+    "description": "Colección modular de pruebas automatizadas de caja negra para la API REST de Full Check Car (Sprint 4). Incluye autenticación dinámica JWT, ciclo CRUD encadenado con propagación de ID y pruebas negativas (401 Unauthorized y 400 Bad Request) por cada recurso.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -68,7 +68,7 @@
     },
     {
       "name": "01_Clientes",
-      "description": "Módulo de gestión de clientes y ciclo CRUD completo encadenado.",
+      "description": "Módulo de gestión de clientes: ciclo CRUD encadenado y pruebas negativas de seguridad y validación.",
       "item": [
         {
           "name": "01 - Listar Clientes",
@@ -359,15 +359,110 @@
             "description": "Paso 5 del CRUD: Verificación final comprobando que el recurso eliminado ya no existe en el sistema."
           },
           "response": []
+        },
+        {
+          "name": "07 - Negativa: GET Clientes sin Token (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 401 Unauthorized ante petición anónima\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene mensaje de error de autenticación\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"detail\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ""
+              ]
+            },
+            "description": "Prueba negativa: Validación de rechazo HTTP 401 al consultar clientes sin cabecera Authorization."
+          },
+          "response": []
+        },
+        {
+          "name": "08 - Negativa: POST Crear Cliente con Payload Inválido (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 400 Bad Request ante payload inválido\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene estructura de errores de validación\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an(\"object\");",
+                  "    pm.expect(jsonData).to.have.any.keys(\"nombre\", \"dni_cuit\", \"email\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"\",\n  \"apellido\": \"\",\n  \"dni_cuit\": \"documento_invalido_con_letras\",\n  \"email\": \"email-sin-formato-valido\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ""
+              ]
+            },
+            "description": "Prueba negativa: Validación de rechazo HTTP 400 al enviar campos obligatorios vacíos o datos con formato inválido."
+          },
+          "response": []
         }
       ]
     },
     {
       "name": "02_Ordenes",
-      "description": "Módulo de gestión de órdenes de trabajo (OT) del taller.",
+      "description": "Módulo de gestión de órdenes de trabajo (OT) del taller y pruebas negativas.",
       "item": [
         {
-          "name": "Listar Órdenes de Trabajo",
+          "name": "01 - Listar Órdenes de Trabajo",
           "event": [
             {
               "listen": "test",
@@ -422,7 +517,7 @@
           "response": []
         },
         {
-          "name": "Obtener Detalle de Orden de Trabajo",
+          "name": "02 - Obtener Detalle de Orden de Trabajo",
           "event": [
             {
               "listen": "test",
@@ -467,6 +562,100 @@
               ]
             },
             "description": "Consulta detallada del expediente de una orden de trabajo por su identificador UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "03 - Negativa: GET Órdenes sin Token (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 401 Unauthorized al listar órdenes sin token\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene detalle de autenticación requerida\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"detail\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes",
+                ""
+              ]
+            },
+            "description": "Prueba negativa: Validación de rechazo HTTP 401 al consultar órdenes sin autenticación."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - Negativa: POST Crear Orden con Payload Inválido (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 400 Bad Request ante payload inválido en orden\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene errores de validación estructurados\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an(\"object\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculo\": \"00000000-0000-0000-0000-000000000000\",\n  \"descripcion\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes",
+                ""
+              ]
+            },
+            "description": "Prueba negativa: Validación de rechazo HTTP 400 al enviar datos malformados o IDs inexistentes en órdenes de trabajo."
           },
           "response": []
         }
