@@ -4,12 +4,13 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { authInterceptorFn } from './core/interceptors/auth.interceptor';
+import { cacheInterceptorFn } from './core/interceptors/cache.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZonelessChangeDetection(),
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptorFn]))
+    provideHttpClient(withInterceptors([authInterceptorFn, cacheInterceptorFn]))
   ]
 };
