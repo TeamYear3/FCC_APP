@@ -185,4 +185,12 @@ describe('ClientesComponent', () => {
       expect(component.clienteSeleccionadoExpediente()).toBeNull();
     });
   });
+
+  describe('TK177 - Sincronización Reactiva con Signals', () => {
+    it('debe exponer routeQueryParams como signal reactivo', () => {
+      expect(component.routeQueryParams).toBeDefined();
+      expect(typeof component.routeQueryParams).toBe('function');
+      expect(typeof component.routeQueryParams()).toBe('object');
+    });
+  });
 });
