@@ -1,0 +1,359 @@
+{
+  "info": {
+    "_postman_id": "7b093154-1b32-4759-9943-fcc_collection_v21",
+    "name": "Full Check Car - API Test Suite",
+    "description": "Colección modular de pruebas automatizadas de caja negra para la API REST de Full Check Car (Sprint 4). Organizada por recursos de negocio y autenticación JWT.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00_Auth",
+      "description": "Módulo de autenticación y generación de credenciales JWT.",
+      "item": [
+        {
+          "name": "Login - Obtener Token JWT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta es un JSON válido\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene token access JWT\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"access\");",
+                  "    pm.expect(jsonData.access).to.be.a(\"string\");",
+                  "    pm.environment.set(\"authToken\", jsonData.access);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{testUserEmail}}\",\n  \"password\": \"{{testUserPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "description": "Autenticación de usuario administrativo/técnico para obtención e inyección dinámica del token JWT en {{authToken}}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01_Clientes",
+      "description": "Módulo de gestión de clientes y legajos del taller.",
+      "item": [
+        {
+          "name": "Listar Clientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta es JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test(\"Retorna una lista o respuesta paginada de clientes\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var clientes = Array.isArray(jsonData) ? jsonData : jsonData.results;",
+                  "    pm.expect(clientes).to.be.an(\"array\");",
+                  "    if (clientes.length > 0) {",
+                  "        pm.collectionVariables.set(\"clienteExistenteId\", clientes[0].id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ""
+              ]
+            },
+            "description": "Consulta del directorio de clientes registrados en el taller."
+          },
+          "response": []
+        },
+        {
+          "name": "Crear Cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 201 Created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Cliente creado contiene ID y datos correctos\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"id\");",
+                  "    pm.expect(jsonData.nombre).to.eql(\"Cliente Test Postman\");",
+                  "    pm.collectionVariables.set(\"clienteCreadoId\", jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Cliente Test Postman\",\n  \"apellido\": \"Automatizado\",\n  \"dni_cuit\": \"20999888771\",\n  \"email\": \"cliente_postman_{{$timestamp}}@qa.fcc.com\",\n  \"telefono\": \"3517654321\",\n  \"direccion\": \"Av. Colon 1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                ""
+              ]
+            },
+            "description": "Alta de un nuevo cliente con datos estructurados y DNI/CUIT único."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener Detalle de Cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"El registro coincide con el recurso solicitado\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var idEsperado = pm.collectionVariables.get(\"clienteCreadoId\") || pm.collectionVariables.get(\"clienteExistenteId\");",
+                  "    if (idEsperado) {",
+                  "        pm.expect(jsonData.id).to.eql(idEsperado);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/{{clienteCreadoId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "{{clienteCreadoId}}",
+                ""
+              ]
+            },
+            "description": "Consulta de ficha y legajo individual de un cliente por su UUID."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02_Ordenes",
+      "description": "Módulo de gestión de órdenes de trabajo (OT) del taller.",
+      "item": [
+        {
+          "name": "Listar Órdenes de Trabajo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta es JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test(\"Retorna una colección de órdenes de trabajo\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var ordenes = Array.isArray(jsonData) ? jsonData : jsonData.results;",
+                  "    pm.expect(ordenes).to.be.an(\"array\");",
+                  "    if (ordenes.length > 0) {",
+                  "        pm.collectionVariables.set(\"ordenExistenteId\", ordenes[0].id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes",
+                ""
+              ]
+            },
+            "description": "Consulta del listado general de órdenes de trabajo con estado y datos de vehículo."
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener Detalle de Orden de Trabajo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Detalle de la orden contiene estructura completa\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"id\");",
+                  "    pm.expect(jsonData).to.have.property(\"estado\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes/{{ordenExistenteId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes",
+                "{{ordenExistenteId}}",
+                ""
+              ]
+            },
+            "description": "Consulta detallada del expediente de una orden de trabajo por su identificador UUID."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "clienteCreadoId",
+      "value": ""
+    },
+    {
+      "key": "clienteExistenteId",
+      "value": ""
+    },
+    {
+      "key": "ordenExistenteId",
+      "value": ""
+    }
+  ]
+}
