@@ -10,7 +10,13 @@ from clientes.models import Cliente
 from vehiculos.models import Vehiculo
 from ordenes.models import OrdenTrabajo, ItemPresupuesto, TipoItem, EstadoOrden
 from .models import Factura, TipoComprobante, EstadoFactura, EstadoPago
-from .arca_client import ArcaWSClient
+from .arca_client import (
+    ArcaWSClient,
+    WSAAClient,
+    WSFEClient,
+    ArcaFiscalError,
+    ArcaAuthError,
+)
 
 User = get_user_model()
 
@@ -20,6 +26,124 @@ class ArcaWSClientTest(TestCase):
         cae = ArcaWSClient.generar_cae_algoritmico()
         self.assertEqual(len(cae), 14)
         self.assertTrue(cae.isdigit())
+
+    def test_generar_cae_fiscal_validado_modulo_10(self):
+        hoy = timezone.localdate()
+        cae = ArcaWSClient.generar_cae_fiscal_validado(
+            punto_venta=1,
+            tipo_cbte_codigo=6,
+            numero_factura=42,
+            fecha=hoy
+        )
+        self.assertEqual(len(cae), 14)
+        self.assertTrue(cae.isdigit())
+        # Validar dígito verificador módulo 10
+        digitos_base = cae[:13]
+        dv_esperado = (10 - (sum(int(d) * (3 if i % 2 == 0 else 1) for i, d in enumerate(digitos_base)) % 10)) % 10
+        self.assertEqual(int(cae[13]), dv_esperado)
+
+    def test_wsaa_generar_tra_xml(self):
+        tra_xml = WSAAClient.generar_tra_xml(service="wsfe")
+        self.assertIn("<loginTicketRequest", tra_xml)
+        self.assertIn("<uniqueId>", tra_xml)
+        self.assertIn("<service>wsfe</service>", tra_xml)
+
+    def test_wsaa_obtener_ticket_acceso_y_cache(self):
+        ticket1 = WSAAClient.obtener_ticket_valido(service="wsfe", force_refresh=True)
+        self.assertIn("token", ticket1)
+        self.assertIn("sign", ticket1)
+        self.assertTrue(ticket1["token"].startswith("ARCA_TOKEN_"))
+        self.assertTrue(ticket1["expiration"] > timezone.now())
+
+        # Segunda llamada debe reutilizar caché
+        ticket2 = WSAAClient.obtener_ticket_valido(service="wsfe")
+        self.assertEqual(ticket1["token"], ticket2["token"])
+        self.assertEqual(ticket1["sign"], ticket2["sign"])
+
+    def test_wsfe_construir_envelope_soap(self):
+        auth = {"token": "TEST_TOKEN", "sign": "TEST_SIGN"}
+        envelope = WSFEClient.construir_envelope_solicitar_cae(
+            cuit_emisor="30-71829384-9",
+            punto_venta=1,
+            tipo_cbte_codigo=6,
+            cbte_nro=10,
+            doc_tipo_codigo=96,
+            doc_nro="35123456",
+            total=Decimal("121000.00"),
+            auth_ticket=auth
+        )
+        self.assertIn("<FECAESolicitar", envelope)
+        self.assertIn("<Token>TEST_TOKEN</Token>", envelope)
+        self.assertIn("<PtoVta>1</PtoVta>", envelope)
+        self.assertIn("<CbteTipo>6</CbteTipo>", envelope)
+        self.assertIn("<ImpTotal>121000.00</ImpTotal>", envelope)
+
+    def test_solicitar_cae_soap_aprobado_mock(self):
+        soap_mock_aprobado = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">'
+            '  <soap:Body>'
+            '    <FECAESolicitarResponse xmlns="http://ar.gov.afip.dif.FEV1/">'
+            '      <FECAESolicitarResult>'
+            '        <FeCabResp>'
+            '          <Resultado>A</Resultado>'
+            '        </FeCabResp>'
+            '        <FeDetResp>'
+            '          <FECAEDetResponse>'
+            '            <CAE>74321098765432</CAE>'
+            '            <CAEFchVto>20261022</CAEFchVto>'
+            '          </FECAEDetResponse>'
+            '        </FeDetResp>'
+            '      </FECAESolicitarResult>'
+            '    </FECAESolicitarResponse>'
+            '  </soap:Body>'
+            '</soap:Envelope>'
+        )
+
+        resultado = ArcaWSClient.solicitar_cae(
+            total=Decimal("150000.00"),
+            punto_venta=1,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            doc_tipo="DNI",
+            doc_nro="35123456",
+            soap_response_override=soap_mock_aprobado
+        )
+        self.assertEqual(resultado["resultado"], "Aprobado")
+        self.assertEqual(resultado["cae"], "74321098765432")
+        self.assertEqual(str(resultado["fecha_vencimiento_cae"]), "2026-10-22")
+
+    def test_solicitar_cae_soap_rechazado_mock(self):
+        soap_mock_rechazado = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">'
+            '  <soap:Body>'
+            '    <FECAESolicitarResponse xmlns="http://ar.gov.afip.dif.FEV1/">'
+            '      <FECAESolicitarResult>'
+            '        <FeCabResp>'
+            '          <Resultado>R</Resultado>'
+            '        </FeCabResp>'
+            '        <Errors>'
+            '          <Err>'
+            '            <Code>10016</Code>'
+            '            <Msg>El número o fecha del comprobante no se corresponde con el próximo a autorizar</Msg>'
+            '          </Err>'
+            '        </Errors>'
+            '      </FECAESolicitarResult>'
+            '    </FECAESolicitarResponse>'
+            '  </soap:Body>'
+            '</soap:Envelope>'
+        )
+
+        with self.assertRaises(ArcaFiscalError) as ctx:
+            ArcaWSClient.solicitar_cae(
+                total=Decimal("150000.00"),
+                punto_venta=1,
+                tipo_comprobante=TipoComprobante.FACTURA_B,
+                doc_tipo="DNI",
+                doc_nro="35123456",
+                soap_response_override=soap_mock_rechazado
+            )
+        self.assertIn("10016", str(ctx.exception))
 
     def test_solicitar_cae_exitoso(self):
         resultado = ArcaWSClient.solicitar_cae(
@@ -34,7 +158,6 @@ class ArcaWSClientTest(TestCase):
         self.assertEqual(resultado["punto_venta"], 1)
         self.assertEqual(resultado["tipo_comprobante"], "B")
         self.assertEqual(resultado["numero_factura"], 1)
-        # La fecha de vencimiento fiscal debe ser 10 días posterior
         self.assertEqual(
             resultado["fecha_vencimiento_cae"],
             timezone.localdate() + timedelta(days=10)
