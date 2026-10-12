@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from core.permissions import EsAdministrador
 from ordenes.models import OrdenTrabajo
 from .models import Factura, EstadoFactura, EstadoPago, TipoComprobante
-from .arca_client import ArcaWSClient
+from .arca_client import ArcaWSClient, ArcaFiscalError, ArcaAuthError
 from .serializers import (
     FacturaSerializer,
     EmitirFacturaSerializer,
@@ -46,15 +46,26 @@ class EmitirFacturaView(APIView):
             cliente.condicion_iva = condicion_iva_override
             cliente.save(update_fields=["condicion_iva", "actualizado_en"])
 
-        # Llamar al WebService de ARCA para autorizar y obtener CAE
-        arca_response = ArcaWSClient.solicitar_cae(
-            total=orden.monto_total,
-            punto_venta=punto_venta,
-            tipo_comprobante=tipo_comprobante,
-            doc_tipo=getattr(cliente, "tipo_documento", "DNI"),
-            doc_nro=getattr(cliente, "dni_cuit", "0"),
-            condicion_iva=getattr(cliente, "condicion_iva", "CF")
-        )
+        # Llamar al WebService de ARCA para autorizar y obtener CAE oficial
+        try:
+            arca_response = ArcaWSClient.solicitar_cae(
+                total=orden.monto_total,
+                punto_venta=punto_venta,
+                tipo_comprobante=tipo_comprobante,
+                doc_tipo=getattr(cliente, "tipo_documento", "DNI"),
+                doc_nro=getattr(cliente, "dni_cuit", "0"),
+                condicion_iva=getattr(cliente, "condicion_iva", "CF")
+            )
+        except ArcaFiscalError as exc:
+            return Response(
+                {"error": str(exc), "observaciones": exc.observaciones},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except ArcaAuthError as exc:
+            return Response(
+                {"error": f"Falla de autenticación fiscal con ARCA: {str(exc)}"},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
 
         hoy = timezone.localdate()
         fecha_vencimiento_pago = hoy + timedelta(days=dias_vencimiento)
