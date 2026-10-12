@@ -53,22 +53,26 @@
       @if (mode() === 'login') {
         <form [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()" class="flex flex-col gap-4">
           <div>
-            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Correo electrónico</label>
+            <label for="login-email" class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Correo electrónico</label>
             <input 
+              id="login-email"
               type="email" 
               formControlName="email" 
               placeholder="ejemplo@correo.com"
+              data-testid="input-email"
               class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
             <app-field-error [control]="loginForm.get('email')"></app-field-error>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Contraseña</label>
+            <label for="login-password" class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Contraseña</label>
             <div class="relative flex items-center">
               <input 
+                id="login-password"
                 [type]="showLoginPassword() ? 'text' : 'password'" 
                 formControlName="password" 
                 placeholder="••••••••"
+                data-testid="input-password"
                 class="w-full px-4 py-3 pr-11 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <button 
@@ -104,6 +108,7 @@
 
           <button
             type="submit"
+            data-testid="btn-login-submit"
             [disabled]="loginForm.invalid || isSubmitting() || isInitializing()"
             class="w-full min-h-[48px] rounded-pill bg-color-primary-accent text-black font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent tracking-wide mt-2"
           >
