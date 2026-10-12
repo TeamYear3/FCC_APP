@@ -83,6 +83,15 @@ MIDDLEWARE = [
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF — Orígenes confiables para POST desde dominios de producción detrás de proxy/Cloudflare
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "https://api.fcc-app.com.ar,https://fcc-app.com.ar").split(",")
+    if origin.strip()
+]
+
+# Proxy SSL — Indica a Django que confíe en el encabezado X-Forwarded-Proto del reverse proxy
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 ROOT_URLCONF = "config.urls"
 
