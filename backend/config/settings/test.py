@@ -6,13 +6,29 @@ DEBUG = False
 # Carga la clave secreta dinámicamente desde variables de entorno (.env) o fallback heredado
 SECRET_KEY = os.getenv("SECRET_KEY", SECRET_KEY)
 
-# Usar SQLite en memoria para la suite de pruebas cuando no hay PostgreSQL local corriendo
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+# Base de datos para la suite de pruebas (TK222 / AUT-BE-06)
+# Por defecto utiliza PostgreSQL (django.db.backends.postgresql) con soporte de fallback si no se ejecuta sobre contenedor
+if os.getenv("USE_SQLITE_TEST", "false").lower() == "true":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": os.getenv("TEST_DB_ENGINE", "django.db.backends.postgresql"),
+            "NAME": os.getenv("POSTGRES_TEST_DB", os.getenv("POSTGRES_DB", "fcc_app_test")),
+            "USER": os.getenv("POSTGRES_USER", "fcc_user"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "fcc_password"),
+            "HOST": os.getenv("POSTGRES_HOST", "localhost"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+            "TEST": {
+                "NAME": "test_fcc_app",
+            },
+        }
+    }
 
 TESTING = True
 
