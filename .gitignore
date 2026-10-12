@@ -58,6 +58,12 @@ backend/logs/
 # Reportes de pruebas generados dinámicamente
 tests/api/reports/*.html
 tests/api/reports/*.xml
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+coverage.xml
+
 
 
 
