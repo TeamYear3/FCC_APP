@@ -127,4 +127,18 @@ describe('FieldErrorComponent', () => {
 
     expect(fixture.nativeElement.textContent.trim()).toBe('La patente ya se encuentra registrada en el sistema.');
   });
+
+  it('should render id attribute and aria-live="polite" when errorId input is provided (TK238)', () => {
+    const control = new FormControl('', [Validators.required]);
+    control.markAsTouched();
+    component.control = control;
+    component.errorId = 'error-nombre-cliente';
+    fixture.detectChanges();
+
+    const spanElement = fixture.nativeElement.querySelector('span');
+    expect(spanElement).toBeTruthy();
+    expect(spanElement.getAttribute('id')).toBe('error-nombre-cliente');
+    expect(spanElement.getAttribute('role')).toBe('alert');
+    expect(spanElement.getAttribute('aria-live')).toBe('polite');
+  });
 });

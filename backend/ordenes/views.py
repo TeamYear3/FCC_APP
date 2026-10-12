@@ -268,9 +268,13 @@ class AdjuntoDiagnosticoListCreateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, orden_id, *args, **kwargs):
-        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
-        adjuntos = orden.adjuntos_diagnostico.all()
+    def get(self, request, orden_id=None, *args, **kwargs):
+        target_orden_id = orden_id or request.query_params.get('orden_id') or request.query_params.get('orden_trabajo')
+        if target_orden_id:
+            orden = get_object_or_404(OrdenTrabajo, id=target_orden_id)
+            adjuntos = orden.adjuntos_diagnostico.all()
+        else:
+            adjuntos = AdjuntoDiagnostico.objects.all()
         serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 

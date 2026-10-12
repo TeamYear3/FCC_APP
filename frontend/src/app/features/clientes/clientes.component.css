@@ -1,1 +1,19 @@
 /* Estilos para clientes */
+.clientes-virtual-viewport {
+  height: 650px;
+  width: 100%;
+}
+
+.clientes-virtual-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.clientes-virtual-viewport::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 9999px;
+}
+
+.clientes-virtual-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+}

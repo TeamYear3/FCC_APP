@@ -1,0 +1,13 @@
+{
+  "name": "fcc-app",
+  "version": "1.0.0",
+  "description": "Full Check Car - Sistema de Gestión Comercial y Operativa para Talleres Mecánicos",
+  "scripts": {
+    "test:api": "newman run tests/api/fcc_api_collection.json -e tests/api/entorno.local.json --reporters cli,htmlextra,junit --reporter-htmlextra-export tests/api/reports/report_newman.html --reporter-junit-export tests/api/reports/report_newman.xml",
+    "test:api:cli": "newman run tests/api/fcc_api_collection.json -e tests/api/entorno.local.json --reporters cli"
+  },
+  "devDependencies": {
+    "newman": "^6.2.3",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

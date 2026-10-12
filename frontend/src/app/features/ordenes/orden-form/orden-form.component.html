@@ -268,7 +268,7 @@
                   for="turno_id"
                   class="typography-body-highlight text-white uppercase tracking-wide"
                 >
-                  Vincular Turno Agendado <span class="text-color-primary-accent">*</span>
+                  Vincular Turno Agendado <span class="text-color-text-secondary text-xs lowercase font-normal">(opcional - mostrador)</span>
                 </label>
                 <button
                   type="button"
@@ -285,22 +285,14 @@
                 id="turno_id"
                 formControlName="turno_id"
                 class="w-full min-h-[48px] px-md py-3 rounded-card bg-black/40 border border-white/10 text-white typography-body-highlight focus:outline-none focus:border-color-primary-accent transition-colors duration-200"
-                [class.border-red-500]="
-                  ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched
-                "
               >
                 <option [ngValue]="null">
-                  {{ cargandoTurnos() ? '-- Cargando turnos disponibles... --' : '-- Seleccione un turno agendado --' }}
+                  {{ cargandoTurnos() ? '-- Cargando turnos disponibles... --' : '-- Sin turno previo (Ingreso directo / Mostrador) --' }}
                 </option>
                 @for (t of turnos(); track t.id) {
                   <option [value]="t.id">{{ formatearTurno(t) }}</option>
                 }
               </select>
-              @if (ordenForm.get('turno_id')?.invalid && ordenForm.get('turno_id')?.touched) {
-                <span class="text-red-400 text-xs mt-1">
-                  Es obligatorio vincular un turno agendado para abrir una Orden de Trabajo.
-                </span>
-              }
             </div>
             <!-- Consentimiento y Facturación -->
             <div class="flex flex-col gap-md pt-2">
@@ -372,6 +364,8 @@
           <textarea
             id="descripcion_problema"
             formControlName="descripcion_problema"
+            (input)="onDescripcionInput($event)"
+            (change)="onDescripcionInput($event)"
             rows="5"
             placeholder="Describa de manera detallada el síntoma del vehículo, falla o servicio requerido por el cliente..."
             class="w-full p-md rounded-card bg-black/40 border border-white/10 text-white typography-body-main placeholder-color-text-secondary/60 focus:outline-none focus:border-color-primary-accent transition-colors duration-200 resize-y"
@@ -495,13 +489,7 @@
     </div>
   </div>
 
-  <!-- Footer -->
-  <div
-    class="max-w-[1400px] mx-auto w-full mt-lg pt-4 border-t border-white/10 flex items-center justify-between text-color-text-secondary typography-caption"
-  >
-    <span>FCC App · Módulo Órdenes</span>
-    <span>Material Design 3 · Dark Mode</span>
-  </div>
+
 
   <!-- Modal In-Situ: Alta Rápida de Cliente (TK102) -->
   @if (mostrarModalCliente()) {

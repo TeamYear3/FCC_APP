@@ -127,5 +127,22 @@ describe('ConfiguracionPerfilModalComponent', () => {
     component.ngOnInit();
     expect(component.googleVinculado()).toBe(true);
   });
+
+  it('debe enviar null en el campo telefono cuando se encuentra vacío o solo con espacios (TK163)', () => {
+    component.perfilForm.patchValue({
+      nombre: 'Laura',
+      apellido: 'Zárate',
+      email: 'admin@taller.com',
+      telefono: '   ',
+    });
+    component.guardarCambios();
+
+    expect(authServiceMock.actualizarPerfil).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telefono: null,
+      })
+    );
+  });
 });
+
 

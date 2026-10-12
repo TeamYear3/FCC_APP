@@ -97,18 +97,40 @@ describe('OrdenFormComponent', () => {
     expect(turnoCtrl?.validator).toBeNull();
   });
 
-  it('debe requerir turno_id y cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
+  it('debe inicializar fecha_ingreso con la fecha actual en la zona horaria de Argentina (TK154)', () => {
+    const fechaEsperada = component.obtenerFechaActualArgentina();
+    expect(component.ordenForm.get('fecha_ingreso')?.value).toBe(fechaEsperada);
+  });
+
+  it('debe permitir editar fecha_ingreso para ingresos diferidos y enviarla en el payload (TK154)', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.ordenForm.patchValue({
+      modo: 'PRESUPUESTO',
+      vehiculo_id: 'veh-1',
+      complejidad: 'baja',
+      descripcion_problema: 'Ingreso programado diferido',
+      fecha_ingreso: '2026-10-25'
+    });
+
+    component.onSubmit();
+
+    expect(mockOrdenService.crearOrden).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fecha_ingreso: '2026-10-25'
+      })
+    );
+  });
+
+  it('debe mantener turno_id opcional y requerir cliente_acepto al cambiar a modo ORDEN_TRABAJO', () => {
     component.ordenForm.get('modo')?.setValue('ORDEN_TRABAJO');
     const turnoCtrl = component.ordenForm.get('turno_id');
     const aceptoCtrl = component.ordenForm.get('cliente_acepto');
 
-    expect(turnoCtrl?.valid).toBeFalsy();
+    // TK151: turno_id permanece opcional para órdenes de mostrador
+    expect(turnoCtrl?.valid).toBeTruthy();
     expect(aceptoCtrl?.valid).toBeFalsy();
 
-    turnoCtrl?.setValue('turno-1');
     aceptoCtrl?.setValue(true);
-
-    expect(turnoCtrl?.valid).toBeTruthy();
     expect(aceptoCtrl?.valid).toBeTruthy();
   });
 
@@ -140,6 +162,27 @@ describe('OrdenFormComponent', () => {
     });
   });
 
+  it('debe enviar aprobado_por_cliente en true cuando el cliente acepta en modo ORDEN_TRABAJO (TK152)', () => {
+    component.ordenForm.patchValue({
+      modo: 'ORDEN_TRABAJO',
+      vehiculo_id: 'veh-1',
+      complejidad: 'media',
+      descripcion_problema: 'Cambio de amortiguadores delanteros',
+      fecha_ingreso: '2026-10-09',
+      cliente_acepto: true
+    });
+
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.onSubmit();
+
+    expect(mockOrdenService.crearOrden).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aprobado_por_cliente: true,
+        estado: 'ingresado'
+      })
+    );
+  });
+
   it('debe manejar apertura y cierre del modal in-situ de cliente (TK102)', () => {
     component.abrirModalCliente();
     expect(component.mostrarModalCliente()).toBe(true);
@@ -156,6 +199,23 @@ describe('OrdenFormComponent', () => {
 
     component.cerrarModalVehiculo();
     expect(component.mostrarModalVehiculo()).toBe(false);
+  });
+
+  describe('TK217 - Desactivación de buffer de composición y sincronización móvil', () => {
+    it('debe sincronizar inmediatamente el FormControl ante eventos de input nativo (onDescripcionInput)', () => {
+      const mockEvent = {
+        target: {
+          value: 'Falla en encendido intermitente y testigo de motor'
+        }
+      } as unknown as Event;
+
+      component.onDescripcionInput(mockEvent);
+
+      const ctrl = component.ordenForm.get('descripcion_problema');
+      expect(ctrl?.value).toBe('Falla en encendido intermitente y testigo de motor');
+      expect(ctrl?.valid).toBe(true);
+      expect(ctrl?.value.length).toBeGreaterThanOrEqual(5);
+    });
   });
 });
 

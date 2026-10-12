@@ -119,19 +119,32 @@ describe('OrdenEstadoModalComponent', () => {
     );
   });
 
-  it('debe llamar a registrarPago en el servicio al confirmar cobro operativo (TK103)', () => {
+  it('debe enviar null en el comentario al actualizar estado si está vacío (TK163)', () => {
+    component.onEstadoChange('finalizado');
+    component.comentario.set('   ');
+    component.confirmarCambioEstado();
+
+    expect(mockOrdenService.actualizarEstado).toHaveBeenCalledWith(
+      'ot-123',
+      'finalizado',
+      null
+    );
+  });
+
+  it('debe enviar null en el comentario de cobro si está vacío (TK163)', () => {
     component.seccionActiva.set('cobro');
-    component.metodoPago.set('transferencia');
-    component.comentarioCobro.set('Comprobante #1234');
-    component.entregarOrden.set(true);
+    component.metodoPago.set('efectivo');
+    component.comentarioCobro.set('');
+    component.entregarOrden.set(false);
 
     component.confirmarCobro();
 
     expect(mockOrdenService.registrarPago).toHaveBeenCalledWith('ot-123', {
-      metodo_pago: 'transferencia',
-      comentario: 'Comprobante #1234',
-      entregar_orden: true
+      metodo_pago: 'efectivo',
+      condicion_iva: 'CF',
+      comentario: null,
+      entregar_orden: false
     });
-    expect(mockToastService.exito).toHaveBeenCalledWith('Cobro de la Orden registrado correctamente.');
   });
 });
+

@@ -105,16 +105,18 @@
                 type="text"
                 formControlName="dni_cuit"
                 [tabindex]="isEditMode() ? -1 : 0"
+                [attr.aria-invalid]="clienteForm.get('dni_cuit')?.invalid && clienteForm.get('dni_cuit')?.touched"
+                [attr.aria-describedby]="clienteForm.get('dni_cuit')?.invalid && clienteForm.get('dni_cuit')?.touched ? 'error-dni_cuit' : null"
                 [placeholder]="
                   tipoDocumentoSeleccionado === 'DNI'
                     ? 'Ej: 30123456 (Sin puntos)'
                     : 'Ej: 20-30123456-9'
                 "
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all disabled:bg-color-surface-container disabled:text-color-text-secondary/60 disabled:border-white/5 disabled:cursor-not-allowed"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-400 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all disabled:bg-color-surface-container disabled:text-color-text-secondary/60 disabled:border-white/5 disabled:cursor-not-allowed"
               />
               <!-- Validación descriptiva instantánea (UX Temprana) -->
               @if (clienteForm.get('dni_cuit')?.touched && clienteForm.get('dni_cuit')?.invalid) {
-                <div class="text-red-400 text-xs mt-1.5 flex items-center gap-1.5">
+                <div id="error-dni_cuit" role="alert" aria-live="polite" class="text-red-400 text-xs mt-1.5 flex items-center gap-1.5">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-3.5 w-3.5 shrink-0"
@@ -194,11 +196,13 @@
                 id="nombre"
                 type="text"
                 formControlName="nombre"
+                [attr.aria-invalid]="clienteForm.get('nombre')?.invalid && clienteForm.get('nombre')?.touched"
+                [attr.aria-describedby]="clienteForm.get('nombre')?.invalid && clienteForm.get('nombre')?.touched ? 'error-nombre' : null"
                 placeholder="Ej: Juan o Logística Sur S.A."
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-400 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
               @if (clienteForm.get('nombre')?.touched && clienteForm.get('nombre')?.invalid) {
-                <div class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <div id="error-nombre" role="alert" aria-live="polite" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-3.5 w-3.5 shrink-0 mt-0.5"
@@ -240,11 +244,13 @@
                 id="apellido"
                 type="text"
                 formControlName="apellido"
+                [attr.aria-invalid]="clienteForm.get('apellido')?.invalid && clienteForm.get('apellido')?.touched"
+                [attr.aria-describedby]="clienteForm.get('apellido')?.invalid && clienteForm.get('apellido')?.touched ? 'error-apellido' : null"
                 placeholder="Ej: Pérez o S.R.L."
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-400 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
               @if (clienteForm.get('apellido')?.touched && clienteForm.get('apellido')?.invalid) {
-                <div class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <div id="error-apellido" role="alert" aria-live="polite" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-3.5 w-3.5 shrink-0 mt-0.5"
@@ -314,11 +320,13 @@
                 id="telefono"
                 type="tel"
                 formControlName="telefono"
+                [attr.aria-invalid]="clienteForm.get('telefono')?.invalid && clienteForm.get('telefono')?.touched"
+                [attr.aria-describedby]="clienteForm.get('telefono')?.invalid && clienteForm.get('telefono')?.touched ? 'error-telefono' : null"
                 placeholder="Ej: +54 9 11 1234-5678"
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-400 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
               @if (clienteForm.get('telefono')?.touched && clienteForm.get('telefono')?.invalid) {
-                <div class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <div id="error-telefono" role="alert" aria-live="polite" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-3.5 w-3.5 shrink-0 mt-0.5"
@@ -359,11 +367,13 @@
                 id="domicilio"
                 type="text"
                 formControlName="domicilio"
+                [attr.aria-invalid]="clienteForm.get('domicilio')?.invalid && clienteForm.get('domicilio')?.touched"
+                [attr.aria-describedby]="clienteForm.get('domicilio')?.invalid && clienteForm.get('domicilio')?.touched ? 'error-domicilio' : null"
                 placeholder="Ej: Av. San Martín 1500, Córdoba"
-                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-600 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
+                class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary placeholder-gray-400 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               />
               @if (clienteForm.get('domicilio')?.touched && clienteForm.get('domicilio')?.invalid) {
-                <div class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
+                <div id="error-domicilio" role="alert" aria-live="polite" class="text-red-400 text-xs mt-1.5 flex items-start gap-1.5">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-3.5 w-3.5 shrink-0 mt-0.5"

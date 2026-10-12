@@ -142,5 +142,57 @@ describe('ClienteFormComponent', () => {
     expect(component.clienteForm.get('nombre')?.value).toBe('Carlos');
     expect(component.clienteForm.get('dni_cuit')?.disabled).toBe(true);
   });
+
+  it('debe asociar atributos aria-invalid y aria-describedby cuando un campo es invalido y fue tocado (TK238)', () => {
+    const nombreInput: HTMLInputElement = fixture.nativeElement.querySelector('#nombre');
+    expect(nombreInput).toBeTruthy();
+
+    component.clienteForm.get('nombre')?.setValue('');
+    component.clienteForm.get('nombre')?.markAsTouched();
+    fixture.detectChanges();
+
+    expect(nombreInput.getAttribute('aria-invalid')).toBe('true');
+    expect(nombreInput.getAttribute('aria-describedby')).toBe('error-nombre');
+
+    const errorDiv = fixture.nativeElement.querySelector('#error-nombre');
+    expect(errorDiv).toBeTruthy();
+    expect(errorDiv.getAttribute('role')).toBe('alert');
+    expect(errorDiv.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('debe enviar null en telefono y domicilio cuando se encuentran vacios o con espacios (TK163)', () => {
+    component.clienteForm.setValue({
+      tipo_documento: 'DNI',
+      dni_cuit: '30111222',
+      nombre: 'Carlos',
+      apellido: 'Rodríguez',
+      condicion_iva: 'CF',
+      telefono: '   ',
+      domicilio: ''
+    });
+
+    clienteServiceSpy.crearCliente.mockReturnValue(of({
+      id: 'uuid-123',
+      nombre: 'Carlos',
+      apellido: 'Rodríguez',
+      tipo_documento: 'DNI',
+      dni_cuit: '30111222',
+      condicion_iva: 'CF',
+      telefono: null,
+      domicilio: null,
+      creado_en: '2026-07-21T12:00:00Z',
+      actualizado_en: '2026-07-21T12:00:00Z'
+    }));
+
+    component.onSubmit();
+
+    expect(clienteServiceSpy.crearCliente).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telefono: null,
+        domicilio: null,
+      })
+    );
+  });
 });
+
 

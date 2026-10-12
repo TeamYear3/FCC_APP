@@ -32,11 +32,19 @@ class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
         return [IsAuthenticated(), EsAdministrador()]
 
     def get_queryset(self):
         return Vehiculo.objects.filter(activo=True)
+
+    def get_object(self):
+        obj = super().get_object()
+        user = self.request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            if not obj.cliente or obj.cliente.usuario_id != user.id:
+                raise PermissionDenied("No tiene autorización para consultar este vehículo.")
+        return obj
 
     def perform_destroy(self, instance):
         if instance.ordenes.exists():

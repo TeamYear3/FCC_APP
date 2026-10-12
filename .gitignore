@@ -50,4 +50,14 @@ backend/staticfiles/
 # Carpeta temporal del asistente AI
 scratch/
 
+# Archivos de registro y logs
+*.log
+logs/
+backend/logs/
+
+# Reportes de pruebas generados dinámicamente
+tests/api/reports/*.html
+tests/api/reports/*.xml
+
+
 

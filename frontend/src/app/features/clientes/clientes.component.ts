@@ -1,5 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { Router, ActivatedRoute, RouterLink, Params } from '@angular/router';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../core/auth/auth.service';
@@ -27,7 +29,7 @@ export interface ClienteDisplayItem {
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent],
+  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent, ScrollingModule],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css',
 })
@@ -37,6 +39,10 @@ export class ClientesComponent implements OnInit {
   private readonly tallerService = inject(TallerService);
   private readonly vehiculoService = inject(VehiculoService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  // Sincronización reactiva de parámetros de URL con Signals (TK177)
+  readonly routeQueryParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
 
   readonly userRole = this.authService.userRoleSignal;
   readonly isAdminView = signal<boolean>(false);
@@ -89,6 +95,13 @@ export class ClientesComponent implements OnInit {
 
   ngOnInit(): void {
     this.isAdminView.set(this.router.url.startsWith('/admin'));
+    const params = this.routeQueryParams() || {};
+    if (params['busqueda']) {
+      this.terminoBusqueda.set(params['busqueda']);
+    }
+    if (params['estado']) {
+      this.estadoFiltro.set(params['estado']);
+    }
     this.cargarClientes();
   }
 
@@ -180,5 +193,9 @@ export class ClientesComponent implements OnInit {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/autenticacion']);
+  }
+
+  trackByClienteId(_index: number, item: ClienteDisplayItem): string {
+    return item.id;
   }
 }

@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators, COMPOSITION_BUFFER_MODE } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { OrdenService, OrdenPayload } from '../../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, VehiculoCreatePayload } from '../../../core/services/vehiculo.service';
@@ -13,6 +13,9 @@ import { VehiculoSelectorComponent } from '../../../shared/components/vehiculo-s
   selector: 'app-orden-form',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, VehiculoSelectorComponent],
+  providers: [
+    { provide: COMPOSITION_BUFFER_MODE, useValue: false }
+  ],
   templateUrl: './orden-form.component.html',
   styleUrls: ['./orden-form.component.css']
 })
@@ -63,10 +66,7 @@ export class OrdenFormComponent implements OnInit {
     this.cargarTurnos();
     this.cargarListaClientes();
     this.inicializarFormulariosInSitu();
-    const hoy = new Date();
-    const hoyString = hoy.getFullYear() + '-' + 
-                      String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
-                      String(hoy.getDate()).padStart(2, '0');
+    const hoyString = this.obtenerFechaActualArgentina();
 
     this.ordenForm = this.fb.group({
       modo: ['PRESUPUESTO', [Validators.required]],
@@ -83,14 +83,13 @@ export class OrdenFormComponent implements OnInit {
       const turnoCtrl = this.ordenForm.get('turno_id');
       const aceptoCtrl = this.ordenForm.get('cliente_acepto');
 
+      // TK151: Las órdenes de trabajo directas de mostrador no requieren un turno obligatorio.
       if (modo === 'ORDEN_TRABAJO') {
-        turnoCtrl?.setValidators([Validators.required]);
         aceptoCtrl?.setValidators([Validators.requiredTrue]);
       } else {
-        turnoCtrl?.clearValidators();
         aceptoCtrl?.clearValidators();
       }
-
+      turnoCtrl?.clearValidators();
       turnoCtrl?.updateValueAndValidity();
       aceptoCtrl?.updateValueAndValidity();
     });
@@ -158,8 +157,8 @@ export class OrdenFormComponent implements OnInit {
         this.ordenForm.patchValue({ vehiculo_id: vehiculoId });
       }
 
-      if (motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-        this.ordenForm.patchValue({ descripcion_problema: motivo });
+      if (motivo && !this.ordenForm?.get('descripcion_problema')?.value) {
+        this.ordenForm?.patchValue({ descripcion_problema: motivo });
       }
     });
   }
@@ -174,15 +173,15 @@ export class OrdenFormComponent implements OnInit {
         this.cargandoTurnos.set(false);
 
         // Si ya hay un turno seleccionado, chequear si falta autocompletar vehículo o motivo
-        const currentTurnoId = this.ordenForm.get('turno_id')?.value;
+        const currentTurnoId = this.ordenForm?.get('turno_id')?.value;
         if (currentTurnoId) {
           const t = this.turnos().find((x) => x.id === currentTurnoId);
           if (t) {
-            if (t.vehiculo && !this.ordenForm.get('vehiculo_id')?.value) {
-              this.ordenForm.patchValue({ vehiculo_id: t.vehiculo });
+            if (t.vehiculo && !this.ordenForm?.get('vehiculo_id')?.value) {
+              this.ordenForm?.patchValue({ vehiculo_id: t.vehiculo });
             }
-            if (t.motivo && !this.ordenForm.get('descripcion_problema')?.value) {
-              this.ordenForm.patchValue({ descripcion_problema: t.motivo });
+            if (t.motivo && !this.ordenForm?.get('descripcion_problema')?.value) {
+              this.ordenForm?.patchValue({ descripcion_problema: t.motivo });
             }
           }
         }
@@ -210,8 +209,28 @@ export class OrdenFormComponent implements OnInit {
     }
   }
 
+  /**
+   * Centraliza el cálculo de la fecha de ingreso actual en la zona horaria de Argentina (TK154).
+   */
+  obtenerFechaActualArgentina(): string {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(new Date());
+  }
+
   get modoSeleccionado(): 'PRESUPUESTO' | 'ORDEN_TRABAJO' {
     return this.ordenForm?.get('modo')?.value || 'PRESUPUESTO';
+  }
+
+  onDescripcionInput(event: Event): void {
+    const target = event.target as HTMLTextAreaElement | null;
+    if (target && this.ordenForm) {
+      this.ordenForm.get('descripcion_problema')?.setValue(target.value, { emitEvent: true });
+    }
   }
 
   inicializarFormulariosInSitu(): void {
@@ -311,8 +330,8 @@ export class OrdenFormComponent implements OnInit {
       tipo_documento: formVal.tipo_documento,
       dni_cuit: dniCuitVal,
       condicion_iva: formVal.condicion_iva,
-      telefono: formVal.telefono ? formVal.telefono.trim() : undefined,
-      domicilio: formVal.domicilio ? formVal.domicilio.trim() : undefined
+      telefono: formVal.telefono && formVal.telefono.trim() ? formVal.telefono.trim() : null,
+      domicilio: formVal.domicilio && formVal.domicilio.trim() ? formVal.domicilio.trim() : null
     };
 
     this.clienteService.crearCliente(payload).subscribe({
@@ -509,7 +528,8 @@ export class OrdenFormComponent implements OnInit {
       descripcion_problema: formVal.descripcion_problema,
       fecha_ingreso: formVal.fecha_ingreso,
       complejidad: formVal.complejidad,
-      estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado'
+      estado: formVal.modo === 'PRESUPUESTO' ? 'en_presupuesto' : 'ingresado',
+      aprobado_por_cliente: Boolean(formVal.cliente_acepto)
     };
 
     this.ordenService.crearOrden(payload).subscribe({

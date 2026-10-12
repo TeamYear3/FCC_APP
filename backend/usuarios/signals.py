@@ -81,22 +81,87 @@ def enviar_email_bienvenida_background(email, nombre="", apellido="", rol="clien
 
 
 
+def vincular_o_crear_cliente_usuario(usuario, crear_si_no_existe=False):
+    """
+    TK149: Vincula un nuevo usuario con una ficha preexistente de Cliente
+    que coincida por email y esté huérfana (usuario=None), o crea una ficha base de Cliente
+    si crear_si_no_existe=True.
+    """
+    if getattr(usuario, "rol", "cliente") != "cliente":
+        return None
+
+    try:
+        from clientes.models import Cliente
+        import random
+
+        # Si ya tiene un perfil vinculado, retornarlo
+        if hasattr(usuario, "cliente_perfil") and usuario.cliente_perfil:
+            return usuario.cliente_perfil
+
+        email_normalizado = usuario.email.strip().lower() if usuario.email else ""
+        if email_normalizado:
+            # 1. Buscar coincidencia con ficha huérfana por email
+            cliente_existente = Cliente.objects.filter(
+                email__iexact=email_normalizado,
+                usuario__isnull=True
+            ).first()
+
+            if cliente_existente:
+                cliente_existente.usuario = usuario
+                if not cliente_existente.nombre and usuario.nombre:
+                    cliente_existente.nombre = usuario.nombre
+                if not cliente_existente.apellido and usuario.apellido:
+                    cliente_existente.apellido = usuario.apellido
+                cliente_existente.save()
+                return cliente_existente
+
+        if not crear_si_no_existe:
+            return None
+
+        # 2. Si se solicita crear y no existe ficha previa huérfana, generar ficha base
+        dni_candidato = f"{abs(hash(str(usuario.id))) % 90000000 + 10000000}"
+        while Cliente.objects.filter(dni_cuit=dni_candidato).exists():
+            dni_candidato = str(random.randint(10000000, 99999999))
+
+        return Cliente.objects.create(
+            usuario=usuario,
+            nombre=usuario.nombre or "Cliente",
+            apellido=usuario.apellido or "",
+            email=usuario.email,
+            tipo_documento="DNI",
+            dni_cuit=dni_candidato,
+            condicion_iva="CF"
+        )
+    except Exception as e:
+        logger.error(
+            f"Error al vincular o crear ficha de cliente para usuario {usuario.id}: {str(e)}",
+            exc_info=True
+        )
+        return None
+
+
 @receiver(post_save, sender=Usuario)
-def usuario_creado_bienvenida_signal(sender, instance, created, **kwargs):
+def usuario_creado_signals(sender, instance, created, **kwargs):
     """
-    Señal de Django para disparar automáticamente el correo de bienvenida
-    cuando se registra un nuevo usuario en la base de datos.
+    Señal de Django para:
+    1. Vincular ficha huérfana de Cliente por email al crearse un usuario (TK149).
+    2. Disparar automáticamente el correo de bienvenida en segundo plano.
     """
-    if created and instance.email:
-        try:
-            threading.Thread(
-                target=enviar_email_bienvenida_background,
-                args=(instance.email, instance.nombre, instance.apellido, instance.rol),
-                daemon=True
-            ).start()
-        except Exception as e:
-            logger.error(
-                f"Error al iniciar el hilo de email de bienvenida para el usuario {instance.id}: {str(e)}",
-                exc_info=True
-            )
+    if created:
+        vincular_o_crear_cliente_usuario(instance, crear_si_no_existe=False)
+
+        if instance.email:
+            try:
+                threading.Thread(
+                    target=enviar_email_bienvenida_background,
+                    args=(instance.email, instance.nombre, instance.apellido, instance.rol),
+                    daemon=True
+                ).start()
+            except Exception as e:
+                logger.error(
+                    f"Error al iniciar el hilo de email de bienvenida para el usuario {instance.id}: {str(e)}",
+                    exc_info=True
+                )
+
+
 

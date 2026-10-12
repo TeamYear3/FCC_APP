@@ -7,6 +7,7 @@ export interface ToastMessage {
   mensaje: string;
   tipo: ToastType;
   duracionMs?: number;
+  errorId?: string;
 }
 
 @Injectable({
@@ -15,9 +16,9 @@ export interface ToastMessage {
 export class ToastService {
   readonly toasts = signal<ToastMessage[]>([]);
 
-  mostrar(mensaje: string, tipo: ToastType = 'info', duracionMs: number = 4000): void {
+  mostrar(mensaje: string, tipo: ToastType = 'info', duracionMs: number = 4000, errorId?: string): void {
     const id = Math.random().toString(36).substring(2, 9);
-    const nuevoToast: ToastMessage = { id, mensaje, tipo, duracionMs };
+    const nuevoToast: ToastMessage = { id, mensaje, tipo, duracionMs, errorId };
 
     this.toasts.update((actuales) => [...actuales, nuevoToast]);
 
@@ -32,8 +33,8 @@ export class ToastService {
     this.mostrar(mensaje, 'exito', duracionMs);
   }
 
-  mostrarError(mensaje: string, duracionMs: number = 5000): void {
-    this.mostrar(mensaje, 'error', duracionMs);
+  mostrarError(mensaje: string, duracionMs: number = 5000, errorId?: string): void {
+    this.mostrar(mensaje, 'error', duracionMs, errorId);
   }
 
   mostrarAdvertencia(mensaje: string, duracionMs: number = 4000): void {
@@ -52,11 +53,12 @@ export class ToastService {
     this.mostrar(mensaje, 'exito', duracionMs);
   }
 
-  error(mensaje: string, duracionMs: number = 5000): void {
-    this.mostrar(mensaje, 'error', duracionMs);
+  error(mensaje: string, duracionMs: number = 5000, errorId?: string): void {
+    this.mostrar(mensaje, 'error', duracionMs, errorId);
   }
 
   remover(id: string): void {
     this.toasts.update((actuales) => actuales.filter((t) => t.id !== id));
   }
 }
+

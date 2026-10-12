@@ -47,7 +47,7 @@ export interface ActualizarPerfilRequest {
   nombre?: string;
   apellido?: string;
   email?: string;
-  telefono?: string;
+  telefono?: string | null;
   password_actual?: string;
   nueva_password?: string;
 }
@@ -313,7 +313,13 @@ export class AuthService {
    * Actualiza los datos del perfil y/o contraseña del Administrador.
    */
   actualizarPerfil(datos: ActualizarPerfilRequest): Observable<PerfilUsuarioResponse> {
-    return this.http.patch<PerfilUsuarioResponse>(`${environment.apiUrl}/auth/perfil/`, datos);
+    const payload: ActualizarPerfilRequest = {
+      ...datos,
+      ...(datos.telefono !== undefined && {
+        telefono: datos.telefono && datos.telefono.trim() ? datos.telefono.trim() : null,
+      }),
+    };
+    return this.http.patch<PerfilUsuarioResponse>(`${environment.apiUrl}/auth/perfil/`, payload);
   }
 
   /**

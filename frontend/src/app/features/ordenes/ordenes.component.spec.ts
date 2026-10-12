@@ -74,4 +74,10 @@ describe('OrdenesComponent', () => {
     expect(component.getComplejidadBadgeClass('alta')).toContain('bg-rose-500/10');
     expect(component.getComplejidadBadgeClass('baja')).toContain('bg-emerald-500/10');
   });
+
+  it('debe exponer routeQueryParams como signal reactivo (TK177)', () => {
+    expect(component.routeQueryParams).toBeDefined();
+    expect(typeof component.routeQueryParams).toBe('function');
+    expect(typeof component.routeQueryParams()).toBe('object');
+  });
 });
