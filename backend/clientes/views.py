@@ -12,7 +12,7 @@ class CrearClienteView(generics.ListCreateAPIView):
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'apellido', 'dni_cuit']
 
-class DetalleClienteView(generics.RetrieveUpdateAPIView):
+class DetalleClienteView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
 

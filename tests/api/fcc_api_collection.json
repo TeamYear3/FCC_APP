@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "7b093154-1b32-4759-9943-fcc_collection_v21",
     "name": "Full Check Car - API Test Suite",
-    "description": "Colección modular de pruebas automatizadas de caja negra para la API REST de Full Check Car (Sprint 4). Organizada por recursos de negocio y autenticación JWT.",
+    "description": "Colección modular de pruebas automatizadas de caja negra para la API REST de Full Check Car (Sprint 4). Incluye autenticación dinámica JWT y ciclo CRUD encadenado con propagación de ID y teardown hermético.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -60,7 +60,7 @@
                 ""
               ]
             },
-            "description": "Autenticación de usuario administrativo/técnico para obtención e inyección dinámica del token JWT en {{authToken}}."
+            "description": "Autenticación de usuario para obtención e inyección dinámica del token JWT en {{authToken}}."
           },
           "response": []
         }
@@ -68,10 +68,10 @@
     },
     {
       "name": "01_Clientes",
-      "description": "Módulo de gestión de clientes y legajos del taller.",
+      "description": "Módulo de gestión de clientes y ciclo CRUD completo encadenado.",
       "item": [
         {
-          "name": "Listar Clientes",
+          "name": "01 - Listar Clientes",
           "event": [
             {
               "listen": "test",
@@ -89,9 +89,6 @@
                   "    var jsonData = pm.response.json();",
                   "    var clientes = Array.isArray(jsonData) ? jsonData : jsonData.results;",
                   "    pm.expect(clientes).to.be.an(\"array\");",
-                  "    if (clientes.length > 0) {",
-                  "        pm.collectionVariables.set(\"clienteExistenteId\", clientes[0].id);",
-                  "    }",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -126,7 +123,7 @@
           "response": []
         },
         {
-          "name": "Crear Cliente",
+          "name": "02 - POST Crear Cliente (Captura ID)",
           "event": [
             {
               "listen": "test",
@@ -136,11 +133,11 @@
                   "    pm.response.to.have.status(201);",
                   "});",
                   "",
-                  "pm.test(\"Cliente creado contiene ID y datos correctos\", function () {",
+                  "pm.test(\"Cliente creado contiene ID UUID y nombre esperado\", function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property(\"id\");",
-                  "    pm.expect(jsonData.nombre).to.eql(\"Cliente Test Postman\");",
-                  "    pm.collectionVariables.set(\"clienteCreadoId\", jsonData.id);",
+                  "    pm.expect(jsonData.nombre).to.eql(\"Cliente CRUD Temporal\");",
+                  "    pm.collectionVariables.set(\"clienteId\", jsonData.id);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -161,7 +158,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Cliente Test Postman\",\n  \"apellido\": \"Automatizado\",\n  \"dni_cuit\": \"20999888771\",\n  \"email\": \"cliente_postman_{{$timestamp}}@qa.fcc.com\",\n  \"telefono\": \"3517654321\",\n  \"direccion\": \"Av. Colon 1234\"\n}"
+              "raw": "{\n  \"nombre\": \"Cliente CRUD Temporal\",\n  \"apellido\": \"Postman Test\",\n  \"dni_cuit\": \"20{{$timestamp}}\",\n  \"email\": \"crud_{{$timestamp}}@qa.fcc.com\",\n  \"telefono\": \"3518887766\",\n  \"direccion\": \"Av. Colon 5000\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/clientes/",
@@ -174,12 +171,12 @@
                 ""
               ]
             },
-            "description": "Alta de un nuevo cliente con datos estructurados y DNI/CUIT único."
+            "description": "Paso 1 del CRUD: Alta de cliente temporal y almacenamiento dinámico del ID en la variable de colección {{clienteId}}."
           },
           "response": []
         },
         {
-          "name": "Obtener Detalle de Cliente",
+          "name": "03 - GET Consultar Cliente por ID Dinámico",
           "event": [
             {
               "listen": "test",
@@ -189,12 +186,11 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test(\"El registro coincide con el recurso solicitado\", function () {",
+                  "pm.test(\"El registro coincide con el clienteId creado\", function () {",
                   "    var jsonData = pm.response.json();",
-                  "    var idEsperado = pm.collectionVariables.get(\"clienteCreadoId\") || pm.collectionVariables.get(\"clienteExistenteId\");",
-                  "    if (idEsperado) {",
-                  "        pm.expect(jsonData.id).to.eql(idEsperado);",
-                  "    }",
+                  "    var idEsperado = pm.collectionVariables.get(\"clienteId\");",
+                  "    pm.expect(jsonData.id).to.eql(idEsperado);",
+                  "    pm.expect(jsonData.nombre).to.eql(\"Cliente CRUD Temporal\");",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -214,18 +210,153 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/clientes/{{clienteCreadoId}}/",
+              "raw": "{{baseUrl}}/api/clientes/{{clienteId}}/",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "clientes",
-                "{{clienteCreadoId}}",
+                "{{clienteId}}",
                 ""
               ]
             },
-            "description": "Consulta de ficha y legajo individual de un cliente por su UUID."
+            "description": "Paso 2 del CRUD: Consulta del recurso utilizando el ID propagado dinámicamente desde el paso anterior."
+          },
+          "response": []
+        },
+        {
+          "name": "04 - PATCH Modificar Cliente Creado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Campos actualizados correctamente\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.telefono).to.eql(\"3519991122\");",
+                  "    pm.expect(jsonData.direccion).to.eql(\"Nueva Direccion 789\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telefono\": \"3519991122\",\n  \"direccion\": \"Nueva Direccion 789\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/{{clienteId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "{{clienteId}}",
+                ""
+              ]
+            },
+            "description": "Paso 3 del CRUD: Modificación parcial de datos sobre el cliente temporal utilizando PATCH."
+          },
+          "response": []
+        },
+        {
+          "name": "05 - DELETE Eliminar Cliente (Teardown Hermético)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 204 No Content (eliminación exitosa)\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/{{clienteId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "{{clienteId}}",
+                ""
+              ]
+            },
+            "description": "Paso 4 del CRUD: Eliminación del recurso temporal para dejar el entorno de prueba hermético y reproducible."
+          },
+          "response": []
+        },
+        {
+          "name": "06 - GET Verificar Eliminación (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 404 Not Found tras eliminación\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clientes/{{clienteId}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "{{clienteId}}",
+                ""
+              ]
+            },
+            "description": "Paso 5 del CRUD: Verificación final comprobando que el recurso eliminado ya no existe en el sistema."
           },
           "response": []
         }
@@ -344,11 +475,7 @@
   ],
   "variable": [
     {
-      "key": "clienteCreadoId",
-      "value": ""
-    },
-    {
-      "key": "clienteExistenteId",
+      "key": "clienteId",
       "value": ""
     },
     {
