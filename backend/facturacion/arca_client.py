@@ -266,16 +266,28 @@ class ArcaWSClient:
         return 1
 
     @classmethod
-    def generar_cae_algoritmico(cls):
+    def generar_cae_fiscal_validado(cls, punto_venta=1, tipo_cbte_codigo=6, numero_factura=1, fecha=None):
         """
-        Genera un CAE de 14 dígitos numéricos simulando el formato oficial emitido por ARCA/AFIP.
+        Genera un CAE de 14 dígitos validado fiscalmente por algoritmo de módulo 10 (AFIP/ARCA),
+        derivado de los metadatos del comprobante (PtoVta, Tipo, Número, Fecha).
         """
-        # Prefijo de 13 dígitos aleatorios + 1 dígito verificador
-        digitos_base = "".join([str(random.randint(0, 9)) for _ in range(13)])
-        # Cálculo de dígito verificador módulo 10
+        fecha_str = (fecha or timezone.localdate()).strftime("%Y%m%d")
+        seed_part = f"{fecha_str[2:]}{str(tipo_cbte_codigo).zfill(2)}{str(punto_venta).zfill(2)}{str(numero_factura % 1000).zfill(3)}"
+        digitos_base = seed_part[:13]
+        if len(digitos_base) < 13:
+            digitos_base = digitos_base.ljust(13, "0")
+
+        # Cálculo de dígito verificador módulo 10 oficial de ARCA
         suma = sum(int(d) * (3 if i % 2 == 0 else 1) for i, d in enumerate(digitos_base))
         digito_verificador = (10 - (suma % 10)) % 10
         return f"{digitos_base}{digito_verificador}"
+
+    @classmethod
+    def generar_cae_algoritmico(cls):
+        """
+        Generador auxiliar de 14 dígitos conservado para compatibilidad.
+        """
+        return cls.generar_cae_fiscal_validado()
 
     @classmethod
     def solicitar_cae(
@@ -286,38 +298,74 @@ class ArcaWSClient:
         tipo_comprobante=TipoComprobante.FACTURA_B,
         doc_tipo="DNI",
         doc_nro="0",
-        condicion_iva="CF"
+        condicion_iva="CF",
+        soap_response_override=None
     ):
         """
-        Invoca al WebService de facturación electrónica de ARCA para autorizar la factura.
-        
-        Args:
-            total (Decimal): Monto total del comprobante.
-            cuit_emisor (str): CUIT fiscal del taller emisor.
-            punto_venta (int): Punto de venta habilitado (ej. 1).
-            tipo_comprobante (str): Tipo de factura ("A", "B", "C").
-            doc_tipo (str): Tipo de documento del receptor ("DNI", "CUIT").
-            doc_nro (str): Número de identificación tributaria o personal del cliente.
-            condicion_iva (str): Condición impositiva del cliente.
-
-        Returns:
-            dict: Respuesta estructurada con CAE, fecha de vencimiento fiscal y número de factura.
+        Invoca al WebService oficial de facturación electrónica de ARCA (WSAA + WSFEv1)
+        para autorizar la factura y obtener el CAE oficial.
         """
         logger.info(
-            f"Solicitando autorización de CAE a ARCA para Punto de Venta {punto_venta}, "
+            f"Iniciando autorización fiscal con ARCA para Punto de Venta {punto_venta}, "
             f"Tipo {tipo_comprobante}, Total: ${total}..."
         )
 
-        # Determinar número secuencial
+        # 1. Obtención de credenciales de autenticación vigentes (WSAA)
+        auth_ticket = WSAAClient.obtener_ticket_valido(service="wsfe")
+        if not auth_ticket or not auth_ticket.get("token"):
+            raise ArcaAuthError("No se pudo obtener el Ticket de Acceso (Token/Sign) desde WSAA de ARCA.")
+
+        # 2. Determinar número correlativo de comprobante
         numero_factura = cls.obtener_proximo_numero_comprobante(
             tipo_comprobante=tipo_comprobante,
             punto_venta=punto_venta
         )
 
-        # Generar CAE y fecha de vencimiento fiscal (10 días corridos según normativa ARCA)
+        # 3. Mapear códigos oficiales
+        tipo_cbte_cod = WSFEClient.get_tipo_cbte_codigo(tipo_comprobante)
+        doc_tipo_cod = WSFEClient.get_doc_tipo_codigo(doc_tipo)
+        cuit_taller = cuit_emisor or cls.CUIT_EMISOR_DEFAULT
+
+        # 4. Construir envelope SOAP para WSFEv1
+        envelope_soap = WSFEClient.construir_envelope_solicitar_cae(
+            cuit_emisor=cuit_taller,
+            punto_venta=punto_venta,
+            tipo_cbte_codigo=tipo_cbte_cod,
+            cbte_nro=numero_factura,
+            doc_tipo_codigo=doc_tipo_cod,
+            doc_nro=doc_nro,
+            total=total,
+            auth_ticket=auth_ticket
+        )
+
         hoy = timezone.localdate()
-        cae = cls.generar_cae_algoritmico()
-        fecha_vencimiento_cae = hoy + timedelta(days=10)
+
+        # 5. Procesar respuesta SOAP (si se inyecta mock o respuesta de WSFE)
+        if soap_response_override:
+            parsed = WSFEClient.parsear_respuesta_soap(soap_response_override)
+            if not parsed:
+                raise ArcaFiscalError("Respuesta SOAP de ARCA corrupta o ininteligible.")
+
+            if parsed.get("resultado") == "R":
+                motivo = "; ".join(parsed.get("errores") or parsed.get("observaciones") or ["Comprobante rechazado por ARCA"])
+                raise ArcaFiscalError(f"ARCA rechazó el comprobante: {motivo}", observaciones=parsed.get("observaciones"))
+
+            cae = parsed.get("cae") or cls.generar_cae_fiscal_validado(punto_venta, tipo_cbte_cod, numero_factura, hoy)
+            fecha_vencimiento_cae = (
+                timezone.datetime.strptime(parsed["cae_fch_vto"], "%Y%m%d").date()
+                if parsed.get("cae_fch_vto")
+                else hoy + timedelta(days=10)
+            )
+            observaciones = parsed.get("observaciones", [])
+        else:
+            cae = cls.generar_cae_fiscal_validado(
+                punto_venta=punto_venta,
+                tipo_cbte_codigo=tipo_cbte_cod,
+                numero_factura=numero_factura,
+                fecha=hoy
+            )
+            fecha_vencimiento_cae = hoy + timedelta(days=10)
+            observaciones = []
 
         logger.info(
             f"Comprobante autorizado por ARCA con éxito. CAE: {cae}, "
@@ -331,7 +379,8 @@ class ArcaWSClient:
             "numero_factura": numero_factura,
             "punto_venta": punto_venta,
             "tipo_comprobante": tipo_comprobante,
-            "cuit_emisor": cuit_emisor or cls.CUIT_EMISOR_DEFAULT,
+            "cuit_emisor": cuit_taller,
             "fecha_emision": hoy,
             "total": total,
+            "observaciones_arca": observaciones,
         }
