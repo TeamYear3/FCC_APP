@@ -1665,6 +1665,36 @@ class MetodosNoPermitidosOrdenesAPITests(APITestCase):
         self.assertIn("Allow", response.headers)
         self.assertNotIn("PUT", response.headers["Allow"])
 
+    def test_actualizar_estado_rechaza_get_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint actualización de estado es exclusivo PATCH, rechaza GET."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertIn("PATCH", response.headers["Allow"])
+        self.assertNotIn("GET", response.headers["Allow"])
+
+    def test_actualizar_estado_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint actualización de estado rechaza DELETE."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+
 
 
 
