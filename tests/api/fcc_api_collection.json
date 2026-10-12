@@ -126,6 +126,16 @@
           "name": "02 - POST Crear Cliente (Captura ID)",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var randomDni = Math.floor(10000000 + Math.random() * 89999999).toString();",
+                  "pm.collectionVariables.set(\"tempDni\", randomDni);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "exec": [
@@ -158,7 +168,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Cliente CRUD Temporal\",\n  \"apellido\": \"Postman Test\",\n  \"dni_cuit\": \"20{{$timestamp}}\",\n  \"email\": \"crud_{{$timestamp}}@qa.fcc.com\",\n  \"telefono\": \"3518887766\",\n  \"direccion\": \"Av. Colon 5000\"\n}"
+              "raw": "{\n  \"nombre\": \"Cliente CRUD Temporal\",\n  \"apellido\": \"Postman Test\",\n  \"tipo_documento\": \"DNI\",\n  \"dni_cuit\": \"{{tempDni}}\",\n  \"condicion_iva\": \"CF\",\n  \"email\": \"crud_{{$timestamp}}@qa.fcc.com\",\n  \"telefono\": \"3518887766\",\n  \"domicilio\": \"Av. Colon 5000\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/clientes/",
@@ -239,7 +249,7 @@
                   "pm.test(\"Campos actualizados correctamente\", function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.telefono).to.eql(\"3519991122\");",
-                  "    pm.expect(jsonData.direccion).to.eql(\"Nueva Direccion 789\");",
+                  "    pm.expect(jsonData.domicilio).to.eql(\"Nueva Direccion 789\");",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -260,7 +270,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"telefono\": \"3519991122\",\n  \"direccion\": \"Nueva Direccion 789\"\n}"
+              "raw": "{\n  \"telefono\": \"3519991122\",\n  \"domicilio\": \"Nueva Direccion 789\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/clientes/{{clienteId}}/",
@@ -665,6 +675,10 @@
   "variable": [
     {
       "key": "clienteId",
+      "value": ""
+    },
+    {
+      "key": "tempDni",
       "value": ""
     },
     {
