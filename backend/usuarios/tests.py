@@ -1159,6 +1159,68 @@ class AutenticacionPermisosAPITests(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_rol_cliente_rechazado_en_facturacion_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no tiene autorización para listar facturas fiscales (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_cliente_rechazado_en_emision_factura_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no puede emitir comprobantes fiscales en ARCA (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_tecnico_rechazado_en_emision_factura_con_403(self):
+        """AUT-BE-03 / HU-05: Rol técnico no tiene permiso de emisor fiscal (exclusivo admin) (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_cliente_rechazado_en_lista_admin_usuarios_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no puede consultar la lista administrativa de usuarios (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_admin_autorizado_accede_correctamente_con_200(self):
+        """AUT-BE-03 / HU-05: Rol admin autenticado accede exitosamente a endpoints restringidos (200 OK)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+
 
 
 
