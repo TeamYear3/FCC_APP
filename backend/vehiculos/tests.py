@@ -857,6 +857,44 @@ class VehiculosCasosFelicesAPITest(APITestCase):
         self.assertEqual(response.data["patente"], "AE456RT")
         self.assertEqual(response.data["marca"], "Ford")
 
+    def test_crear_vehiculo_payload_valido_exitoso(self):
+        """HU-07 / TEST-D-002: Creación de vehículo asociado a cliente retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AC999ZZ",
+            "marca": "Volkswagen",
+            "modelo": "Golf",
+            "anio": 2020,
+            "kilometraje": 45000,
+            "color": "Negro"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "AC999ZZ")
+        self.assertEqual(response.data["marca"], "Volkswagen")
+
+    def test_actualizar_vehiculo_payload_valido_exitoso(self):
+        """HU-07 / TEST-D-005: Actualización de kilometraje de vehículo retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {"kilometraje": 50000}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["kilometraje"], 50000)
+
+
 
 
 

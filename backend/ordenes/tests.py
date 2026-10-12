@@ -1629,6 +1629,41 @@ class OrdenesCasosFelicesAPITest(APITestCase):
         self.assertEqual(str(response.data["id"]), str(self.orden.id))
         self.assertEqual(response.data["vehiculo_patente"], "AF123ZZ")
 
+    def test_crear_orden_payload_valido_exitoso(self):
+        """HU-08 / TEST-D-003: Creación de orden de trabajo retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+        payload = {
+            "vehiculo_id": str(self.vehiculo.id),
+            "descripcion_problema": "Cambio de pastillas de freno traseras",
+            "fecha_ingreso": str(timezone.now().date())
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("id", response.data)
+        self.assertEqual(response.data["estado"], "ingresado")
+
+    def test_actualizar_orden_estado_exitoso(self):
+        """HU-08 / TEST-D-003: Actualización de estado de orden a en_presupuesto retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "en_presupuesto", "comentario": "Confeccionando presupuesto de taller"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, "en_presupuesto")
+
+
 
 
 

@@ -352,3 +352,37 @@ class TurnosCasosFelicesAPITest(APITestCase):
         self.assertEqual(str(response.data["id"]), str(self.turno.id))
         self.assertEqual(response.data["motivo"], "Service 50.000 km")
 
+    def test_crear_turno_payload_valido_exitoso(self):
+        """HU-08 / TEST-P-005: Creación de turno retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("turno-list")
+        payload = {
+            "cliente": str(self.cliente.id),
+            "vehiculo": str(self.vehiculo.id),
+            "fecha_hora": (timezone.now() + timezone.timedelta(days=5)).isoformat(),
+            "motivo": "Revisión técnica periódica"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["motivo"], "Revisión técnica periódica")
+
+    def test_actualizar_turno_payload_valido_exitoso(self):
+        """HU-08 / TEST-P-005: Actualización de motivo de turno retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("turno-detail", kwargs={"pk": self.turno.id})
+        payload = {"motivo": "Revisión técnica y alineación"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["motivo"], "Revisión técnica y alineación")
+
+
