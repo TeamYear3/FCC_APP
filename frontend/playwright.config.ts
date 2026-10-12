@@ -17,9 +17,9 @@ export default defineConfig({
   ],
   use: {
     baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:4300',
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: process.env['RECORD_EVIDENCE'] ? 'on' : 'retain-on-failure',
+    screenshot: process.env['RECORD_EVIDENCE'] ? 'on' : 'only-on-failure',
+    video: process.env['RECORD_EVIDENCE'] ? 'on' : 'retain-on-failure',
   },
   projects: [
     {
