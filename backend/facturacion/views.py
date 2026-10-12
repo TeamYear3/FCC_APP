@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
@@ -82,7 +83,13 @@ class EmitirFacturaView(APIView):
 
 class FacturaListView(APIView):
     """
-    Lista de todas las facturas emitidas con posibilidad de filtrado por estado de pago y búsqueda.
+    Lista de todas las facturas emitidas con soporte de filtros avanzados por:
+    - estado_pago
+    - tipo / tipo_comprobante (A, B, C)
+    - fecha_desde y fecha_hasta (rango de fechas de emisión)
+    - cliente_id / cliente (nombre, apellido, CUIT)
+    - busqueda (patente, CAE, cliente)
+    - paginación con mantenimiento de filtros
     """
     permission_classes = [IsAuthenticated, EsAdministrador]
 
@@ -97,9 +104,52 @@ class FacturaListView(APIView):
         if estado_pago:
             queryset = queryset.filter(estado_pago=estado_pago)
 
-        tipo_comprobante = request.query_params.get("tipo")
+        tipo_comprobante = request.query_params.get("tipo") or request.query_params.get("tipo_comprobante")
         if tipo_comprobante:
-            queryset = queryset.filter(tipo_comprobante=tipo_comprobante)
+            queryset = queryset.filter(tipo_comprobante=tipo_comprobante.upper())
+
+        fecha_desde = request.query_params.get("fecha_desde")
+        if fecha_desde:
+            queryset = queryset.filter(fecha_emision__date__gte=fecha_desde)
+
+        fecha_hasta = request.query_params.get("fecha_hasta")
+        if fecha_hasta:
+            queryset = queryset.filter(fecha_emision__date__lte=fecha_hasta)
+
+        cliente_id = request.query_params.get("cliente_id")
+        if cliente_id:
+            queryset = queryset.filter(orden_trabajo__vehiculo__cliente__id=cliente_id)
+
+        cliente_filtro = request.query_params.get("cliente")
+        if cliente_filtro:
+            c = cliente_filtro.strip()
+            queryset = queryset.filter(
+                Q(orden_trabajo__vehiculo__cliente__nombre__icontains=c) |
+                Q(orden_trabajo__vehiculo__cliente__apellido__icontains=c) |
+                Q(orden_trabajo__vehiculo__cliente__dni_cuit__icontains=c)
+            )
+
+        busqueda = request.query_params.get("busqueda")
+        if busqueda:
+            b = busqueda.strip()
+            queryset = queryset.filter(
+                Q(orden_trabajo__vehiculo__cliente__nombre__icontains=b) |
+                Q(orden_trabajo__vehiculo__cliente__apellido__icontains=b) |
+                Q(orden_trabajo__vehiculo__cliente__dni_cuit__icontains=b) |
+                Q(orden_trabajo__vehiculo__patente__icontains=b) |
+                Q(cae__icontains=b)
+            )
+
+        page = request.query_params.get("page")
+        limit = request.query_params.get("limit") or request.query_params.get("page_size")
+        if page or limit:
+            from rest_framework.pagination import PageNumberPagination
+            paginator = PageNumberPagination()
+            paginator.page_size = int(limit) if limit else 10
+            page_obj = paginator.paginate_queryset(queryset, request)
+            if page_obj is not None:
+                serializer = FacturaSerializer(page_obj, many=True)
+                return paginator.get_paginated_response(serializer.data)
 
         serializer = FacturaSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

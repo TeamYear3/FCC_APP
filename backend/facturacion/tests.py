@@ -210,6 +210,58 @@ class FacturacionAPITest(APITestCase):
         self.assertEqual(res_detail.status_code, status.HTTP_200_OK)
         self.assertEqual(res_detail.data["id"], factura_id)
 
+    def test_filtrar_facturas_por_tipo_comprobante(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(reverse("factura-emitir"), {"orden_trabajo_id": str(self.orden.id), "tipo_comprobante": "A"})
+
+        # Filtro que coincide (tipo A)
+        res_a = self.client.get(reverse("factura-list"), {"tipo": "A"})
+        self.assertEqual(res_a.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_a.data), 1)
+        self.assertEqual(res_a.data[0]["tipo_comprobante"], "A")
+
+        # Filtro que no coincide (tipo B)
+        res_b = self.client.get(reverse("factura-list"), {"tipo": "B"})
+        self.assertEqual(res_b.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_b.data), 0)
+
+    def test_filtrar_facturas_por_rango_fechas(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(reverse("factura-emitir"), {"orden_trabajo_id": str(self.orden.id)})
+
+        hoy = timezone.localdate().strftime("%Y-%m-%d")
+        ayer = (timezone.localdate() - timedelta(days=1)).strftime("%Y-%m-%d")
+        manana = (timezone.localdate() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # Rango que incluye hoy
+        res_ok = self.client.get(reverse("factura-list"), {"fecha_desde": ayer, "fecha_hasta": manana})
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_ok.data), 1)
+
+        # Rango anterior que excluye hoy
+        res_past = self.client.get(reverse("factura-list"), {"fecha_desde": "2020-01-01", "fecha_hasta": ayer})
+        self.assertEqual(res_past.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_past.data), 0)
+
+    def test_filtrar_facturas_por_cliente_y_busqueda(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(reverse("factura-emitir"), {"orden_trabajo_id": str(self.orden.id)})
+
+        # Búsqueda por nombre de cliente
+        res_cliente = self.client.get(reverse("factura-list"), {"cliente": "Esteban"})
+        self.assertEqual(res_cliente.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_cliente.data), 1)
+
+        # Búsqueda por patente
+        res_patente = self.client.get(reverse("factura-list"), {"busqueda": "AF999ZZ"})
+        self.assertEqual(res_patente.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_patente.data), 1)
+
+        # Búsqueda inexistente
+        res_inexistente = self.client.get(reverse("factura-list"), {"busqueda": "CLIENTE_INEXISTENTE"})
+        self.assertEqual(res_inexistente.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_inexistente.data), 0)
+
     def test_endpoint_calendario_facturas_y_resumen(self):
         self.client.force_authenticate(user=self.admin)
         # Emitir factura
