@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 from django.urls import reverse
 from django.conf import settings
@@ -1072,6 +1072,93 @@ class VinculacionAutomaticaUsuarioClienteTest(APITestCase):
         # Verificar que el cliente original jamás cambió de usuario
         self.assertEqual(cliente_original.usuario, user_original)
         self.assertNotEqual(cliente_original.usuario, user_segundo)
+
+
+class AutenticacionPermisosAPITests(APITestCase):
+    """
+    AUT-BE-03: Pruebas de autenticación y permisos por rol.
+    Trazabilidad: HU-02 / HU-05 ↔ TEST-G-002, TEST-G-004, TEST-L-004.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_aut_be_03@test.com",
+            nombre="Admin",
+            apellido="Seguridad",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_aut_be_03@test.com",
+            nombre="Tecnico",
+            apellido="Seguridad",
+            rol="tecnico",
+            password="tecnicopassword123"
+        )
+        self.cliente = User.objects.create_user(
+            email="cliente_aut_be_03@test.com",
+            nombre="Cliente",
+            apellido="Seguridad",
+            rol="cliente",
+            password="clientepassword123"
+        )
+
+    def test_peticion_anonima_perfil_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de perfil rechaza peticiones no autenticadas con 401."""
+        # Arrange
+        url = reverse("perfil-usuario")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_lista_admin_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint administrativo de usuarios rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_clientes_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de clientes rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_facturacion_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de facturación rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_turnos_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de turnos rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("turno-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 
 
