@@ -40,6 +40,8 @@ docker-compose.override.yml
 # Documentación local (se ignoran binarios/temporales, se versionan .md)
 docs/*
 !docs/*.md
+!docs/evidencias_accesibilidad/
+!docs/evidencias_accesibilidad/*
 
 # Archivos multimedia temporales
 media/
