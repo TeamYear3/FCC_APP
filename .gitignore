@@ -42,6 +42,8 @@ docs/*
 !docs/*.md
 !docs/evidencias_e2e/
 !docs/evidencias_e2e/*
+!docs/evidencias_accesibilidad/
+!docs/evidencias_accesibilidad/*
 
 # Archivos multimedia temporales y estáticos generados
 media/
