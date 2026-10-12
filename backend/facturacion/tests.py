@@ -237,3 +237,90 @@ class FacturacionAPITest(APITestCase):
         self.assertEqual(res_patch.status_code, status.HTTP_200_OK)
         self.assertEqual(res_patch.data["estado_pago"], "pagada")
         self.assertEqual(res_patch.data["semaforo"], "pagada")
+
+
+class FacturacionCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-11 (Facturación Fiscal) ↔ TEST-P-003.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_factura_aut@example.com",
+            nombre="Admin",
+            apellido="Facturacion",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Mariano",
+            apellido="Moreno",
+            tipo_documento="DNI",
+            dni_cuit="25998877",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AC654XY",
+            marca="Peugeot",
+            modelo="208",
+            anio=2020
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de aceite y filtros"
+        )
+        self.factura = Factura.objects.create(
+            orden_trabajo=self.orden,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            numero_factura=1001,
+            punto_venta=1,
+            cae="12345678901234",
+            fecha_vencimiento_cae=timezone.localdate() + timedelta(days=10),
+            total=Decimal("45000.00"),
+            estado=EstadoFactura.EMITIDA,
+            estado_pago=EstadoPago.SIN_INTERACCION
+        )
+
+    def test_consulta_listado_facturas_exitoso(self):
+        """HU-11 / TEST-P-003: Verificar que un usuario admin obtiene HTTP 200 OK al consultar el historial de facturas."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_factura_exitoso(self):
+        """HU-11 / TEST-P-003: Verificar que un usuario admin obtiene HTTP 200 OK al consultar una factura por su ID."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-detail", kwargs={"id": self.factura.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(response.data["id"]), str(self.factura.id))
+        self.assertEqual(response.data["cae"], "12345678901234")
+
+    def test_consulta_calendario_facturas_exitoso(self):
+        """HU-11 / TEST-P-003: Verificar que el calendario tributario retorna HTTP 200 OK y eventos serializados."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-calendario")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("facturas", response.data)
+        self.assertIsInstance(response.data["facturas"], list)
+        self.assertIn("resumen", response.data)
+
