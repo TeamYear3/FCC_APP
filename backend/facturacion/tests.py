@@ -324,3 +324,32 @@ class FacturacionCasosFelicesAPITest(APITestCase):
         self.assertIsInstance(response.data["facturas"], list)
         self.assertIn("resumen", response.data)
 
+    def test_emitir_factura_payload_valido_exitoso(self):
+        """HU-11 / TEST-P-003: Emisión de factura electrónica fiscal retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        nueva_orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Alineación y balanceo computarizado"
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=nueva_orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y balanceo",
+            cantidad=1,
+            precio_unitario=Decimal("25000.00")
+        )
+        nueva_orden.refresh_from_db()
+        url = reverse("factura-emitir")
+        payload = {"orden_trabajo_id": str(nueva_orden.id)}
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("cae", response.data)
+        self.assertEqual(len(response.data["cae"]), 14)
+        self.assertEqual(response.data["estado"], "emitida")
+
+

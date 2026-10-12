@@ -406,3 +406,41 @@ class ClientesCasosFelicesAPITest(APITestCase):
         self.assertEqual(response.data["dni_cuit"], "20345678")
         self.assertEqual(response.data["nombre"], "Esteban")
 
+    def test_crear_cliente_payload_valido_exitoso(self):
+        """HU-06 / TEST-D-001: Creación de cliente con datos válidos retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {
+            "nombre": "Gonzalo",
+            "apellido": "Higuain",
+            "tipo_documento": "DNI",
+            "dni_cuit": "31445566",
+            "condicion_iva": "CF",
+            "telefono": "1199887766",
+            "domicilio": "Av del Libertador 1000"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["dni_cuit"], "31445566")
+        self.assertEqual(response.data["nombre"], "Gonzalo")
+
+    def test_actualizar_cliente_payload_valido_exitoso(self):
+        """HU-06 / TEST-D-004: Modificación parcial de cliente retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+        payload = {"telefono": "1122334455"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["telefono"], "1122334455")
+
+
