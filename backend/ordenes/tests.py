@@ -1570,6 +1570,67 @@ class RegistrarPagoOrdenAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class OrdenesCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-08 (Gestión de Órdenes) ↔ TEST-D-003.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_orden_aut@example.com",
+            nombre="Admin",
+            apellido="OT",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Ramiro",
+            apellido="Funes",
+            tipo_documento="DNI",
+            dni_cuit="30112233",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AF123ZZ",
+            marca="Toyota",
+            modelo="Yaris",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión de frenos delanteros"
+        )
+
+    def test_consulta_listado_ordenes_exitoso(self):
+        """HU-08 / TEST-D-003: Verificar que un usuario admin obtiene HTTP 200 OK al listar órdenes de trabajo."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_orden_exitoso(self):
+        """HU-08 / TEST-D-003: Verificar que un usuario admin obtiene HTTP 200 OK al consultar el detalle de una OT."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(response.data["id"]), str(self.orden.id))
+        self.assertEqual(response.data["vehiculo_patente"], "AF123ZZ")
+
+
+
 
 
 
