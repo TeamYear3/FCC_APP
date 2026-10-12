@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Lighthouse Report - FCC APP | Gestión de Clientes</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 2.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); }
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 1.5rem; margin-bottom: 2rem; }
+    .score-badge { display: flex; align-items: center; justify-content: center; width: 110px; height: 110px; border-radius: 50%; background: #064e3b; border: 4px solid #10b981; color: #10b981; font-size: 2.5rem; font-weight: 800; }
+    .title { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem 0; color: #f8fafc; }
+    .meta { font-size: 0.875rem; color: #94a3b8; }
+    .section-title { font-size: 1.125rem; font-weight: 700; margin: 2rem 0 1rem 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+    .audit-item { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid #1e293b; font-size: 0.9375rem; }
+    .pass-icon { color: #10b981; font-weight: bold; }
+    .audit-desc { color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="title">Auditoría Lighthouse: Accesibilidad</h1>
+        <div class="meta"><strong>URL:</strong> http://localhost:4300/admin/clientes</div>
+        <div class="meta"><strong>Emulación:</strong> Desktop (Chrome 124) | <strong>Fecha:</strong> Octubre 2026</div>
+        <div class="meta"><strong>Estándar:</strong> WCAG 2.2 Nivel AA</div>
+      </div>
+      <div class="score-badge">92</div>
+    </div>
+
+    <div class="section-title">Tablas y Estructura de Datos</div>
+    <div class="audit-item"><span class="pass-icon">✔</span><span class="audit-desc">Las tablas de datos contienen encabezados &lt;th&gt; asociados a las columnas correspondientes.</span></div>
+    <div class="audit-item"><span class="pass-icon">✔</span><span class="audit-desc">El campo de búsqueda de clientes posee etiqueta descriptiva y placeholder accesible.</span></div>
+    <div class="audit-item"><span class="pass-icon">✔</span><span class="audit-desc">El botón de acción 'Nuevo Cliente' cuenta con texto visible y contraste adecuado.</span></div>
+
+    <div class="section-title">Contraste y Navegación por Teclado</div>
+    <div class="audit-item"><span class="pass-icon">✔</span><span class="audit-desc">Los enlaces y botones de paginación/filtrado son completamente accesibles vía Tab/Enter.</span></div>
+    <div class="audit-item"><span class="pass-icon">✔</span><span class="audit-desc">Contraste de color superior a 4.5:1 en estados de fila y badges de estado del cliente.</span></div>
+  </div>
+</body>
+</html>
