@@ -1,6 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
+from django.urls import reverse
 from django.contrib.auth import get_user_model
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
@@ -10,6 +11,7 @@ Usuario = get_user_model()
 
 class TallerDashboardAPITest(TestCase):
     def setUp(self):
+        # Arrange
         self.client = APIClient()
 
         self.admin = Usuario.objects.create_user(
@@ -61,8 +63,14 @@ class TallerDashboardAPITest(TestCase):
         )
 
     def test_resumen_mecanicos_admin_exito(self):
+        # Arrange
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get('/api/taller/mecanicos/')
+        url = reverse('taller-mecanicos')
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['email'], 'tecnico@test.com')
@@ -73,18 +81,36 @@ class TallerDashboardAPITest(TestCase):
         self.assertEqual(response.data[0]['ot_activa_estado'], 'En Proceso')
 
     def test_resumen_mecanicos_tecnico_prohibido(self):
+        # Arrange
         self.client.force_authenticate(user=self.tecnico)
-        response = self.client.get('/api/taller/mecanicos/')
+        url = reverse('taller-mecanicos')
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_resumen_mecanicos_cliente_prohibido(self):
+        # Arrange
         self.client.force_authenticate(user=self.cliente_user)
-        response = self.client.get('/api/taller/mecanicos/')
+        url = reverse('taller-mecanicos')
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_resumen_clientes_admin_exito(self):
+        # Arrange
         self.client.force_authenticate(user=self.admin)
-        response = self.client.get('/api/taller/clientes/')
+        url = reverse('taller-clientes')
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['dni_cuit'], '30111222')
@@ -92,6 +118,13 @@ class TallerDashboardAPITest(TestCase):
         self.assertEqual(response.data[0]['ots_activas'], 1)
 
     def test_resumen_clientes_tecnico_prohibido(self):
+        # Arrange
         self.client.force_authenticate(user=self.tecnico)
-        response = self.client.get('/api/taller/clientes/')
+        url = reverse('taller-clientes')
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+

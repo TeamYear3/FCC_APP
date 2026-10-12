@@ -92,13 +92,17 @@ class TurnoAPITests(APITestCase):
             "fecha_hora": fecha_pasada.isoformat(),
             "motivo": "Turno en el pasado"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("fecha_hora", response.data)
         self.assertIn("pasado", str(response.data["fecha_hora"]))
 
     def test_rechazo_turno_dia_domingo(self):
         """Prueba que no permite crear un turno en día domingo (TK116)."""
+        # Arrange
         self.client.force_authenticate(user=self.admin_user)
         ahora = timezone.now()
         # Buscamos el próximo domingo a futuro
@@ -114,13 +118,18 @@ class TurnoAPITests(APITestCase):
             "fecha_hora": fecha_domingo.isoformat(),
             "motivo": "Turno Domingo No Permitido"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("fecha_hora", response.data)
         self.assertIn("domingo", str(response.data["fecha_hora"]).lower())
 
     def test_normalizacion_timezone_nocturno_argentina(self):
         """Prueba que un turno a las 22:00 hs en Argentina cuenta para la fecha local y no el día siguiente UTC (TK077)."""
+        # Arrange
         self.client.force_authenticate(user=self.admin_user)
         # 22:00 hs hora local Argentina de la fecha_base
         fecha_nocturna = timezone.make_aware(datetime.combine(self.fecha_base.date(), time(22, 0)))
@@ -147,13 +156,18 @@ class TurnoAPITests(APITestCase):
             "fecha_hora": fecha_nocturna.isoformat(),
             "motivo": "Turno Noche Excedente"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
+
+        # Assert
         # Debe detectar sobrecupo en el día local
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(response.data["warning_overbooking"])
 
     def test_crud_turno_como_admin(self):
         """Prueba de flujo CRUD básico de Turno realizado por el Administrador."""
+        # Arrange
         self.client.force_authenticate(user=self.admin_user)
 
         # 1. Crear Turno
@@ -164,13 +178,17 @@ class TurnoAPITests(APITestCase):
             "motivo": "Cambio de aceite y filtro",
             "estado": "pendiente"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertFalse(response.data["warning_overbooking"])
         turno_id = response.data["id"]
 
         # 2. Leer Turno
-        response = self.client.get(f"/api/turnos/{turno_id}/")
+        response = self.client.get(reverse('turno-detail', kwargs={'pk': turno_id}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["motivo"], "Cambio de aceite y filtro")
 
@@ -179,18 +197,19 @@ class TurnoAPITests(APITestCase):
             "motivo": "Alineación y balanceo",
             "estado": "completado"
         }
-        response = self.client.patch(f"/api/turnos/{turno_id}/", payload_update, format="json")
+        response = self.client.patch(reverse('turno-detail', kwargs={'pk': turno_id}), payload_update, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["motivo"], "Alineación y balanceo")
         self.assertEqual(response.data["estado"], "completado")
 
         # 4. Eliminar Turno
-        response = self.client.delete(f"/api/turnos/{turno_id}/")
+        response = self.client.delete(reverse('turno-detail', kwargs={'pk': turno_id}))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Turno.objects.filter(id=turno_id).exists())
 
     def test_validacion_vehiculo_no_pertenece_a_cliente(self):
         """Prueba que no permite crear un turno si el vehículo no es del cliente."""
+        # Arrange
         self.client.force_authenticate(user=self.admin_user)
 
         # Vehículo B con Cliente A
@@ -200,12 +219,17 @@ class TurnoAPITests(APITestCase):
             "fecha_hora": self.fecha_base.isoformat(),
             "motivo": "Revisión general"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("vehiculo", response.data)
 
     def test_sobrecupo_diario_y_forzado(self):
         """Prueba de la regla de sobre-cupo (2 turnos por día) y la capacidad de forzado."""
+        # Arrange
         self.client.force_authenticate(user=self.admin_user)
 
         # Crear primer turno del día
@@ -231,15 +255,18 @@ class TurnoAPITests(APITestCase):
             "fecha_hora": self.fecha_base.replace(hour=16).isoformat(),
             "motivo": "Turno 3 (Exceso)"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
         
+        # Assert
         # Debe fallar arrojando error HTTP 400 y warning_overbooking = True
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(response.data["warning_overbooking"])
 
         # Intentar crear el tercer turno pero FORZANDO la reserva
         payload["force_booking"] = True
-        response = self.client.post("/api/turnos/", payload, format="json")
+        response = self.client.post(reverse('turno-list'), payload, format="json")
 
         # Debe tener éxito y devolver warning_overbooking = True
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -248,6 +275,7 @@ class TurnoAPITests(APITestCase):
 
     def test_filtro_seguridad_por_rol_cliente(self):
         """Prueba que los clientes solo puedan ver y acceder a sus propios turnos."""
+        # Arrange
         # Creamos un turno para Cliente A
         turno_a = Turno.objects.create(
             cliente=self.cliente_a,
@@ -266,18 +294,20 @@ class TurnoAPITests(APITestCase):
         # Autenticamos como Cliente A
         self.client.force_authenticate(user=self.client_user_a)
 
+        # Act & Assert
         # Al listar turnos, solo debe ver el suyo
-        response = self.client.get("/api/turnos/")
+        response = self.client.get(reverse('turno-list'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], str(turno_a.id))
 
         # Si intenta acceder directamente al turno del Cliente B, debe dar un 404 (ocultamiento seguro)
-        response = self.client.get(f"/api/turnos/{turno_b.id}/")
+        response = self.client.get(reverse('turno-detail', kwargs={'pk': turno_b.id}))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_tecnico_puede_crear_turno_rapido(self):
         """Prueba que un usuario con rol 'tecnico' tiene autorización para crear turnos (TK196)."""
+        # Arrange
         self.client.force_authenticate(user=self.tecnico_user)
         payload = {
             "cliente": str(self.cliente_a.id),
@@ -285,9 +315,14 @@ class TurnoAPITests(APITestCase):
             "fecha_hora": self.fecha_base.isoformat(),
             "motivo": "Turno rápido creado por técnico"
         }
-        response = self.client.post("/api/turnos/", payload, format="json")
+
+        # Act
+        response = self.client.post(reverse('turno-list'), payload, format="json")
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["motivo"], "Turno rápido creado por técnico")
+
 
 
 class TurnosCasosFelicesAPITest(APITestCase):
