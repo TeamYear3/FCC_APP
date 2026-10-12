@@ -24,12 +24,25 @@ export abstract class BasePage {
   }
 
   async setMockSession(user: { email: string; role: string; nombre?: string }): Promise<void> {
-    await this.page.addInitScript((userData) => {
-      localStorage.setItem('access_token', 'mock_e2e_jwt_token_sample');
-      localStorage.setItem('refresh_token', 'mock_e2e_refresh_token_sample');
+    const headerStr = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+    const payloadStr = Buffer.from(JSON.stringify({
+      rol: user.role,
+      role: user.role,
+      user_role: user.role,
+      email: user.email,
+      nombre: user.nombre || 'Usuario',
+      exp: Math.floor(Date.now() / 1000) + 360000
+    })).toString('base64url');
+    const mockJwt = `${headerStr}.${payloadStr}.mockSignature`;
+
+    await this.page.addInitScript(({ token, userData }) => {
+      localStorage.setItem('fcc_auth_token', token);
+      localStorage.setItem('access_token', token);
+      localStorage.setItem('token', token);
+      localStorage.setItem('refresh_token', 'mock_refresh_token');
       localStorage.setItem('currentUser', JSON.stringify(userData));
       localStorage.setItem('userRole', userData.role);
-    }, user);
+    }, { token: mockJwt, userData: user });
   }
 
   async clearSession(): Promise<void> {
