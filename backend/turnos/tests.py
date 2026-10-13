@@ -1,5 +1,6 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
+from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import datetime, time
@@ -287,3 +288,101 @@ class TurnoAPITests(APITestCase):
         response = self.client.post("/api/turnos/", payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["motivo"], "Turno rápido creado por técnico")
+
+
+class TurnosCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-08 (Agenda de Turnos) ↔ TEST-P-005.
+    """
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            email="admin_turno_aut@example.com",
+            nombre="Admin",
+            apellido="Turnos",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Lorena",
+            apellido="Paola",
+            tipo_documento="DNI",
+            dni_cuit="28445566",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AD987BC",
+            marca="Chevrolet",
+            modelo="Cruze",
+            anio=2019
+        )
+        self.turno = Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=timezone.now() + timezone.timedelta(days=2),
+            motivo="Service 50.000 km",
+            estado="pendiente"
+        )
+
+    def test_consulta_listado_turnos_exitoso(self):
+        """HU-08 / TEST-P-005: Verificar que un usuario admin obtiene HTTP 200 OK al listar la agenda de turnos."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("turno-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_turno_exitoso(self):
+        """HU-08 / TEST-P-005: Verificar que un usuario admin obtiene HTTP 200 OK al consultar el detalle de un turno."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("turno-detail", kwargs={"pk": self.turno.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(response.data["id"]), str(self.turno.id))
+        self.assertEqual(response.data["motivo"], "Service 50.000 km")
+
+    def test_crear_turno_payload_valido_exitoso(self):
+        """HU-08 / TEST-P-005: Creación de turno retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("turno-list")
+        payload = {
+            "cliente": str(self.cliente.id),
+            "vehiculo": str(self.vehiculo.id),
+            "fecha_hora": (timezone.now() + timezone.timedelta(days=5)).isoformat(),
+            "motivo": "Revisión técnica periódica"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["motivo"], "Revisión técnica periódica")
+
+    def test_actualizar_turno_payload_valido_exitoso(self):
+        """HU-08 / TEST-P-005: Actualización de motivo de turno retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("turno-detail", kwargs={"pk": self.turno.id})
+        payload = {"motivo": "Revisión técnica y alineación"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["motivo"], "Revisión técnica y alineación")
+
+
