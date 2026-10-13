@@ -1,0 +1,28 @@
+[run]
+source = .
+branch = True
+omit =
+    */migrations/*
+    */tests/*
+    */tests.py
+    */tests_*.py
+    */.venv/*
+    */venv/*
+    */config/wsgi.py
+    */config/asgi.py
+    */config/settings/*
+    manage.py
+
+[report]
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+
+[html]
+directory = htmlcov
+title = FCC App - Cobertura de Pruebas Backend (V&V Sprint 4)
