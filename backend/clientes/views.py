@@ -6,14 +6,14 @@ from .models import Cliente
 from .serializers import ClienteSerializer
 
 class CrearClienteView(generics.ListCreateAPIView):
-    queryset = Cliente.objects.all().order_by('-creado_en', 'apellido')
+    queryset = Cliente.objects.select_related('usuario').all().order_by('-creado_en', 'apellido')
     serializer_class = ClienteSerializer
     permission_classes = [IsAuthenticated, EsAdminOSoloLecturaTecnico]
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'apellido', 'dni_cuit']
 
 class DetalleClienteView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Cliente.objects.all()
+    queryset = Cliente.objects.select_related('usuario').all()
     serializer_class = ClienteSerializer
 
     def get_permissions(self):
