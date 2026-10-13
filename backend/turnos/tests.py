@@ -84,6 +84,7 @@ class TurnoAPITests(APITestCase):
 
     def test_rechazo_turno_en_el_pasado(self):
         """Prueba que no permite crear un turno con fecha u hora en el pasado (TK077)."""
+        # Arrange
         self.client.force_authenticate(user=self.admin_user)
         fecha_pasada = timezone.now() - timezone.timedelta(days=1)
         payload = {
@@ -294,15 +295,18 @@ class TurnoAPITests(APITestCase):
         # Autenticamos como Cliente A
         self.client.force_authenticate(user=self.client_user_a)
 
-        # Act & Assert
-        # Al listar turnos, solo debe ver el suyo
+        # Act
         response = self.client.get(reverse('turno-list'))
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], str(turno_a.id))
 
-        # Si intenta acceder directamente al turno del Cliente B, debe dar un 404 (ocultamiento seguro)
+        # Act
         response = self.client.get(reverse('turno-detail', kwargs={'pk': turno_b.id}))
+
+        # Assert
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_tecnico_puede_crear_turno_rapido(self):
