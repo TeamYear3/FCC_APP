@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     # Local apps
+    "core",
     "usuarios",
     "clientes",
     "vehiculos",

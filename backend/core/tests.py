@@ -247,3 +247,32 @@ class RequestTracingMiddlewareTests(TestCase):
 
         self.assertEqual(getattr(record, "request_id", None), "system")
 
+
+class AuditPerformanceCommandTests(TestCase):
+    def test_normalize_sql(self):
+        """Verifica que normalize_sql abstraiga literales numéricos y cadenas para agrupar patrones N+1."""
+        from core.management.commands.audit_performance import normalize_sql
+
+        sql = "SELECT id, nombre FROM clientes WHERE id = 42 AND apellido = 'Perez'"
+        normalized = normalize_sql(sql)
+        self.assertIn("id = ?", normalized)
+        self.assertIn("apellido = '?'", normalized)
+
+    def test_audit_performance_command_execution(self):
+        """Verifica que el comando audit_performance ejecute exitosamente las peticiones y genere reporte."""
+        from io import StringIO
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command(
+            "audit_performance",
+            "--seed-volume",
+            "--iterations=1",
+            "--format=markdown",
+            stdout=out,
+        )
+        output = out.getvalue()
+        self.assertIn("Reporte de Línea Base de Rendimiento", output)
+        self.assertIn("/api/clientes/", output)
+
+
