@@ -31,9 +31,10 @@ export class DashboardPage extends BasePage {
   }
 
   /**
-   * Navega directamente al Dashboard de administración.
+   * Navega directamente al Dashboard de administración configurando la sesión.
    */
   async navigate(): Promise<void> {
+    await this.setMockSession({ email: 'admin@taller.com', role: 'admin', nombre: 'Admin Taller' });
     await this.goto('/admin/dashboard');
     await this.waitForLoaded();
   }

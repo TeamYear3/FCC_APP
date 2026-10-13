@@ -28,7 +28,10 @@ export class ClientesPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.searchInput = page.getByTestId('cliente-buscar-input').or(page.locator('input[type="text"], input[placeholder*="buscar"]'));
-    this.nuevoClienteButton = page.getByTestId('cliente-nuevo-btn').or(page.getByRole('button', { name: /nuevo cliente/i }));
+    this.nuevoClienteButton = page.getByTestId('cliente-nuevo-btn')
+      .or(page.getByRole('link', { name: /nuevo cliente/i }))
+      .or(page.getByRole('button', { name: /nuevo cliente/i }))
+      .or(page.locator('a[routerlink*="clientes/nuevo"], a[href*="clientes/nuevo"]'));
     this.clientesTable = page.getByTestId('clientes-tabla').or(page.locator('table, [data-testid="tabla-clientes"], .clientes-table'));
     this.clienteRows = page.getByTestId('cliente-row').or(page.locator('table tbody tr'));
     this.modalCliente = page.getByTestId('modal-cliente').or(page.locator('app-cliente-form, .modal, [role="dialog"]'));

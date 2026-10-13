@@ -59,11 +59,25 @@ export abstract class BasePage {
 
   /**
    * Configura una sesión JWT simulada en el almacenamiento local antes de cargar la página.
+   * Genera un token JWT sintético válido con payload decodificable por Angular AuthService (fcc_auth_token).
    */
-  async setMockSession(user: { email: string; role: string; nombre?: string }): Promise<void> {
+  async setMockSession(user: { email: string; role: 'admin' | 'tecnico' | 'cliente' | string; nombre?: string }): Promise<void> {
     await this.page.addInitScript((userData) => {
-      localStorage.setItem('access_token', 'mock_e2e_jwt_token_sample');
-      localStorage.setItem('refresh_token', 'mock_e2e_refresh_token_sample');
+      const b64 = (str: string) => btoa(unescape(encodeURIComponent(str))).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+      const header = b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+      const payload = b64(JSON.stringify({
+        email: userData.email,
+        rol: userData.role,
+        role: userData.role,
+        user_role: userData.role,
+        nombre: userData.nombre || 'Usuario E2E',
+        exp: Math.floor(Date.now() / 1000) + 86400 * 30,
+      }));
+      const mockJwt = `${header}.${payload}.mock_signature_ispc_e2e`;
+
+      localStorage.setItem('fcc_auth_token', mockJwt);
+      localStorage.setItem('access_token', mockJwt);
+      localStorage.setItem('refresh_token', mockJwt);
       localStorage.setItem('currentUser', JSON.stringify(userData));
       localStorage.setItem('userRole', userData.role);
     }, user);

@@ -29,8 +29,8 @@ export class LoginPage extends BasePage {
   constructor(page: Page) {
     super(page);
     // Jerarquía de selectores resilientes
-    this.emailInput = page.getByTestId('login-email-input').or(page.locator('input[type="email"], [data-testid="input-email"]'));
-    this.passwordInput = page.getByTestId('login-password-input').or(page.locator('input[type="password"], input[name="password"], [data-testid="input-password"]'));
+    this.emailInput = page.getByTestId('login-email-input').or(page.locator('#login-email, [data-testid="input-email"], input[type="email"]'));
+    this.passwordInput = page.getByTestId('login-password-input').or(page.locator('#login-password, [data-testid="input-password"], input[formcontrolname="password"], input[name="password"], input[type="password"]'));
     this.submitButton = page.getByTestId('login-submit-button').or(page.locator('button[type="submit"], [data-testid="btn-login-submit"]'));
     this.errorMessage = page.getByTestId('login-error-message').or(page.locator('[role="alert"], .alert-danger, .error-message, .text-red-500'));
     this.registerLink = page.getByTestId('register-link').or(page.getByRole('link', { name: /regístrate|registrate|crear cuenta/i }));
