@@ -26,9 +26,23 @@ test.describe('AUT-E2E-07: Generación de Evidencias E2E y Registro Forense de F
     const loginPage = new LoginPage(page);
     await loginPage.navigate();
 
+    // Interacción visible en el formulario para evidencia en video y screenshot
     await expect(loginPage.emailInput).toBeVisible();
+    await loginPage.enterEmail('auditoria.calidad@ispc.edu.ar');
+    await page.waitForTimeout(600);
 
-    // Elemento no existente que simula una regresión de renderizado
-    await expect(page.locator('[data-testid="elemento-regresion-critica"]')).toBeVisible({ timeout: 1500 });
+    await loginPage.enterPassword('PasswordErronea123!');
+    await page.waitForTimeout(600);
+
+    // Conmutar visibilidad de contraseña para que se aprecie en la grabación
+    await loginPage.togglePasswordButton.click();
+    await page.waitForTimeout(600);
+
+    // Enviar el formulario
+    await loginPage.clickSubmit();
+    await page.waitForTimeout(1000);
+
+    // Aserción de regresión: esperar un elemento crítico no presente
+    await expect(page.locator('[data-testid="elemento-regresion-critica"]')).toBeVisible({ timeout: 2000 });
   });
 });
