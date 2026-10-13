@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.core import mail
+from django.urls import reverse
 from unittest.mock import patch
 from core.utils.email_service import send_email_service
 
@@ -149,17 +150,20 @@ class RequestTracingMiddlewareTests(TestCase):
 
     def test_middleware_genera_x_request_id_cuando_no_es_provisto(self):
         """Verifica que el middleware genere un UUID en X-Request-ID si el cliente no lo envía."""
+        # Arrange
         import uuid
         from django.test import RequestFactory
         from django.http import HttpResponse
         from core.middleware import RequestTracingMiddleware
 
         rf = RequestFactory()
-        request = rf.get("/api/vehiculos/")
+        request = rf.get(reverse("crear-vehiculo"))
         middleware = RequestTracingMiddleware(lambda req: HttpResponse("OK"))
 
+        # Act
         response = middleware(request)
 
+        # Assert
         self.assertIn("X-Request-ID", response)
         request_id = response["X-Request-ID"]
         self.assertTrue(uuid.UUID(request_id))
@@ -167,23 +171,27 @@ class RequestTracingMiddlewareTests(TestCase):
 
     def test_middleware_preserva_y_reutiliza_x_request_id_entrante(self):
         """Verifica que si el cliente envía un X-Request-ID, el middleware lo preserve y retorne."""
+        # Arrange
         from django.test import RequestFactory
         from django.http import HttpResponse
         from core.middleware import RequestTracingMiddleware
 
         rf = RequestFactory()
         custom_id = "req-custom-trace-777"
-        request = rf.get("/api/vehiculos/", HTTP_X_REQUEST_ID=custom_id)
+        request = rf.get(reverse("crear-vehiculo"), HTTP_X_REQUEST_ID=custom_id)
         middleware = RequestTracingMiddleware(lambda req: HttpResponse("OK"))
 
+        # Act
         response = middleware(request)
 
+        # Assert
         self.assertIn("X-Request-ID", response)
         self.assertEqual(response["X-Request-ID"], custom_id)
         self.assertEqual(request.request_id, custom_id)
 
     def test_request_id_filter_inyecta_request_id_activo_en_log_record(self):
         """Verifica que RequestIDFilter asigne el request_id activo de la solicitud al registro de log."""
+        # Arrange
         import logging
         from django.test import RequestFactory
         from django.http import HttpResponse
@@ -191,7 +199,7 @@ class RequestTracingMiddlewareTests(TestCase):
 
         rf = RequestFactory()
         custom_id = "trace-log-correlation-456"
-        request = rf.get("/api/ordenes/", HTTP_X_REQUEST_ID=custom_id)
+        request = rf.get(reverse("crear-orden-trabajo"), HTTP_X_REQUEST_ID=custom_id)
 
         captured_record = None
 
@@ -212,8 +220,10 @@ class RequestTracingMiddlewareTests(TestCase):
             return HttpResponse("OK")
 
         middleware = RequestTracingMiddleware(dummy_view)
+        # Act
         middleware(request)
 
+        # Assert
         self.assertIsNotNone(captured_record)
         self.assertEqual(getattr(captured_record, "request_id", None), custom_id)
 
