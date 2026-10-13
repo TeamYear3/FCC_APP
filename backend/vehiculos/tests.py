@@ -895,6 +895,56 @@ class VehiculosCasosFelicesAPITest(APITestCase):
         self.assertEqual(response.data["kilometraje"], 50000)
 
 
+class VehiculosOptimizacionORMTests(APITestCase):
+    """
+    TK168 / US-14: Pruebas automatizadas de consultas ORM sin N+1 con assertNumQueries.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_vehiculo_orm@example.com",
+            nombre="Admin",
+            apellido="Vehiculos",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Optimizacion",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF"
+        )
+        # Crear 5 vehículos, cada uno con un mantenimiento programado
+        from .models import MantenimientoProgramado
+        for i in range(5):
+            v = Vehiculo.objects.create(
+                cliente=self.cliente,
+                patente=f"ORM{i:03d}X",
+                marca="Ford",
+                modelo=f"Focus {i}",
+                anio=2021
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=v,
+                tipo_servicio=f"Service {i}0k",
+                kilometraje_objetivo=10000 * (i + 1)
+            )
+
+    def test_listar_vehiculos_con_consultas_orm_constantes_sin_n_plus_one(self):
+        """Verifica que el listado de vehículos ejecute exactamente 2 queries constantes (Vehiculo + MantenimientoProgramado)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+
+        # Act & Assert
+        with self.assertNumQueries(2):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 5)
+
+
+
 
 
 

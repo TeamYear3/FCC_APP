@@ -11,10 +11,15 @@ class CrearVehiculoView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        base_qs = (
+            Vehiculo.objects.filter(activo=True)
+            .select_related('cliente')
+            .prefetch_related('mantenimientos_programados')
+        )
         if getattr(user, 'rol', None) == 'cliente':
-            return Vehiculo.objects.filter(activo=True, cliente__usuario=user)
+            return base_qs.filter(cliente__usuario=user)
 
-        queryset = Vehiculo.objects.filter(activo=True)
+        queryset = base_qs
         cliente_id = self.request.query_params.get('cliente')
         if cliente_id:
             queryset = queryset.filter(cliente_id=cliente_id)
@@ -36,7 +41,11 @@ class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
         return [IsAuthenticated(), EsAdministrador()]
 
     def get_queryset(self):
-        return Vehiculo.objects.filter(activo=True)
+        return (
+            Vehiculo.objects.filter(activo=True)
+            .select_related('cliente')
+            .prefetch_related('mantenimientos_programados')
+        )
 
     def get_object(self):
         obj = super().get_object()

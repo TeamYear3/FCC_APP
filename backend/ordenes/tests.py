@@ -1664,6 +1664,67 @@ class OrdenesCasosFelicesAPITest(APITestCase):
         self.assertEqual(self.orden.estado, "en_presupuesto")
 
 
+class ItemsPresupuestoOptimizacionORMTests(APITestCase):
+    """
+    TK168 / US-14: Pruebas automatizadas de consultas ORM sin N+1 con assertNumQueries para ítems de presupuesto.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_items_orm@example.com",
+            nombre="Admin",
+            apellido="Items",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Juan",
+            apellido="Perez",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ORM789",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Falla frenos y amortiguación"
+        )
+        # Crear 5 ítems de presupuesto con adjuntos para verificar que no hay N+1
+        for i in range(5):
+            item = ItemPresupuesto.objects.create(
+                orden_trabajo=self.orden,
+                tipo=TipoItem.REPUESTO,
+                descripcion=f"Repuesto #{i}",
+                cantidad=Decimal("1.00"),
+                precio_unitario=Decimal("15000.00")
+            )
+            AdjuntoDiagnostico.objects.create(
+                orden_trabajo=self.orden,
+                item_presupuesto=item,
+                url_secure=f"/media/diagnostico_{i}.jpg",
+                nombre_archivo=f"foto_{i}.jpg",
+                creado_por=self.admin
+            )
+
+    def test_listar_items_presupuesto_con_consultas_orm_constantes_sin_n_plus_one(self):
+        """Verifica que el listado de ítems ejecute un número constante de queries (OT + Items + Adjuntos)."""
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("listar-items-presupuesto", kwargs={"orden_id": self.orden.id})
+
+        # 1 query para OT + 1 query para Items + 1 query prefetch(adjuntos) + 1 query prefetch(creado_por)
+        with self.assertNumQueries(4):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+
+
 
 
 
