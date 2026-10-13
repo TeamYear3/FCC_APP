@@ -8,6 +8,9 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report playwright-report",
+    "test:e2e:smoke": "playwright test e2e/tests/smoke.spec.ts",
     "test:a11y": "playwright test e2e/tests/accessibility.spec.ts"
   },
   "private": true,
