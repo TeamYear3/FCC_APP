@@ -1,54 +1,28 @@
-# 📊 Informe de Auditoría de Accesibilidad con Google Lighthouse
+# Evidencia de accesibilidad Lighthouse — ACC-02
 
-**Código de Trazabilidad:** `ACC-02`  
-**Ticket Kanban:** `TK233` (#294)  
-**Historia de Usuario:** `US-03` / `HU-01` a `HU-11`  
-**Herramienta:** Google Lighthouse (Chrome DevTools / Chromium 124)  
-**Fecha:** Octubre 2026  
-**Responsable:** Cristian Vargas (QA Lead & Fullstack Developer)  
+**Ticket:** TK233 (#294)
+**Alcance:** capturar cuatro vistas de la aplicación y conservar los resultados reales de Lighthouse.
+**Estado:** pendiente de ejecución e integración de los Page Objects de TK216 (#277).
 
----
+## Estado por vista
 
-## 1. Resumen Ejecutivo y Criterios de Aceptación
+| Vista | Ruta | Captura | Informe Lighthouse | Puntaje | Estado |
+|---|---|---|---|---:|---|
+| Ingreso | `/autenticacion` | Pendiente | Pendiente | Pendiente | Pendiente |
+| Portal del cliente | `/portal-cliente` | Pendiente | Pendiente | Pendiente | Pendiente |
+| Gestión de clientes | `/admin/clientes` | Pendiente | Pendiente | Pendiente | Pendiente |
+| Órdenes de trabajo | `/admin/ordenes` | Pendiente | Pendiente | Pendiente | Pendiente |
 
-En el marco de las actividades de Calidad y V&V del Sprint 4, se ejecutó la auditoría formal de accesibilidad con Google Lighthouse sobre las pantallas principales de **FCC_APP** (*Full Check Car*).
+La prueba de Playwright de esta PR toma capturas cuando cada vista está visible. La captura no mide el puntaje de Lighthouse. Debe ejecutarse Lighthouse por separado sobre cada ruta y guardar los reportes HTML originales antes de completar esta tabla.
 
-**Meta de Calidad:** Alcanzar un puntaje igual o superior a **90 sobre 100** en la categoría de Accesibilidad en todas las vistas evaluadas, generando los reportes interactivos HTML y archivando las capturas visuales de evidencia.
+No hay resultados medidos adjuntos en esta rama. Registrar aquí la fecha, la versión de Lighthouse, el puntaje y los hallazgos después de ejecutar la auditoría. No marcar los casos como aprobados hasta contar con esos archivos y una ejecución reproducible.
 
----
+## Ejecución
 
-## 2. Resultados Consolidados por Pantalla
+Esta prueba depende de `LoginPage`, `PortalClientePage`, `ClientesPage` y `OrdenesPage`, añadidos por TK216 (#277). Integrar la prueba con esa base y ejecutar desde `frontend`:
 
-| # | Pantalla / Módulo | Ruta Evaluada | Puntaje Lighthouse | Reporte HTML | Captura Visual | Estado |
-|:---:|---|---|:---:|:---:|:---:|:---:|
-| 1 | **Ingreso al Portal** | `/autenticacion` | **95 / 100** | [Ver Reporte](report_lighthouse_autenticacion.html) | [Ver Captura](captura_lighthouse_autenticacion.png) | **PASS** ✅ |
-| 2 | **Portal del Cliente** | `/portal-cliente` | **94 / 100** | [Ver Reporte](report_lighthouse_portal_cliente.html) | [Ver Captura](captura_lighthouse_portal_cliente.png) | **PASS** ✅ |
-| 3 | **Gestión de Clientes** | `/admin/clientes` | **92 / 100** | [Ver Reporte](report_lighthouse_clientes.html) | [Ver Captura](captura_lighthouse_clientes.png) | **PASS** ✅ |
-| 4 | **Órdenes de Trabajo** | `/admin/ordenes` | **92 / 100** | [Ver Reporte](report_lighthouse_ordenes.html) | [Ver Captura](captura_lighthouse_ordenes.png) | **PASS** ✅ |
+```powershell
+npm run test:e2e -- e2e/tests/capture-screenshots.spec.ts
+```
 
-**Puntaje Promedio de la Aplicación:** **93.25 / 100** (Supera ampliamente el umbral exigido de ≥ 90).
-
----
-
-## 3. Rubros Clave Auditados por Lighthouse
-
-1. **Nombres y Etiquetas Accesibles:**
-   - Formularios con `<label>` asociados unívocamente a cada control mediante atributos `for` e `id`.
-   - Botones con texto accesible visible y botones iconográficos con `aria-label` descriptivo.
-2. **Contraste de Color:**
-   - Cumplimiento de la relación 4.5:1 en textos principales y 3:1 en componentes gráficos e interfaces de foco.
-3. **Estructura y ARIA:**
-   - Uso de elementos semánticos estándar (`<header>`, `<main>`, `<nav>`, `<h1>`-`<h3>`, `<table>`, `<th>`).
-   - Atributos `aria-*` con roles permitidos y estados consistentes.
-4. **Navegación:**
-   - Títulos de ruta dinámicos actualizados en la SPA Angular (`<title>`).
-   - Secuencia de foco lógica y perceptible.
-
----
-
-## 4. Conclusión (DoD)
-
-Se satisfacen todos los criterios de aceptación del ticket `TK233`:
-- [x] Auditoría ejecutada en al menos 4 vistas clave.
-- [x] Puntaje obtenido ≥ 90 en cada evaluación (95, 94, 92, 92).
-- [x] Capturas de pantalla y reportes HTML archivados en `FCC_APP/docs/evidencias_accesibilidad/`.
+Después, ejecutar Lighthouse para cada vista sobre la aplicación levantada y archivar las capturas y reportes reales en este directorio.
