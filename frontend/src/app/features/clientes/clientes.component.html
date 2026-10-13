@@ -62,6 +62,7 @@
         <div class="flex flex-wrap items-center gap-3">
           <a
             routerLink="/admin/clientes/nuevo"
+            data-testid="cliente-nuevo-btn"
             class="min-h-[48px] px-lg py-3 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2.2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -70,6 +71,7 @@
           </a>
           <a
             routerLink="/admin/vehiculos/nuevo"
+            data-testid="vehiculo-nuevo-btn"
             class="min-h-[48px] px-lg py-3 rounded-pill border-2 border-color-primary-accent bg-transparent text-color-primary-accent font-bold typography-body-highlight flex items-center justify-center gap-2 transition-all duration-200 hover:bg-color-primary-accent/10 active:scale-[0.98] shadow-md cursor-pointer inline-flex">
             <!-- Ícono de Auto / Vehículo -->
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 stroke-[2dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,6 +99,7 @@
           [value]="terminoBusqueda()"
           (input)="onBusquedaInput($event)"
           placeholder="Buscar por nombre, DNI/CUIT, email, teléfono o patente..."
+          data-testid="cliente-buscar-input"
           class="w-full pl-10 pr-10 py-3 bg-black/40 border border-white/10 rounded-pill text-white placeholder-zinc-400 typography-body-main focus:outline-none focus:border-color-primary-accent/80 focus:ring-1 focus:ring-color-primary-accent/50 transition-all"
         />
 
@@ -160,9 +163,9 @@
     <!-- Directorio en Tarjetas con Virtual Scrolling (TK179 - @angular/cdk/scrolling) -->
     @if (!cargando()) {
       @if (clientesFiltrados().length > 0) {
-        <cdk-virtual-scroll-viewport itemSize="260" class="clientes-virtual-viewport">
+        <cdk-virtual-scroll-viewport itemSize="260" class="clientes-virtual-viewport" data-testid="clientes-tabla">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md p-1">
-            <div *cdkVirtualFor="let cli of clientesFiltrados(); trackBy: trackByClienteId" class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1">
+            <div *cdkVirtualFor="let cli of clientesFiltrados(); trackBy: trackByClienteId" class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1" data-testid="cliente-row">
               
               <!-- Extremo superior: ID/Documento Cliente y Nombre + Badge de Estado Semántico -->
               <div class="flex items-start justify-between gap-2 mb-sm">
@@ -235,6 +238,7 @@
                 <button
                   type="button"
                   (click)="abrirExpediente(cli)"
+                  data-testid="cliente-expediente-btn"
                   class="flex-1 min-h-[44px] rounded-pill bg-white/5 border border-white/10 hover:bg-white/10 text-white typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Expediente</span>
@@ -243,6 +247,7 @@
                 @if (userRole() !== 'tecnico') {
                   <a
                     [routerLink]="['/admin/clientes/editar', cli.id]"
+                    data-testid="cliente-editar-btn"
                     class="flex-1 min-h-[44px] rounded-pill bg-color-primary-accent hover:bg-color-primary-accent/90 text-black typography-caption font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer decoration-none shadow-md"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 stroke-[2.5dp]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
