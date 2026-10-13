@@ -24,6 +24,7 @@ Todos los artefactos generados se encuentran preservados en este directorio:
 
 | Tipo de Evidencia | Archivo | Descripción | Tamaño |
 |---|---|---|:---:|
+| **Reporte HTML Interactivo** | [`reporte_playwright_e2e.html`](reporte_playwright_e2e.html) | Informe visual navegable de Playwright con resultados y trazas de ejecución. | ~522 KB |
 | **Traza de Ejecución** | [`trace_regresion_fallo.zip`](trace_regresion_fallo.zip) | Traza completa paso a paso con snapshots del DOM, acciones de ratón, llamadas de red y consola. | ~1.8 MB |
 | **Captura de Pantalla** | [`captura_fallo_regresion.png`](captura_fallo_regresion.png) | Screenshot exacto del estado visual de la página al momento de la aserción no satisfecha. | ~295 KB |
 | **Grabación de Video** | [`video_fallo_regresion.webm`](video_fallo_regresion.webm) | Video de alta fidelidad que registra la secuencia continua de renderizado y prueba. | ~372 KB |

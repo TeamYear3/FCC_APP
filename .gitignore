@@ -58,6 +58,9 @@ backend/logs/
 # Reportes de pruebas generados dinámicamente
 tests/api/reports/*.html
 tests/api/reports/*.xml
+frontend/playwright-report/
+frontend/test-results/
+
 
 
 
