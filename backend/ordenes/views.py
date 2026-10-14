@@ -351,8 +351,13 @@ class ListarItemsPresupuestoView(APIView):
 
     def get(self, request, orden_id, *args, **kwargs):
         orden = get_object_or_404(OrdenTrabajo, id=orden_id)
-        items = orden.items_presupuesto.all()
-        serializer = ItemPresupuestoSerializer(items, many=True)
+        items = (
+            orden.items_presupuesto
+            .select_related('orden_trabajo')
+            .prefetch_related('adjuntos__creado_por')
+            .all()
+        )
+        serializer = ItemPresupuestoSerializer(items, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

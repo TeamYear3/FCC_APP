@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 from django.urls import reverse
 from django.conf import settings
@@ -860,7 +860,7 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
         res_post = self.client.post(reverse('turno-list'), data)
         self.assertNotEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
 
-        res_put = self.client.put('/api/turnos/1/', data)
+        res_put = self.client.put(reverse('turno-detail', kwargs={'pk': 1}), data)
         self.assertEqual(res_put.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_tecnico_bloqueado_en_modulo_facturacion(self):
@@ -1072,6 +1072,155 @@ class VinculacionAutomaticaUsuarioClienteTest(APITestCase):
         # Verificar que el cliente original jamás cambió de usuario
         self.assertEqual(cliente_original.usuario, user_original)
         self.assertNotEqual(cliente_original.usuario, user_segundo)
+
+
+class AutenticacionPermisosAPITests(APITestCase):
+    """
+    AUT-BE-03: Pruebas de autenticación y permisos por rol.
+    Trazabilidad: HU-02 / HU-05 ↔ TEST-G-002, TEST-G-004, TEST-L-004.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_aut_be_03@test.com",
+            nombre="Admin",
+            apellido="Seguridad",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_aut_be_03@test.com",
+            nombre="Tecnico",
+            apellido="Seguridad",
+            rol="tecnico",
+            password="tecnicopassword123"
+        )
+        self.cliente = User.objects.create_user(
+            email="cliente_aut_be_03@test.com",
+            nombre="Cliente",
+            apellido="Seguridad",
+            rol="cliente",
+            password="clientepassword123"
+        )
+
+    def test_peticion_anonima_perfil_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de perfil rechaza peticiones no autenticadas con 401."""
+        # Arrange
+        url = reverse("perfil-usuario")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_lista_admin_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint administrativo de usuarios rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_clientes_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de clientes rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_facturacion_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de facturación rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_turnos_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de turnos rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("turno-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_rol_cliente_rechazado_en_facturacion_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no tiene autorización para listar facturas fiscales (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_cliente_rechazado_en_emision_factura_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no puede emitir comprobantes fiscales en ARCA (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_tecnico_rechazado_en_emision_factura_con_403(self):
+        """AUT-BE-03 / HU-05: Rol técnico no tiene permiso de emisor fiscal (exclusivo admin) (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_cliente_rechazado_en_lista_admin_usuarios_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no puede consultar la lista administrativa de usuarios (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_admin_autorizado_accede_correctamente_con_200(self):
+        """AUT-BE-03 / HU-05: Rol admin autenticado accede exitosamente a endpoints restringidos (200 OK)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+
 
 
 

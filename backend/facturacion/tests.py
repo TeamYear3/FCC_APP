@@ -10,7 +10,13 @@ from clientes.models import Cliente
 from vehiculos.models import Vehiculo
 from ordenes.models import OrdenTrabajo, ItemPresupuesto, TipoItem, EstadoOrden
 from .models import Factura, TipoComprobante, EstadoFactura, EstadoPago
-from .arca_client import ArcaWSClient
+from .arca_client import (
+    ArcaWSClient,
+    WSAAClient,
+    WSFEClient,
+    ArcaFiscalError,
+    ArcaAuthError,
+)
 
 User = get_user_model()
 
@@ -20,6 +26,124 @@ class ArcaWSClientTest(TestCase):
         cae = ArcaWSClient.generar_cae_algoritmico()
         self.assertEqual(len(cae), 14)
         self.assertTrue(cae.isdigit())
+
+    def test_generar_cae_fiscal_validado_modulo_10(self):
+        hoy = timezone.localdate()
+        cae = ArcaWSClient.generar_cae_fiscal_validado(
+            punto_venta=1,
+            tipo_cbte_codigo=6,
+            numero_factura=42,
+            fecha=hoy
+        )
+        self.assertEqual(len(cae), 14)
+        self.assertTrue(cae.isdigit())
+        # Validar dígito verificador módulo 10
+        digitos_base = cae[:13]
+        dv_esperado = (10 - (sum(int(d) * (3 if i % 2 == 0 else 1) for i, d in enumerate(digitos_base)) % 10)) % 10
+        self.assertEqual(int(cae[13]), dv_esperado)
+
+    def test_wsaa_generar_tra_xml(self):
+        tra_xml = WSAAClient.generar_tra_xml(service="wsfe")
+        self.assertIn("<loginTicketRequest", tra_xml)
+        self.assertIn("<uniqueId>", tra_xml)
+        self.assertIn("<service>wsfe</service>", tra_xml)
+
+    def test_wsaa_obtener_ticket_acceso_y_cache(self):
+        ticket1 = WSAAClient.obtener_ticket_valido(service="wsfe", force_refresh=True)
+        self.assertIn("token", ticket1)
+        self.assertIn("sign", ticket1)
+        self.assertTrue(ticket1["token"].startswith("ARCA_TOKEN_"))
+        self.assertTrue(ticket1["expiration"] > timezone.now())
+
+        # Segunda llamada debe reutilizar caché
+        ticket2 = WSAAClient.obtener_ticket_valido(service="wsfe")
+        self.assertEqual(ticket1["token"], ticket2["token"])
+        self.assertEqual(ticket1["sign"], ticket2["sign"])
+
+    def test_wsfe_construir_envelope_soap(self):
+        auth = {"token": "TEST_TOKEN", "sign": "TEST_SIGN"}
+        envelope = WSFEClient.construir_envelope_solicitar_cae(
+            cuit_emisor="30-71829384-9",
+            punto_venta=1,
+            tipo_cbte_codigo=6,
+            cbte_nro=10,
+            doc_tipo_codigo=96,
+            doc_nro="35123456",
+            total=Decimal("121000.00"),
+            auth_ticket=auth
+        )
+        self.assertIn("<FECAESolicitar", envelope)
+        self.assertIn("<Token>TEST_TOKEN</Token>", envelope)
+        self.assertIn("<PtoVta>1</PtoVta>", envelope)
+        self.assertIn("<CbteTipo>6</CbteTipo>", envelope)
+        self.assertIn("<ImpTotal>121000.00</ImpTotal>", envelope)
+
+    def test_solicitar_cae_soap_aprobado_mock(self):
+        soap_mock_aprobado = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">'
+            '  <soap:Body>'
+            '    <FECAESolicitarResponse xmlns="http://ar.gov.afip.dif.FEV1/">'
+            '      <FECAESolicitarResult>'
+            '        <FeCabResp>'
+            '          <Resultado>A</Resultado>'
+            '        </FeCabResp>'
+            '        <FeDetResp>'
+            '          <FECAEDetResponse>'
+            '            <CAE>74321098765432</CAE>'
+            '            <CAEFchVto>20261022</CAEFchVto>'
+            '          </FECAEDetResponse>'
+            '        </FeDetResp>'
+            '      </FECAESolicitarResult>'
+            '    </FECAESolicitarResponse>'
+            '  </soap:Body>'
+            '</soap:Envelope>'
+        )
+
+        resultado = ArcaWSClient.solicitar_cae(
+            total=Decimal("150000.00"),
+            punto_venta=1,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            doc_tipo="DNI",
+            doc_nro="35123456",
+            soap_response_override=soap_mock_aprobado
+        )
+        self.assertEqual(resultado["resultado"], "Aprobado")
+        self.assertEqual(resultado["cae"], "74321098765432")
+        self.assertEqual(str(resultado["fecha_vencimiento_cae"]), "2026-10-22")
+
+    def test_solicitar_cae_soap_rechazado_mock(self):
+        soap_mock_rechazado = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">'
+            '  <soap:Body>'
+            '    <FECAESolicitarResponse xmlns="http://ar.gov.afip.dif.FEV1/">'
+            '      <FECAESolicitarResult>'
+            '        <FeCabResp>'
+            '          <Resultado>R</Resultado>'
+            '        </FeCabResp>'
+            '        <Errors>'
+            '          <Err>'
+            '            <Code>10016</Code>'
+            '            <Msg>El número o fecha del comprobante no se corresponde con el próximo a autorizar</Msg>'
+            '          </Err>'
+            '        </Errors>'
+            '      </FECAESolicitarResult>'
+            '    </FECAESolicitarResponse>'
+            '  </soap:Body>'
+            '</soap:Envelope>'
+        )
+
+        with self.assertRaises(ArcaFiscalError) as ctx:
+            ArcaWSClient.solicitar_cae(
+                total=Decimal("150000.00"),
+                punto_venta=1,
+                tipo_comprobante=TipoComprobante.FACTURA_B,
+                doc_tipo="DNI",
+                doc_nro="35123456",
+                soap_response_override=soap_mock_rechazado
+            )
+        self.assertIn("10016", str(ctx.exception))
 
     def test_solicitar_cae_exitoso(self):
         resultado = ArcaWSClient.solicitar_cae(
@@ -34,7 +158,6 @@ class ArcaWSClientTest(TestCase):
         self.assertEqual(resultado["punto_venta"], 1)
         self.assertEqual(resultado["tipo_comprobante"], "B")
         self.assertEqual(resultado["numero_factura"], 1)
-        # La fecha de vencimiento fiscal debe ser 10 días posterior
         self.assertEqual(
             resultado["fecha_vencimiento_cae"],
             timezone.localdate() + timedelta(days=10)
@@ -210,6 +333,58 @@ class FacturacionAPITest(APITestCase):
         self.assertEqual(res_detail.status_code, status.HTTP_200_OK)
         self.assertEqual(res_detail.data["id"], factura_id)
 
+    def test_filtrar_facturas_por_tipo_comprobante(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(reverse("factura-emitir"), {"orden_trabajo_id": str(self.orden.id), "tipo_comprobante": "A"})
+
+        # Filtro que coincide (tipo A)
+        res_a = self.client.get(reverse("factura-list"), {"tipo": "A"})
+        self.assertEqual(res_a.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_a.data), 1)
+        self.assertEqual(res_a.data[0]["tipo_comprobante"], "A")
+
+        # Filtro que no coincide (tipo B)
+        res_b = self.client.get(reverse("factura-list"), {"tipo": "B"})
+        self.assertEqual(res_b.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_b.data), 0)
+
+    def test_filtrar_facturas_por_rango_fechas(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(reverse("factura-emitir"), {"orden_trabajo_id": str(self.orden.id)})
+
+        hoy = timezone.localdate().strftime("%Y-%m-%d")
+        ayer = (timezone.localdate() - timedelta(days=1)).strftime("%Y-%m-%d")
+        manana = (timezone.localdate() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # Rango que incluye hoy
+        res_ok = self.client.get(reverse("factura-list"), {"fecha_desde": ayer, "fecha_hasta": manana})
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_ok.data), 1)
+
+        # Rango anterior que excluye hoy
+        res_past = self.client.get(reverse("factura-list"), {"fecha_desde": "2020-01-01", "fecha_hasta": ayer})
+        self.assertEqual(res_past.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_past.data), 0)
+
+    def test_filtrar_facturas_por_cliente_y_busqueda(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(reverse("factura-emitir"), {"orden_trabajo_id": str(self.orden.id)})
+
+        # Búsqueda por nombre de cliente
+        res_cliente = self.client.get(reverse("factura-list"), {"cliente": "Esteban"})
+        self.assertEqual(res_cliente.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_cliente.data), 1)
+
+        # Búsqueda por patente
+        res_patente = self.client.get(reverse("factura-list"), {"busqueda": "AF999ZZ"})
+        self.assertEqual(res_patente.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_patente.data), 1)
+
+        # Búsqueda inexistente
+        res_inexistente = self.client.get(reverse("factura-list"), {"busqueda": "CLIENTE_INEXISTENTE"})
+        self.assertEqual(res_inexistente.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res_inexistente.data), 0)
+
     def test_endpoint_calendario_facturas_y_resumen(self):
         self.client.force_authenticate(user=self.admin)
         # Emitir factura
@@ -237,3 +412,119 @@ class FacturacionAPITest(APITestCase):
         self.assertEqual(res_patch.status_code, status.HTTP_200_OK)
         self.assertEqual(res_patch.data["estado_pago"], "pagada")
         self.assertEqual(res_patch.data["semaforo"], "pagada")
+
+
+class FacturacionCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-11 (Facturación Fiscal) ↔ TEST-P-003.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_factura_aut@example.com",
+            nombre="Admin",
+            apellido="Facturacion",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Mariano",
+            apellido="Moreno",
+            tipo_documento="DNI",
+            dni_cuit="25998877",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AC654XY",
+            marca="Peugeot",
+            modelo="208",
+            anio=2020
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de aceite y filtros"
+        )
+        self.factura = Factura.objects.create(
+            orden_trabajo=self.orden,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            numero_factura=1001,
+            punto_venta=1,
+            cae="12345678901234",
+            fecha_vencimiento_cae=timezone.localdate() + timedelta(days=10),
+            total=Decimal("45000.00"),
+            estado=EstadoFactura.EMITIDA,
+            estado_pago=EstadoPago.SIN_INTERACCION
+        )
+
+    def test_consulta_listado_facturas_exitoso(self):
+        """HU-11 / TEST-P-003: Verificar que un usuario admin obtiene HTTP 200 OK al consultar el historial de facturas."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_factura_exitoso(self):
+        """HU-11 / TEST-P-003: Verificar que un usuario admin obtiene HTTP 200 OK al consultar una factura por su ID."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-detail", kwargs={"id": self.factura.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(response.data["id"]), str(self.factura.id))
+        self.assertEqual(response.data["cae"], "12345678901234")
+
+    def test_consulta_calendario_facturas_exitoso(self):
+        """HU-11 / TEST-P-003: Verificar que el calendario tributario retorna HTTP 200 OK y eventos serializados."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-calendario")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("facturas", response.data)
+        self.assertIsInstance(response.data["facturas"], list)
+        self.assertIn("resumen", response.data)
+
+    def test_emitir_factura_payload_valido_exitoso(self):
+        """HU-11 / TEST-P-003: Emisión de factura electrónica fiscal retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        nueva_orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Alineación y balanceo computarizado"
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=nueva_orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y balanceo",
+            cantidad=1,
+            precio_unitario=Decimal("25000.00")
+        )
+        nueva_orden.refresh_from_db()
+        url = reverse("factura-emitir")
+        payload = {"orden_trabajo_id": str(nueva_orden.id)}
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("cae", response.data)
+        self.assertEqual(len(response.data["cae"]), 14)
+        self.assertEqual(response.data["estado"], "emitida")
+
+
