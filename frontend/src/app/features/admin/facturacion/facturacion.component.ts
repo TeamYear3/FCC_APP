@@ -169,6 +169,9 @@ export class FacturacionComponent implements OnInit {
   }
 
   confirmarEmision(): void {
+    if (this.emitirEnProgreso()) {
+      return;
+    }
     if (!this.ordenSeleccionadaId) {
       this.error.set('Seleccione una Orden de Trabajo para facturar.');
       return;
