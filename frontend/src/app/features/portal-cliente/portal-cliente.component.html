@@ -52,6 +52,7 @@
         <button
           type="button"
           (click)="abrirModalPerfil()"
+          data-testid="portal-perfil-btn"
           class="px-4 py-2.5 rounded-full border border-color-primary-accent/40 bg-color-primary-accent/10 hover:bg-color-primary-accent/20 text-color-primary-accent font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <svg class="w-4 h-4 text-color-primary-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,6 +64,7 @@
         <button
           type="button"
           (click)="logout()"
+          data-testid="portal-logout-btn"
           class="px-4 py-2.5 rounded-full border border-[#2A2A2A] bg-[#1E1E1E] hover:bg-[#2A2A2A] text-gray-300 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
         >
           <svg
@@ -89,6 +91,7 @@
       <button
         type="button"
         (click)="cambiarTab('ordenes')"
+        data-testid="portal-tab-ordenes"
         class="pb-3 font-bold transition-all border-b-2 cursor-pointer bg-transparent border-0"
         [ngClass]="
           tabActivo() === 'ordenes'
@@ -101,6 +104,7 @@
       <button
         type="button"
         (click)="cambiarTab('vehiculos')"
+        data-testid="portal-tab-vehiculos"
         class="pb-3 font-bold transition-all border-b-2 cursor-pointer bg-transparent border-0"
         [ngClass]="
           tabActivo() === 'vehiculos'

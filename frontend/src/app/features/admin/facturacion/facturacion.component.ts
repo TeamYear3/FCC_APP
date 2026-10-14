@@ -42,9 +42,12 @@ export class FacturacionComponent implements OnInit {
   readonly modalImpresionAbierto = signal<boolean>(false);
   readonly facturaAImprimir = signal<Factura | null>(null);
 
-  // Filtro
+  // Filtros avanzados (TK209)
   filtroEstadoPago: string = '';
   filtroTipo: string = '';
+  filtroFechaDesde: string = '';
+  filtroFechaHasta: string = '';
+  filtroCliente: string = '';
   busqueda: string = '';
 
   // Formulario de emisión (TK098 / TK156)
@@ -94,7 +97,11 @@ export class FacturacionComponent implements OnInit {
     this.error.set(null);
     this.facturacionService.getFacturas({
       estado_pago: this.filtroEstadoPago || undefined,
-      tipo: this.filtroTipo || undefined
+      tipo: this.filtroTipo || undefined,
+      fecha_desde: this.filtroFechaDesde || undefined,
+      fecha_hasta: this.filtroFechaHasta || undefined,
+      cliente: this.filtroCliente || undefined,
+      busqueda: this.busqueda || undefined
     }).subscribe({
       next: (data) => {
         this.facturas.set(data || []);
@@ -107,6 +114,16 @@ export class FacturacionComponent implements OnInit {
         this.cargando.set(false);
       }
     });
+  }
+
+  limpiarFiltros(): void {
+    this.filtroEstadoPago = '';
+    this.filtroTipo = '';
+    this.filtroFechaDesde = '';
+    this.filtroFechaHasta = '';
+    this.filtroCliente = '';
+    this.busqueda = '';
+    this.cargarFacturas();
   }
 
   abrirModalEmision(orden?: OrdenPendienteFacturar): void {
@@ -224,6 +241,24 @@ export class FacturacionComponent implements OnInit {
     return this.facturas().filter((f) => {
       const cumpleFiltroEstado = !this.filtroEstadoPago || f.estado_pago === this.filtroEstadoPago;
       const cumpleFiltroTipo = !this.filtroTipo || f.tipo_comprobante === this.filtroTipo;
+
+      let cumpleFecha = true;
+      if (this.filtroFechaDesde && f.fecha_emision) {
+        const fechaF = f.fecha_emision.slice(0, 10);
+        cumpleFecha = cumpleFecha && fechaF >= this.filtroFechaDesde;
+      }
+      if (this.filtroFechaHasta && f.fecha_emision) {
+        const fechaF = f.fecha_emision.slice(0, 10);
+        cumpleFecha = cumpleFecha && fechaF <= this.filtroFechaHasta;
+      }
+
+      let cumpleCliente = true;
+      if (this.filtroCliente) {
+        const termCli = this.filtroCliente.toLowerCase();
+        cumpleCliente =
+          !!(f.cliente_nombre && f.cliente_nombre.toLowerCase().includes(termCli));
+      }
+
       const term = this.busqueda.toLowerCase();
       const cumpleBusqueda =
         !term ||
@@ -232,7 +267,7 @@ export class FacturacionComponent implements OnInit {
         (f.vehiculo_patente && f.vehiculo_patente.toLowerCase().includes(term)) ||
         (f.cae && f.cae.includes(term));
 
-      return cumpleFiltroEstado && cumpleFiltroTipo && cumpleBusqueda;
+      return cumpleFiltroEstado && cumpleFiltroTipo && cumpleFecha && cumpleCliente && cumpleBusqueda;
     });
   }
 }

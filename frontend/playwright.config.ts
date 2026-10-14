@@ -2,10 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Configuración oficial de Playwright E2E y Accesibilidad (WCAG 2.2 AA)
- * Verificación y Validación de Programas - Cátedra ISPC
+ * Materia: Verificación y Validación de Programas - Cátedra ISPC
+ * Criterios: Pirámide de Cohn, Auto-waiting nativo, POM desacoplado y evidencias forenses
  */
 export default defineConfig({
   testDir: './e2e/tests',
+  outputDir: './e2e/test-results',
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
@@ -17,9 +19,11 @@ export default defineConfig({
   ],
   use: {
     baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:4300',
-    trace: 'on',
-    screenshot: 'on',
-    video: 'on',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    actionTimeout: 10 * 1000,
+    navigationTimeout: 15 * 1000,
   },
   projects: [
     {

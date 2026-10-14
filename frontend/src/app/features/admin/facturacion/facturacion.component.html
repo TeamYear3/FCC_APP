@@ -204,45 +204,91 @@
     }
   </div>
 
-  <!-- Barra de Filtros y Búsqueda de Facturas Emitidas -->
+  <!-- Barra de Filtros y Búsqueda Avanzada de Facturas Emitidas (TK209) -->
   <div
-    class="bg-color-surface-container border border-white/10 rounded-card p-4 flex flex-col md:flex-row items-center justify-between gap-4"
+    class="bg-color-surface-container border border-white/10 rounded-card p-4 flex flex-col gap-3"
   >
-    <div class="flex items-center gap-3 w-full md:w-auto">
-      <input
-        type="text"
-        [(ngModel)]="busqueda"
-        placeholder="Buscar por N° comprobante, CAE, cliente o patente..."
-        class="w-full md:w-80 px-4 py-2 rounded-pill bg-black/60 border border-white/10 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-color-primary-accent"
-      />
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+        <input
+          type="text"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar N° comprobante, CAE o patente..."
+          class="w-full sm:w-64 px-4 py-2 rounded-pill bg-black/60 border border-white/10 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-color-primary-accent"
+        />
 
-      <select
-        [(ngModel)]="filtroTipo"
-        (change)="cargarFacturas()"
-        class="px-3 py-2 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent"
-      >
-        <option value="">Todos los Comprobantes</option>
-        <option value="A">Factura A</option>
-        <option value="B">Factura B</option>
-        <option value="C">Factura C</option>
-      </select>
+        <input
+          type="text"
+          [(ngModel)]="filtroCliente"
+          (input)="cargarFacturas()"
+          placeholder="Filtrar por cliente / CUIT..."
+          class="w-full sm:w-48 px-4 py-2 rounded-pill bg-black/60 border border-white/10 text-white placeholder-zinc-500 text-xs focus:outline-none focus:border-color-primary-accent"
+        />
 
-      <select
-        [(ngModel)]="filtroEstadoPago"
-        (change)="cargarFacturas()"
-        class="px-3 py-2 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent"
-      >
-        <option value="">Todos los Estados</option>
-        <option value="pagada">Pagada</option>
-        <option value="a_vencer">A Vencer</option>
-        <option value="vencida">Vencida</option>
-        <option value="sin_interaccion">Sin Interacción</option>
-      </select>
+        <select
+          [(ngModel)]="filtroTipo"
+          (change)="cargarFacturas()"
+          class="px-3 py-2 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent cursor-pointer"
+        >
+          <option value="">Todos los Comprobantes</option>
+          <option value="A">Factura A</option>
+          <option value="B">Factura B</option>
+          <option value="C">Factura C</option>
+        </select>
+
+        <select
+          [(ngModel)]="filtroEstadoPago"
+          (change)="cargarFacturas()"
+          class="px-3 py-2 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent cursor-pointer"
+        >
+          <option value="">Todos los Estados</option>
+          <option value="pagada">Pagada</option>
+          <option value="a_vencer">A Vencer</option>
+          <option value="vencida">Vencida</option>
+          <option value="sin_interaccion">Sin Interacción</option>
+        </select>
+      </div>
+
+      <div class="text-xs text-color-text-secondary font-medium">
+        Total facturas registradas:
+        <strong class="text-white">{{ facturasFiltradas().length }}</strong>
+      </div>
     </div>
 
-    <div class="text-xs text-color-text-secondary font-medium">
-      Total facturas registradas:
-      <strong class="text-white">{{ facturasFiltradas().length }}</strong>
+    <!-- Fila de Rango de Fechas y Reset -->
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/5">
+      <div class="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+        <span class="font-semibold text-zinc-300">Rango de Emisión:</span>
+        <label class="flex items-center gap-1.5">
+          <span>Desde:</span>
+          <input
+            type="date"
+            [(ngModel)]="filtroFechaDesde"
+            (change)="cargarFacturas()"
+            class="px-3 py-1.5 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+          />
+        </label>
+        <label class="flex items-center gap-1.5">
+          <span>Hasta:</span>
+          <input
+            type="date"
+            [(ngModel)]="filtroFechaHasta"
+            (change)="cargarFacturas()"
+            class="px-3 py-1.5 rounded-pill bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-color-primary-accent"
+          />
+        </label>
+      </div>
+
+      <button
+        type="button"
+        (click)="limpiarFiltros()"
+        class="px-3 py-1.5 rounded-pill bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span>Limpiar Filtros</span>
+      </button>
     </div>
   </div>
 

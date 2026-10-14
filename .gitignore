@@ -60,6 +60,12 @@ tests/api/reports/*.html
 tests/api/reports/*.xml
 frontend/playwright-report/
 frontend/test-results/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+coverage.xml
+
 
 
 
