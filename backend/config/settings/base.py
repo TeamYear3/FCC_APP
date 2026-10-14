@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 # BASE_DIR apunta a la raíz del proyecto (FccApp/)
@@ -54,11 +55,27 @@ except ImportError:
 
 ASGI_APPLICATION = "config.asgi.application"
 
+REDIS_HOST = os.getenv("REDIS_HOST", "redis")
+REDIS_PORT = os.getenv("REDIS_PORT", "6379")
+REDIS_URL = os.getenv("REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}")
+
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [f"{REDIS_URL}/0"],
+        },
     }
 }
+
+# Aislamiento hermético de WebSockets durante la ejecución de pruebas unitarias
+if "test" in sys.argv:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
+
 
 
 PASSWORD_HASHERS = [
@@ -183,17 +200,24 @@ PASSWORD_RESET_TIMEOUT = 3600
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "fcc_app")
 
-# Cache Configuration (TK185)
-REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-REDIS_PORT = os.getenv("REDIS_PORT", "6379")
-
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1",
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"{REDIS_URL}/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
         "TIMEOUT": 300,  # 5 minutos TTL por defecto
     }
 }
+
+# Aislamiento hermético de caché durante la ejecución de pruebas unitarias
+if "test" in sys.argv:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 # Logging Configuration con correlación X-Request-ID y rotación (TK165)
 LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)

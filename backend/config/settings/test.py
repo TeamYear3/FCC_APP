@@ -35,3 +35,11 @@ CACHES = {
     }
 }
 
+# Usar InMemoryChannelLayer para aislar WebSockets en pruebas unitarias (TK172)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
+
+
