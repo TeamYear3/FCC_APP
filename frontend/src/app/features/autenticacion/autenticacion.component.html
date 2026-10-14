@@ -19,7 +19,7 @@
     <div class="w-40 h-1 bg-color-primary-accent rounded-full mt-1 mb-6 shadow-[0_0_10px_rgba(255,204,0,0.4)]"></div>
 
     <!-- Card de Autenticación estilo Glassmorphism -->
-    <div class="w-full bg-black/60 backdrop-blur-md border border-color-primary-accent/25 rounded-card p-6 shadow-[0_0_25px_rgba(255,204,0,0.15)] flex flex-col gap-6">
+    <div class="w-full bg-black/60 backdrop-blur-md border border-color-primary-accent/25 rounded-card p-6 shadow-[0_0_25px_rgba(255,204,0,0.15)] flex flex-col gap-6" data-testid="auth-card">
       
       <!-- Título según el modo -->
       <div class="text-center">
@@ -36,13 +36,13 @@
 
       <!-- Mensajes de feedback (visibles en la parte superior del formulario sin requerir scroll) -->
       @if (errorMessage()) {
-        <div class="w-full p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center font-medium animate-fadeIn">
+        <div data-testid="login-error-message" class="w-full p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center font-medium animate-fadeIn">
           {{ errorMessage() }}
         </div>
       }
 
       @if (successMessage()) {
-        <div class="w-full p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center font-medium animate-fadeIn">
+        <div data-testid="auth-success-message" class="w-full p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center font-medium animate-fadeIn">
           {{ successMessage() }}
         </div>
       }
@@ -51,7 +51,7 @@
 
       <!-- 1. LOGIN FORM -->
       @if (mode() === 'login') {
-        <form [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()" class="flex flex-col gap-4">
+        <form [formGroup]="loginForm" (ngSubmit)="onLoginSubmit()" class="flex flex-col gap-4" data-testid="login-form">
           <div>
             <label for="login-email" class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Correo electrónico</label>
             <input 
@@ -59,7 +59,7 @@
               type="email" 
               formControlName="email" 
               placeholder="ejemplo@correo.com"
-              data-testid="input-email"
+              data-testid="login-email-input"
               class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
             <app-field-error [control]="loginForm.get('email')"></app-field-error>
@@ -72,12 +72,13 @@
                 [type]="showLoginPassword() ? 'text' : 'password'" 
                 formControlName="password" 
                 placeholder="••••••••"
-                data-testid="input-password"
+                data-testid="login-password-input"
                 class="w-full px-4 py-3 pr-11 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <button 
                 type="button" 
                 (click)="toggleLoginPassword()" 
+                data-testid="toggle-password-btn"
                 [attr.aria-label]="showLoginPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 class="absolute right-3 p-1 text-gray-400 hover:text-color-primary-accent focus:outline-none transition-colors cursor-pointer"
               >
@@ -100,6 +101,7 @@
             <button 
               type="button" 
               (click)="changeMode('reset-request')" 
+              data-testid="forgot-password-btn"
               class="text-xs text-color-primary-accent hover:underline bg-transparent border-none cursor-pointer"
             >
               ¿Olvidaste tu contraseña?
@@ -108,7 +110,7 @@
 
           <button
             type="submit"
-            data-testid="btn-login-submit"
+            data-testid="login-submit-button"
             [disabled]="loginForm.invalid || isSubmitting() || isInitializing()"
             class="w-full min-h-[48px] rounded-pill bg-color-primary-accent text-black font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent tracking-wide mt-2"
           >
@@ -129,6 +131,7 @@
             [disabled]="isInitializing() || isSubmitting()"
             [label]="'Iniciar sesión con Google'"
             (loginClick)="onGoogleLogin()"
+            data-testid="btn-google-login"
             class="w-full"
           ></app-google-login-button>
         </div>
@@ -138,6 +141,7 @@
           <button 
             type="button" 
             (click)="changeMode('registro')" 
+            data-testid="register-link"
             class="text-color-primary-accent hover:underline font-bold bg-transparent border-none cursor-pointer"
           >
             Regístrate aquí
@@ -147,7 +151,7 @@
 
       <!-- 2. REGISTRO FORM -->
       @if (mode() === 'registro') {
-        <form [formGroup]="registroForm" (ngSubmit)="onRegistroSubmit()" class="flex flex-col gap-4">
+        <form [formGroup]="registroForm" (ngSubmit)="onRegistroSubmit()" class="flex flex-col gap-4" data-testid="register-form">
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-2">Nombre</label>
@@ -155,6 +159,7 @@
                 type="text" 
                 formControlName="nombre" 
                 placeholder="Juan"
+                data-testid="register-nombre-input"
                 class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <app-field-error [control]="registroForm.get('nombre')"></app-field-error>
@@ -165,6 +170,7 @@
                 type="text" 
                 formControlName="apellido" 
                 placeholder="Pérez"
+                data-testid="register-apellido-input"
                 class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <app-field-error [control]="registroForm.get('apellido')"></app-field-error>
@@ -176,6 +182,7 @@
                 type="email" 
                 formControlName="email" 
                 placeholder="juan@correo.com"
+                data-testid="register-email-input"
                 class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
             <app-field-error [control]="registroForm.get('email')"></app-field-error>
@@ -187,11 +194,13 @@
                 [type]="showRegisterPassword() ? 'text' : 'password'" 
                 formControlName="password" 
                 placeholder="•••••••• (mín. 6 caracteres)"
+                data-testid="register-password-input"
                 class="w-full px-4 py-3 pr-11 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <button 
                 type="button" 
                 (click)="toggleRegisterPassword()" 
+                data-testid="toggle-register-password-btn"
                 [attr.aria-label]="showRegisterPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 class="absolute right-3 p-1 text-gray-400 hover:text-color-primary-accent focus:outline-none transition-colors cursor-pointer"
               >
@@ -216,11 +225,13 @@
                 [type]="showRegisterConfirmPassword() ? 'text' : 'password'" 
                 formControlName="confirmPassword" 
                 placeholder="••••••••"
+                data-testid="register-confirm-password-input"
                 class="w-full px-4 py-3 pr-11 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <button 
                 type="button" 
                 (click)="toggleRegisterConfirmPassword()" 
+                data-testid="toggle-register-confirm-password-btn"
                 [attr.aria-label]="showRegisterConfirmPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 class="absolute right-3 p-1 text-gray-400 hover:text-color-primary-accent focus:outline-none transition-colors cursor-pointer"
               >
@@ -238,12 +249,13 @@
             </div>
             <app-field-error [control]="registroForm.get('confirmPassword')"></app-field-error>
             @if (registroForm.hasError('mismatch') && registroForm.get('confirmPassword')?.touched) {
-              <span class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
+              <span data-testid="register-mismatch-error" class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
             }
           </div>
 
           <button
             type="submit"
+            data-testid="register-submit-button"
             [disabled]="registroForm.invalid || isSubmitting()"
             class="w-full min-h-[48px] rounded-pill bg-color-primary-accent text-black font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent tracking-wide mt-2"
           >
@@ -255,6 +267,7 @@
             <button 
               type="button" 
               (click)="changeMode('login')" 
+              data-testid="back-to-login-link"
               class="text-color-primary-accent hover:underline font-bold bg-transparent border-none cursor-pointer"
             >
               Inicia sesión
@@ -265,7 +278,7 @@
 
       <!-- 3. RESET REQUEST FORM -->
       @if (mode() === 'reset-request') {
-        <form [formGroup]="resetRequestForm" (ngSubmit)="onResetRequestSubmit()" class="flex flex-col gap-4">
+        <form [formGroup]="resetRequestForm" (ngSubmit)="onResetRequestSubmit()" class="flex flex-col gap-4" data-testid="reset-request-form">
           <p class="text-xs text-color-text-secondary leading-relaxed mb-1">
             Ingresa el correo electrónico asociado a tu cuenta. Te enviaremos un correo con un token y un enlace para restablecer tu contraseña.
           </p>
@@ -275,6 +288,7 @@
               type="email" 
               formControlName="email" 
               placeholder="ejemplo@correo.com"
+              data-testid="reset-request-email-input"
               class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
             />
             <app-field-error [control]="resetRequestForm.get('email')"></app-field-error>
@@ -282,6 +296,7 @@
 
           <button
             type="submit"
+            data-testid="reset-request-submit-button"
             [disabled]="resetRequestForm.invalid || isSubmitting()"
             class="w-full min-h-[48px] rounded-pill bg-color-primary-accent text-black font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent tracking-wide mt-2"
           >
@@ -292,6 +307,7 @@
             <button 
               type="button" 
               (click)="changeMode('login')" 
+              data-testid="reset-request-back-btn"
               class="text-color-primary-accent hover:underline font-bold bg-transparent border-none cursor-pointer"
             >
               Volver al Inicio
@@ -302,7 +318,7 @@
 
       <!-- 4. RESET CONFIRM FORM -->
       @if (mode() === 'reset-confirm') {
-        <form [formGroup]="resetConfirmForm" (ngSubmit)="onResetConfirmSubmit()" class="flex flex-col gap-4">
+        <form [formGroup]="resetConfirmForm" (ngSubmit)="onResetConfirmSubmit()" class="flex flex-col gap-4" data-testid="reset-confirm-form">
           <p class="text-xs text-color-text-secondary leading-relaxed mb-1">
             Establece tu nueva contraseña de acceso al sistema.
           </p>
@@ -313,11 +329,13 @@
                 [type]="showResetPassword() ? 'text' : 'password'" 
                 formControlName="password" 
                 placeholder="•••••••• (mín. 6 caracteres)"
+                data-testid="reset-confirm-password-input"
                 class="w-full px-4 py-3 pr-11 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <button 
                 type="button" 
                 (click)="toggleResetPassword()" 
+                data-testid="toggle-reset-password-btn"
                 [attr.aria-label]="showResetPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 class="absolute right-3 p-1 text-gray-400 hover:text-color-primary-accent focus:outline-none transition-colors cursor-pointer"
               >
@@ -342,11 +360,13 @@
                 [type]="showResetConfirmPassword() ? 'text' : 'password'" 
                 formControlName="confirmPassword" 
                 placeholder="••••••••"
+                data-testid="reset-confirm-password-confirm-input"
                 class="w-full px-4 py-3 pr-11 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent focus:shadow-[0_0_8px_rgba(255,204,0,0.25)] transition-all text-sm"
               />
               <button 
                 type="button" 
                 (click)="toggleResetConfirmPassword()" 
+                data-testid="toggle-reset-confirm-password-btn"
                 [attr.aria-label]="showResetConfirmPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 class="absolute right-3 p-1 text-gray-400 hover:text-color-primary-accent focus:outline-none transition-colors cursor-pointer"
               >
@@ -364,12 +384,13 @@
             </div>
             <app-field-error [control]="resetConfirmForm.get('confirmPassword')"></app-field-error>
             @if (resetConfirmForm.hasError('mismatch') && resetConfirmForm.get('confirmPassword')?.touched) {
-              <span class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
+              <span data-testid="register-mismatch-error" class="text-xs text-red-400 mt-1 block">Las contraseñas no coinciden.</span>
             }
           </div>
 
           <button
             type="submit"
+            data-testid="reset-confirm-submit-button"
             [disabled]="resetConfirmForm.invalid || isSubmitting()"
             class="w-full min-h-[48px] rounded-pill bg-color-primary-accent text-black font-bold flex items-center justify-center transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md focus:outline-none focus:ring-2 focus:ring-color-primary-accent tracking-wide mt-2"
           >

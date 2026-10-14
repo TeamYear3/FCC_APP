@@ -5,6 +5,7 @@
     <div class="flex items-center justify-between py-2 border-b border-white/10">
       <a
         [routerLink]="returnUrl()"
+        data-testid="vehiculo-cancelar-btn"
         class="p-2 -ml-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5 flex items-center justify-center"
       >
         <span class="material-symbols-outlined">arrow_back</span>
@@ -262,6 +263,7 @@
               <input
                 type="text"
                 formControlName="marca"
+                data-testid="vehiculo-marca-input"
                 placeholder="Ingrese Marca (Ej: Volkswagen, Ford, Toyota)"
                 class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
               />
@@ -307,6 +309,7 @@
               <input
                 type="text"
                 formControlName="modelo"
+                data-testid="vehiculo-modelo-input"
                 placeholder="Ingrese Modelo (Ej: Amarok V6, Ranger, Hilux)"
                 class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
               />
@@ -353,6 +356,7 @@
                 <input
                   type="number"
                   formControlName="anio"
+                  data-testid="vehiculo-anio-input"
                   placeholder="Ingrese Año (Ej: 2022)"
                   class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium"
                 />
@@ -401,6 +405,7 @@
               >
               <select
                 formControlName="tipo_motor"
+                data-testid="vehiculo-tipo-motor-select"
                 class="bg-transparent text-white w-full focus:outline-none text-sm font-medium cursor-pointer"
               >
                 <option value="NAFTERO" class="bg-color-surface-container text-white">
@@ -452,6 +457,7 @@
               <input
                 type="text"
                 formControlName="patente"
+                data-testid="vehiculo-patente-input"
                 placeholder="Ingrese Patente (Ej: ABC123 o AB123CD)"
                 class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -502,6 +508,7 @@
               <input
                 type="text"
                 formControlName="nro_chasis"
+                data-testid="vehiculo-chasis-input"
                 placeholder="Ingrese N° de Chasis (Ej: 8AGEK123...)"
                 class="bg-transparent text-white placeholder-gray-500 w-full focus:outline-none text-sm font-medium uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -640,6 +647,7 @@
       <!-- Botón de Acción Principal (Estilo Pill Action Button) -->
       <button
         type="submit"
+        data-testid="vehiculo-guardar-btn"
         [disabled]="isSubmitting()"
         class="w-full bg-color-primary-accent hover:bg-color-primary-accent/90 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold py-4 rounded-full shadow-lg hover:shadow-color-primary-accent/20 transition-all flex items-center justify-center gap-2 text-base tracking-wide mt-2"
       >
