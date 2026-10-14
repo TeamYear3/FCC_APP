@@ -140,6 +140,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
+    "DEFAULT_PAGINATION_CLASS": "core.pagination.EstandarPageNumberPagination",
+    "PAGE_SIZE": 10,
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
 }
 
