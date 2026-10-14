@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from core.permissions import EsAdministrador
+from core.mongo import registrar_telemetria_arca
 from ordenes.models import OrdenTrabajo
 from .models import Factura, EstadoFactura, EstadoPago, TipoComprobante
 from .arca_client import ArcaWSClient, ArcaFiscalError, ArcaAuthError
@@ -47,6 +48,15 @@ class EmitirFacturaView(APIView):
             cliente.condicion_iva = condicion_iva_override
             cliente.save(update_fields=["condicion_iva", "actualizado_en"])
 
+        datos_solicitud = {
+            "orden_id": str(orden.id),
+            "total": str(orden.monto_total),
+            "tipo_comprobante": tipo_comprobante,
+            "punto_venta": punto_venta,
+            "doc_tipo": getattr(cliente, "tipo_documento", "DNI"),
+            "doc_nro": getattr(cliente, "dni_cuit", "0"),
+        }
+
         # Llamar al WebService de ARCA para autorizar y obtener CAE oficial
         try:
             arca_response = ArcaWSClient.solicitar_cae(
@@ -57,12 +67,32 @@ class EmitirFacturaView(APIView):
                 doc_nro=getattr(cliente, "dni_cuit", "0"),
                 condicion_iva=getattr(cliente, "condicion_iva", "CF")
             )
+            registrar_telemetria_arca(
+                datos_solicitud=datos_solicitud,
+                respuesta_arca=arca_response,
+                orden_id=orden.id,
+                exitoso=True
+            )
         except ArcaFiscalError as exc:
+            registrar_telemetria_arca(
+                datos_solicitud=datos_solicitud,
+                respuesta_arca={"observaciones": exc.observaciones},
+                orden_id=orden.id,
+                exitoso=False,
+                error=str(exc)
+            )
             return Response(
                 {"error": str(exc), "observaciones": exc.observaciones},
                 status=status.HTTP_400_BAD_REQUEST
             )
         except ArcaAuthError as exc:
+            registrar_telemetria_arca(
+                datos_solicitud=datos_solicitud,
+                respuesta_arca=None,
+                orden_id=orden.id,
+                exitoso=False,
+                error=str(exc)
+            )
             return Response(
                 {"error": f"Falla de autenticación fiscal con ARCA: {str(exc)}"},
                 status=status.HTTP_502_BAD_GATEWAY
