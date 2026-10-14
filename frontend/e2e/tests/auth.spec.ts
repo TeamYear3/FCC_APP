@@ -133,4 +133,155 @@ test.describe('AUT-E2E-03: Flujo Crítico 1 - Autenticación Completa y Gestión
 
   });
 
+  test.describe('Módulo 2: Login y Autenticación (HU-002)', () => {
+
+    test('TEST-LOG-001: Login exitoso como Administrador, verificación de tokens y redirección a dashboard', async ({ page, loginPage, dashboardPage }) => {
+      /**
+       * HU: HU-002 - Inicio de Sesión
+       * TC: TEST-LOG-001 - Login local exitoso con rol Administrador
+       * Capa: UI / E2E con almacenamiento y redirección
+       */
+      const tokenAdmin = crearJwtMock('admin', 'admin@taller.com', 'Administrador General');
+      const tokenRefresh = 'mock_refresh_token_admin_ispc';
+
+      await page.route('**/api/auth/login/', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            access: tokenAdmin,
+            refresh: tokenRefresh,
+          })
+        });
+      });
+
+      // 1. Navegar a autenticación
+      await loginPage.navigate();
+
+      // 2. Iniciar sesión como administrador (Regla 4 POM: retorna DashboardPage)
+      await loginPage.iniciarSesionComoAdmin('admin@taller.com', 'admin1234');
+
+      // 3. Verificar redirección exitosa a /admin/dashboard
+      await expect(page).toHaveURL(/.*admin\/dashboard/);
+
+      // 4. Validar persistencia de tokens en localStorage
+      const tokens = await loginPage.obtenerTokensAlmacenados();
+      expect(tokens.access).toBe(tokenAdmin);
+      expect(tokens.refresh).toBe(tokenRefresh);
+    });
+
+    test.describe('TEST-LOG-003: Login inválido parametrizado (4 combinaciones obligatorias)', () => {
+
+      const combinacionesNegativas = [
+        {
+          id: 'TC-AUTH-INV-01',
+          descripcion: 'Contraseña errónea (API 401 Unauthorized)',
+          email: 'admin@taller.com',
+          password: 'PasswordErroneo123',
+          tipo: 'api' as const,
+          errorBody: { detail: 'Correo electrónico o contraseña incorrectos.' },
+          regexEsperada: /incorrectos|credenciales/i,
+        },
+        {
+          id: 'TC-AUTH-INV-02',
+          descripcion: 'Usuario inexistente en el sistema (API 401)',
+          email: 'inexistente@taller.com',
+          password: 'PasswordValido123',
+          tipo: 'api' as const,
+          errorBody: { detail: 'No existe una cuenta activa con las credenciales ingresadas.' },
+          regexEsperada: /No existe una cuenta|incorrectos/i,
+        },
+        {
+          id: 'TC-AUTH-INV-03',
+          descripcion: 'Formato de email inválido sin arroba',
+          email: 'usuario-sin-arroba-formato',
+          password: 'PasswordValido123',
+          tipo: 'cliente' as const,
+        },
+        {
+          id: 'TC-AUTH-INV-04',
+          descripcion: 'Campos incompletos o contraseña menor a 6 caracteres',
+          email: 'admin@taller.com',
+          password: '123',
+          tipo: 'cliente' as const,
+        },
+      ];
+
+      for (const caso of combinacionesNegativas) {
+        test(`${caso.id}: ${caso.descripcion}`, async ({ page, loginPage }) => {
+          /**
+           * HU: HU-002 - Inicio de Sesión
+           * TC: TEST-LOG-003 - Suite parametrizada de login negativo
+           * Criterio: Al menos 4 combinaciones con feedback en pantalla o bloqueo de envío
+           */
+          if (caso.tipo === 'api') {
+            await page.route('**/api/auth/login/', async (route) => {
+              await route.fulfill({
+                status: 401,
+                contentType: 'application/json',
+                body: JSON.stringify(caso.errorBody),
+              });
+            });
+
+            await loginPage.navigate();
+            await loginPage.intentarLoginInvalido(caso.email, caso.password);
+
+            // Verificación visual del mensaje de error
+            await expect(loginPage.errorMessage).toBeVisible();
+            await expect(loginPage.errorMessage).toContainText(caso.regexEsperada!);
+            await expect(page).toHaveURL(/.*autenticacion/);
+          } else {
+            // Caso de validación reactiva en cliente Angular
+            await loginPage.navigate();
+            await loginPage.enterEmail(caso.email);
+            await loginPage.enterPassword(caso.password);
+            await loginPage.passwordInput.blur();
+
+            // El botón de submit debe permanecer deshabilitado impidiendo envíos corruptos
+            await expect(loginPage.submitButton).toBeDisabled();
+            await expect(page).toHaveURL(/.*autenticacion/);
+          }
+        });
+      }
+
+    });
+
+    test.describe('TEST-LOG-004: Control de acceso por rol (RoleGuard RBAC)', () => {
+
+      test('RBAC-01: Redirección de usuario anónimo sin sesión al intentar acceder a /admin/dashboard', async ({ page }) => {
+        /**
+         * HU: HU-002 - Autenticación y Autorización
+         * TC: TEST-LOG-004 - RoleGuard impidiendo acceso no autenticado
+         */
+        // Intentar ingresar directamente a la vista administrativa sin tokens
+        await page.goto('/admin/dashboard');
+
+        // RoleGuard debe interceptar y redirigir al login
+        await expect(page).toHaveURL(/.*autenticacion/);
+      });
+
+      test('RBAC-02: Bloqueo y redirección a /acceso-denegado para rol "cliente" en rutas administrativas', async ({ page, loginPage }) => {
+        /**
+         * HU: HU-002 - Autenticación y Autorización
+         * TC: TEST-LOG-004 - RoleGuard aislando rutas administrativas del rol cliente
+         */
+        // Inyectar sesión simulada de Cliente en localStorage
+        await loginPage.setMockSession({
+          email: 'cliente.aislado@ejemplo.com',
+          role: 'cliente',
+          nombre: 'Cliente Aislado'
+        });
+
+        // Intentar navegar hacia el panel administrativo
+        await page.goto('/admin/dashboard');
+
+        // RoleGuard debe redirigir a acceso denegado por estricta política RBAC
+        await expect(page).toHaveURL(/.*acceso-denegado/);
+      });
+
+    });
+
+  });
+
 });
+
