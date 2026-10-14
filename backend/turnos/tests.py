@@ -1,9 +1,13 @@
+from io import StringIO
 from rest_framework.test import APITestCase
 from rest_framework import status
+from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.core import mail
 from django.utils import timezone
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
 from .models import Turno
@@ -422,5 +426,97 @@ class TurnosCasosFelicesAPITest(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["motivo"], "Revisión técnica y alineación")
+
+
+class RecordatoriosTurnosCommandTests(TestCase):
+    """Pruebas unitarias para el comando enviar_recordatorios_turnos (TK203 / US-17)."""
+
+    def setUp(self):
+        self.user = Usuario.objects.create_user(
+            email="notificar@cliente.com",
+            password="password123",
+            nombre="Lucas",
+            apellido="Mendez",
+            rol="cliente"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user,
+            nombre="Lucas",
+            apellido="Mendez",
+            tipo_documento="DNI",
+            dni_cuit="44556677",
+            email="notificar@cliente.com"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AB123CD",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2021
+        )
+
+    def test_enviar_recordatorio_turno_24h_anticipacion_exitoso(self):
+        # Arrange
+        fecha_manana = timezone.now() + timedelta(hours=24)
+        Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=fecha_manana,
+            motivo="Cambio de aceite y filtros",
+            estado="pendiente"
+        )
+        out = StringIO()
+
+        # Act
+        call_command("enviar_recordatorios_turnos", "--horas=24", stdout=out)
+
+        # Assert
+        output = out.getvalue()
+        self.assertIn("[ENVIADO] Recordatorio enviado a notificar@cliente.com", output)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Recordatorio de Turno de Taller", mail.outbox[0].subject)
+        self.assertIn("Lucas Mendez", mail.outbox[0].body)
+        self.assertIn("Toyota Corolla (AB123CD)", mail.outbox[0].body)
+
+    def test_no_enviar_recordatorio_para_turnos_fuera_de_ventana(self):
+        # Arrange: Turno para dentro de 5 días
+        fecha_lejana = timezone.now() + timedelta(days=5)
+        Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=fecha_lejana,
+            motivo="Alineación",
+            estado="pendiente"
+        )
+        out = StringIO()
+
+        # Act
+        call_command("enviar_recordatorios_turnos", "--horas=24", stdout=out)
+
+        # Assert
+        output = out.getvalue()
+        self.assertIn("No hay turnos pendientes para recordar", output)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_dry_run_simula_sin_disparar_emails(self):
+        # Arrange
+        fecha_manana = timezone.now() + timedelta(hours=24)
+        Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=fecha_manana,
+            motivo="Revisión de frenos",
+            estado="pendiente"
+        )
+        out = StringIO()
+
+        # Act
+        call_command("enviar_recordatorios_turnos", "--horas=24", "--dry-run", stdout=out)
+
+        # Assert
+        output = out.getvalue()
+        self.assertIn("[DRY-RUN] Simulado envío a notificar@cliente.com", output)
+        self.assertEqual(len(mail.outbox), 0)
+
 
 
