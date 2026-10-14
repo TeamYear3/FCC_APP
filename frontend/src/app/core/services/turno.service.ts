@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface TurnoPayload {
-  cliente: string;
+  cliente?: string;
   vehiculo: string;
   fecha_hora: string;
   motivo: string;
