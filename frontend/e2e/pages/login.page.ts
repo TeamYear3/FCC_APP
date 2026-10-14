@@ -27,6 +27,10 @@ export class LoginPage extends BasePage {
   readonly googleLoginButton: Locator;
   readonly authCard: Locator;
 
+  // Mensajes de error de campos en formulario de Login (app-field-error)
+  readonly emailFieldError: Locator;
+  readonly passwordFieldError: Locator;
+
   // Selectores para Formulario de Registro (TK228 - Módulo 1)
   readonly registerForm: Locator;
   readonly registerNombreInput: Locator;
@@ -50,6 +54,10 @@ export class LoginPage extends BasePage {
     this.forgotPasswordButton = page.getByRole('button', { name: /¿Olvidaste tu contraseña\?/i }).or(page.getByText(/olvidaste tu contraseña/i));
     this.googleLoginButton = page.locator('app-google-login-button button, [data-testid="btn-google-login"]');
     this.authCard = page.locator('.rounded-card, [data-testid="auth-card"], form');
+
+    // Mensajes de error reactivos de login
+    this.emailFieldError = page.locator('form[data-testid="login-form"] app-field-error').first();
+    this.passwordFieldError = page.locator('form[data-testid="login-form"] app-field-error').nth(1);
 
     // Inicialización de selectores de Registro
     this.registerForm = page.getByTestId('register-form').or(page.locator('form[data-testid="register-form"]'));

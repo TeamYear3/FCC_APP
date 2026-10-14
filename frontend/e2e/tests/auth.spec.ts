@@ -197,6 +197,8 @@ test.describe('AUT-E2E-03: Flujo Crítico 1 - Autenticación Completa y Gestión
           email: 'usuario-sin-arroba-formato',
           password: 'PasswordValido123',
           tipo: 'cliente' as const,
+          campo: 'email' as const,
+          regexEsperada: /correo electrónico válido/i,
         },
         {
           id: 'TC-AUTH-INV-04',
@@ -204,6 +206,8 @@ test.describe('AUT-E2E-03: Flujo Crítico 1 - Autenticación Completa y Gestión
           email: 'admin@taller.com',
           password: '123',
           tipo: 'cliente' as const,
+          campo: 'password' as const,
+          regexEsperada: /al menos 6 caracteres/i,
         },
       ];
 
@@ -235,7 +239,16 @@ test.describe('AUT-E2E-03: Flujo Crítico 1 - Autenticación Completa y Gestión
             await loginPage.navigate();
             await loginPage.enterEmail(caso.email);
             await loginPage.enterPassword(caso.password);
-            await loginPage.passwordInput.blur();
+
+            if (caso.campo === 'email') {
+              await loginPage.emailInput.blur();
+              await expect(loginPage.emailFieldError).toBeVisible();
+              await expect(loginPage.emailFieldError).toContainText(caso.regexEsperada!);
+            } else {
+              await loginPage.passwordInput.blur();
+              await expect(loginPage.passwordFieldError).toBeVisible();
+              await expect(loginPage.passwordFieldError).toContainText(caso.regexEsperada!);
+            }
 
             // El botón de submit debe permanecer deshabilitado impidiendo envíos corruptos
             await expect(loginPage.submitButton).toBeDisabled();
