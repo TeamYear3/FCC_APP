@@ -1728,6 +1728,131 @@ class ItemsPresupuestoOptimizacionORMTests(APITestCase):
 
 
 
+class MetodosNoPermitidosOrdenesAPITests(APITestCase):
+    """
+    AUT-BE-02: Validación de verbos HTTP no permitidos (405 Method Not Allowed)
+    en endpoints de colección, detalle y actualización de órdenes de trabajo.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_405_ot@example.com",
+            nombre="Admin",
+            apellido="Metodos",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Martin",
+            apellido="Palermo",
+            tipo_documento="DNI",
+            dni_cuit="25999888",
+            condicion_iva="CF",
+            telefono="1144445555",
+            domicilio="Brandsen 805"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            patente="AB456CD",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021,
+            cliente=self.cliente
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general",
+            fecha_ingreso=timezone.now().date(),
+            estado=EstadoOrden.INGRESADO
+        )
+
+    def test_detalle_orden_rechaza_post_con_405(self):
+        """AUT-BE-02 / HU-08: Detalle de orden (RetrieveAPIView) no admite POST."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.post(url, {"descripcion_problema": "Cambio"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_detalle_orden_rechaza_put_con_405(self):
+        """AUT-BE-02 / HU-08: Detalle de orden no admite PUT (solo lectura de detalle)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.put(url, {"descripcion_problema": "Cambio"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_detalle_orden_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-08: Detalle de orden no admite eliminación destructiva vía DELETE."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+    def test_coleccion_ordenes_rechaza_put_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint colección de órdenes no admite PUT."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+
+        # Act
+        response = self.client.put(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_actualizar_estado_rechaza_get_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint actualización de estado es exclusivo PATCH, rechaza GET."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertIn("PATCH", response.headers["Allow"])
+        self.assertNotIn("GET", response.headers["Allow"])
+
+    def test_actualizar_estado_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint actualización de estado rechaza DELETE."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+
+
 
 
 
