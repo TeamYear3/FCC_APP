@@ -5,6 +5,7 @@ from clientes.models import Cliente
 from vehiculos.models import Vehiculo
 
 class TurnoSerializer(serializers.ModelSerializer):
+    cliente = serializers.PrimaryKeyRelatedField(queryset=Cliente.objects.all(), required=False)
     warning_overbooking = serializers.SerializerMethodField()
     force_booking = serializers.BooleanField(write_only=True, required=False, default=False)
     cliente_nombre = serializers.SerializerMethodField()
@@ -57,6 +58,12 @@ class TurnoSerializer(serializers.ModelSerializer):
         estado = attrs.get("estado", "pendiente")
         force_booking = attrs.get("force_booking", False)
 
+        request = self.context.get("request")
+        if request and getattr(request.user, "rol", None) == "cliente":
+            if hasattr(request.user, "cliente_perfil"):
+                cliente = request.user.cliente_perfil
+                attrs["cliente"] = cliente
+
         # Si estamos actualizando, recuperamos los valores actuales si no se enviaron
         if self.instance:
             if not cliente:
@@ -65,6 +72,12 @@ class TurnoSerializer(serializers.ModelSerializer):
                 vehiculo = self.instance.vehiculo
             if not fecha_hora:
                 fecha_hora = self.instance.fecha_hora
+
+        # Validación 0: Cliente obligatorio
+        if not cliente and not self.instance:
+            raise serializers.ValidationError({
+                "cliente": "Debe especificar un cliente para el turno."
+            })
 
         # Validación 1: Integridad lógica del vehículo y cliente
         if cliente and vehiculo and vehiculo.cliente != cliente:

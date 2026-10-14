@@ -327,6 +327,44 @@ class TurnoAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["motivo"], "Turno rápido creado por técnico")
 
+    def test_cliente_reserva_turno_online_exitoso(self):
+        """TK207 / US-22: El cliente agenda un turno online para sus vehículos registrados."""
+        # Arrange
+        self.client.force_authenticate(user=self.client_user_a)
+        url = reverse("turno-list")
+        payload = {
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": self.fecha_base.isoformat(),
+            "motivo": "Reserva online cambio de pastillas"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data["cliente"]), str(self.cliente_a.id))
+        self.assertEqual(str(response.data["vehiculo"]), str(self.vehiculo_a.id))
+        self.assertEqual(response.data["motivo"], "Reserva online cambio de pastillas")
+
+    def test_cliente_no_puede_reservar_turno_vehiculo_ajeno(self):
+        """TK207 / US-22: Un cliente no puede agendar turno para un vehículo que no le pertenece."""
+        # Arrange
+        self.client.force_authenticate(user=self.client_user_a)
+        url = reverse("turno-list")
+        payload = {
+            "vehiculo": str(self.vehiculo_b.id),
+            "fecha_hora": self.fecha_base.isoformat(),
+            "motivo": "Intento de reserva vehículo ajeno"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("vehiculo", response.data)
+
 
 class TurnosCasosFelicesAPITest(APITestCase):
     """
