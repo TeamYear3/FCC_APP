@@ -139,6 +139,17 @@ class ClienteAPITestCase(APITestCase):
         self.assertEqual(response.data["nombre"], "Ana")
         self.assertEqual(response.data["dni_cuit"], "12345678")
 
+    def test_listar_clientes_estructura_paginada_estandar_tk170(self):
+        """TK170: Verifica que el listado de clientes responde con la estructura paginada estándar."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("count", response.data)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
+        self.assertIn("results", response.data)
+        self.assertIsInstance(response.data["results"], list)
+
     def test_crear_cliente_cuit_valido(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {

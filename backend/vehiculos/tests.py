@@ -420,8 +420,9 @@ class VehiculoAPITestCase(APITestCase):
         # Listar filtrando por cliente_actual (que tiene self.vehiculo)
         response = self.client.get(f"{self.url}?cliente={self.cliente_actual.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], str(self.vehiculo.id))
 
     def test_eliminar_vehiculo_sin_ordenes_hace_hard_delete(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -593,8 +594,9 @@ class VehiculoAPITestCase(APITestCase):
         url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
         response = self.client.get(url_maint)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["tipo_servicio"], "Frenos")
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["tipo_servicio"], "Frenos")
 
     def test_listar_mantenimientos_ajeno_prohibido(self):
         from .models import MantenimientoProgramado
@@ -629,8 +631,9 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Solo debe ver su vehículo (self.vehiculo), no el de cliente_nuevo
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], str(self.vehiculo.id))
 
     def test_actualizar_vehiculo_exito_admin_y_tecnico(self):
         # Probar con Admin
@@ -938,12 +941,26 @@ class VehiculosOptimizacionORMTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         url = reverse("crear-vehiculo")
 
-        # Act & Assert
-        with self.assertNumQueries(2):
+        # Act & Assert (1 query COUNT de paginación + 1 query de Vehiculos + 1 query prefetch mantenimientos)
+        with self.assertNumQueries(3):
             response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 5)
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertGreaterEqual(len(results), 5)
+
+    def test_listar_vehiculos_estructura_paginada_estandar_tk170(self):
+        """TK170: Verifica que el listado de vehículos responde con la estructura paginada estándar."""
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("count", response.data)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
+        self.assertIn("results", response.data)
+        self.assertIsInstance(response.data["results"], list)
 
 
 class MetodosNoPermitidosVehiculosAPITests(APITestCase):
