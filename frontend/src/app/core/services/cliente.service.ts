@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface ClientePayload {
@@ -18,6 +18,16 @@ export interface ClienteResponse extends ClientePayload {
   usuario?: number | null;
   creado_en: string;
   actualizado_en: string;
+}
+
+export interface ClientesPaginadosResponse {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  total_items?: number;
+  total_pages?: number;
+  current_page?: number;
+  results: ClienteResponse[];
 }
 
 @Injectable({
@@ -49,17 +59,31 @@ export class ClienteService {
 
   /**
    * Obtiene el listado de clientes registrados desde GET /api/clientes/ (con soporte opcional de búsqueda ?search=)
+   * Consume la propiedad .results de la respuesta paginada estandarizada de la API.
    */
   obtenerClientes(search?: string): Observable<ClienteResponse[]> {
     const options = search ? { params: { search } } : {};
-    return this.http.get<ClienteResponse[]>(this.apiUrl, options);
+    return this.http.get<ClientesPaginadosResponse | ClienteResponse[]>(this.apiUrl, options).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.results || []))
+    );
+  }
+
+  /**
+   * Obtiene la respuesta paginada completa de clientes (TK170)
+   */
+  obtenerClientesPaginados(search?: string, page: number = 1, limit: number = 10): Observable<ClientesPaginadosResponse> {
+    let params: any = { page: page.toString(), limit: limit.toString() };
+    if (search) params.search = search;
+    return this.http.get<ClientesPaginadosResponse>(this.apiUrl, { params });
   }
 
   /**
    * Busca clientes dinámicamente mediante el parámetro ?search= (TK155)
    */
   buscarClientes(termino: string): Observable<ClienteResponse[]> {
-    return this.http.get<ClienteResponse[]>(this.apiUrl, { params: { search: termino } });
+    return this.http.get<ClientesPaginadosResponse | ClienteResponse[]>(this.apiUrl, { params: { search: termino } }).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.results || []))
+    );
   }
 
   /**
