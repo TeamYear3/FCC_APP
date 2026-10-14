@@ -352,3 +352,37 @@ class MongoTelemetriaArcaTests(TestCase):
         self.assertEqual(registros[0]["orden_id"], "ot-100")
 
 
+class ArquitecturaCanalesYCacheTests(TestCase):
+    """
+    TK172: Valida la configuración de Redis como backend central de canales
+    (channels_redis) y caché (django-redis), así como el aislamiento hermético en tests.
+    """
+    def test_configuracion_base_utiliza_channels_redis(self):
+        import pathlib
+        base_path = pathlib.Path(__file__).resolve().parent.parent / "config" / "settings" / "base.py"
+        content = base_path.read_text(encoding="utf-8")
+        self.assertIn('"BACKEND": "channels_redis.core.RedisChannelLayer"', content)
+        self.assertIn('"hosts": [f"{REDIS_URL}/0"]', content)
+
+    def test_configuracion_base_utiliza_django_redis(self):
+        import pathlib
+        base_path = pathlib.Path(__file__).resolve().parent.parent / "config" / "settings" / "base.py"
+        content = base_path.read_text(encoding="utf-8")
+        self.assertIn('"BACKEND": "django_redis.cache.RedisCache"', content)
+        self.assertIn('"CLIENT_CLASS": "django_redis.client.DefaultClient"', content)
+
+    def test_aislamiento_de_canales_y_cache_en_testing(self):
+        from django.conf import settings
+        # En la suite de testing activa, CHANNEL_LAYERS debe aislarse en memoria
+        self.assertEqual(
+            settings.CHANNEL_LAYERS["default"]["BACKEND"],
+            "channels.layers.InMemoryChannelLayer"
+        )
+        # Y CACHES debe aislarse en LocMemCache
+        self.assertEqual(
+            settings.CACHES["default"]["BACKEND"],
+            "django.core.cache.backends.locmem.LocMemCache"
+        )
+
+
+
