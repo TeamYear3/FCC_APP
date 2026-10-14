@@ -20,24 +20,54 @@ export class LoginPage extends BasePage {
   readonly passwordInput: Locator;
   readonly submitButton: Locator;
   readonly errorMessage: Locator;
+  readonly successMessage: Locator;
   readonly registerLink: Locator;
   readonly togglePasswordButton: Locator;
   readonly forgotPasswordButton: Locator;
   readonly googleLoginButton: Locator;
   readonly authCard: Locator;
 
+  // Mensajes de error de campos en formulario de Login (app-field-error)
+  readonly emailFieldError: Locator;
+  readonly passwordFieldError: Locator;
+
+  // Selectores para Formulario de Registro (TK228 - Módulo 1)
+  readonly registerForm: Locator;
+  readonly registerNombreInput: Locator;
+  readonly registerApellidoInput: Locator;
+  readonly registerEmailInput: Locator;
+  readonly registerPasswordInput: Locator;
+  readonly registerConfirmPasswordInput: Locator;
+  readonly registerSubmitButton: Locator;
+  readonly registerMismatchError: Locator;
+
   constructor(page: Page) {
     super(page);
-    // Jerarquía de selectores resilientes
+    // Jerarquía de selectores resilientes (getByTestId con fallback semántico)
     this.emailInput = page.getByTestId('login-email-input').or(page.locator('#login-email, [data-testid="input-email"], input[type="email"]'));
     this.passwordInput = page.getByTestId('login-password-input').or(page.locator('#login-password, [data-testid="input-password"], input[formcontrolname="password"], input[name="password"], input[type="password"]'));
     this.submitButton = page.getByTestId('login-submit-button').or(page.locator('button[type="submit"], [data-testid="btn-login-submit"]'));
     this.errorMessage = page.getByTestId('login-error-message').or(page.locator('[role="alert"], .alert-danger, .error-message, .text-red-500'));
-    this.registerLink = page.getByTestId('register-link').or(page.getByRole('link', { name: /regístrate|registrate|crear cuenta/i }));
+    this.successMessage = page.getByTestId('auth-success-message').or(page.locator('.alert-success, .text-emerald-400'));
+    this.registerLink = page.getByTestId('register-link').or(page.getByRole('button', { name: /regístrate|registrate|crear cuenta/i }));
     this.togglePasswordButton = page.locator('button[aria-label*="contraseña"]').or(page.getByRole('button', { name: /mostrar|ocultar/i }));
     this.forgotPasswordButton = page.getByRole('button', { name: /¿Olvidaste tu contraseña\?/i }).or(page.getByText(/olvidaste tu contraseña/i));
     this.googleLoginButton = page.locator('app-google-login-button button, [data-testid="btn-google-login"]');
     this.authCard = page.locator('.rounded-card, [data-testid="auth-card"], form');
+
+    // Mensajes de error reactivos de login
+    this.emailFieldError = page.locator('form[data-testid="login-form"] app-field-error').first();
+    this.passwordFieldError = page.locator('form[data-testid="login-form"] app-field-error').nth(1);
+
+    // Inicialización de selectores de Registro
+    this.registerForm = page.getByTestId('register-form').or(page.locator('form[data-testid="register-form"]'));
+    this.registerNombreInput = page.getByTestId('register-nombre-input').or(page.locator('input[formcontrolname="nombre"]'));
+    this.registerApellidoInput = page.getByTestId('register-apellido-input').or(page.locator('input[formcontrolname="apellido"]'));
+    this.registerEmailInput = page.getByTestId('register-email-input').or(page.locator('form[data-testid="register-form"] input[type="email"]'));
+    this.registerPasswordInput = page.getByTestId('register-password-input').or(page.locator('input[formcontrolname="password"]'));
+    this.registerConfirmPasswordInput = page.getByTestId('register-confirm-password-input').or(page.locator('input[formcontrolname="confirmPassword"]'));
+    this.registerSubmitButton = page.getByTestId('register-submit-button').or(page.locator('button[data-testid="register-submit-button"]'));
+    this.registerMismatchError = page.getByTestId('register-mismatch-error');
   }
 
   /**
@@ -49,21 +79,80 @@ export class LoginPage extends BasePage {
   }
 
   /**
-   * Completa el campo de correo electrónico.
+   * Cambia el modo a 'registro' mediante el enlace interactivo.
+   */
+  async irARegistro(): Promise<void> {
+    await this.registerLink.click();
+    await this.registerSubmitButton.waitFor({ state: 'attached' });
+  }
+
+  /**
+   * Completa los campos del formulario de registro.
+   */
+  async completarFormularioRegistro(datos: {
+    nombre?: string;
+    apellido?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }): Promise<void> {
+    if (datos.nombre !== undefined) {
+      await this.registerNombreInput.fill(datos.nombre);
+    }
+    if (datos.apellido !== undefined) {
+      await this.registerApellidoInput.fill(datos.apellido);
+    }
+    if (datos.email !== undefined) {
+      await this.registerEmailInput.fill(datos.email);
+    }
+    if (datos.password !== undefined) {
+      await this.registerPasswordInput.fill(datos.password);
+    }
+    if (datos.confirmPassword !== undefined) {
+      await this.registerConfirmPasswordInput.fill(datos.confirmPassword);
+    }
+  }
+
+  /**
+   * Ejecuta el submit del formulario de registro.
+   */
+  async clickRegistroSubmit(): Promise<void> {
+    await this.registerSubmitButton.click();
+  }
+
+  /**
+   * Flujo de negocio: Completa y envía el formulario de registro.
+   */
+  async registrarCliente(datos: {
+    nombre: string;
+    apellido: string;
+    email: string;
+    password: string;
+    confirmPassword?: string;
+  }): Promise<void> {
+    await this.completarFormularioRegistro({
+      ...datos,
+      confirmPassword: datos.confirmPassword ?? datos.password,
+    });
+    await this.clickRegistroSubmit();
+  }
+
+  /**
+   * Completa el campo de correo electrónico en login.
    */
   async enterEmail(email: string): Promise<void> {
     await this.emailInput.fill(email);
   }
 
   /**
-   * Completa el campo de contraseña.
+   * Completa el campo de contraseña en login.
    */
   async enterPassword(password: string): Promise<void> {
     await this.passwordInput.fill(password);
   }
 
   /**
-   * Ejecuta el submit del formulario.
+   * Ejecuta el submit del formulario de login.
    */
   async clickSubmit(): Promise<void> {
     await this.submitButton.click();
@@ -111,6 +200,16 @@ export class LoginPage extends BasePage {
       await this.passwordInput.clear();
     }
     await this.clickSubmit();
+  }
+
+  /**
+   * Obtiene los tokens almacenados en localStorage (fcc_auth_token y fcc_refresh_token).
+   */
+  async obtenerTokensAlmacenados(): Promise<{ access: string | null; refresh: string | null }> {
+    return this.page.evaluate(() => ({
+      access: localStorage.getItem('fcc_auth_token'),
+      refresh: localStorage.getItem('fcc_refresh_token'),
+    }));
   }
 
   /**
