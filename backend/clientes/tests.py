@@ -356,6 +356,94 @@ class ClienteAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class ClientesCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-06 (Gestión de Clientes) ↔ TEST-D-004.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_aut_be_01@example.com",
+            nombre="Admin",
+            apellido="AUT",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Esteban",
+            apellido="Quito",
+            tipo_documento="DNI",
+            dni_cuit="20345678",
+            condicion_iva="CF",
+            telefono="1144332211",
+            domicilio="Calle Falsa 123"
+        )
+
+    def test_consulta_listado_clientes_exitoso(self):
+        """HU-06 / TEST-D-004: Verificar que un usuario admin obtiene HTTP 200 OK al listar clientes."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_cliente_exitoso(self):
+        """HU-06 / TEST-D-004: Verificar que un usuario admin obtiene HTTP 200 OK al consultar un cliente por ID."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["dni_cuit"], "20345678")
+        self.assertEqual(response.data["nombre"], "Esteban")
+
+    def test_crear_cliente_payload_valido_exitoso(self):
+        """HU-06 / TEST-D-001: Creación de cliente con datos válidos retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {
+            "nombre": "Gonzalo",
+            "apellido": "Higuain",
+            "tipo_documento": "DNI",
+            "dni_cuit": "31445566",
+            "condicion_iva": "CF",
+            "telefono": "1199887766",
+            "domicilio": "Av del Libertador 1000"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["dni_cuit"], "31445566")
+        self.assertEqual(response.data["nombre"], "Gonzalo")
+
+    def test_actualizar_cliente_payload_valido_exitoso(self):
+        """HU-06 / TEST-D-004: Modificación parcial de cliente retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+        payload = {"telefono": "1122334455"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["telefono"], "1122334455")
+
+
 class SerializerErroresPorCampoClientesAPITests(APITestCase):
     """
     AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo (400 Bad Request).

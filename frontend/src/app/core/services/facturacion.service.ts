@@ -17,15 +17,38 @@ export class FacturacionService {
   private readonly baseUrl = `${environment.apiUrl}/facturas`;
 
   /**
-   * Obtiene el listado de facturas emitidas con filtros opcionales.
+   * Obtiene el listado de facturas emitidas con filtros opcionales de fecha, tipo, cliente y estado.
    */
-  getFacturas(filtros?: { estado_pago?: string; tipo?: string }): Observable<Factura[]> {
+  getFacturas(filtros?: {
+    estado_pago?: string;
+    tipo?: string;
+    fecha_desde?: string;
+    fecha_hasta?: string;
+    cliente?: string;
+    cliente_id?: string;
+    busqueda?: string;
+  }): Observable<Factura[]> {
     let params = new HttpParams();
     if (filtros?.estado_pago) {
       params = params.set('estado_pago', filtros.estado_pago);
     }
     if (filtros?.tipo) {
       params = params.set('tipo', filtros.tipo);
+    }
+    if (filtros?.fecha_desde) {
+      params = params.set('fecha_desde', filtros.fecha_desde);
+    }
+    if (filtros?.fecha_hasta) {
+      params = params.set('fecha_hasta', filtros.fecha_hasta);
+    }
+    if (filtros?.cliente) {
+      params = params.set('cliente', filtros.cliente);
+    }
+    if (filtros?.cliente_id) {
+      params = params.set('cliente_id', filtros.cliente_id);
+    }
+    if (filtros?.busqueda) {
+      params = params.set('busqueda', filtros.busqueda);
     }
     return this.http.get<Factura[]>(`${this.baseUrl}/`, { params });
   }

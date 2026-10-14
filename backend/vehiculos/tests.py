@@ -802,6 +802,148 @@ class HistorialVehiculoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class VehiculosCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-07 (Gestión de Vehículos) ↔ TEST-D-005.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_vehiculo_aut@example.com",
+            nombre="Admin",
+            apellido="Vehiculos",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Fabian",
+            apellido="Cubero",
+            tipo_documento="DNI",
+            dni_cuit="22776655",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AE456RT",
+            marca="Ford",
+            modelo="Ranger",
+            anio=2021
+        )
+
+    def test_consulta_listado_vehiculos_exitoso(self):
+        """HU-07 / TEST-D-005: Verificar que un usuario admin obtiene HTTP 200 OK al listar vehículos."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_vehiculo_exitoso(self):
+        """HU-07 / TEST-D-005: Verificar que un usuario admin obtiene HTTP 200 OK al consultar un vehículo por ID."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculo.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["patente"], "AE456RT")
+        self.assertEqual(response.data["marca"], "Ford")
+
+    def test_crear_vehiculo_payload_valido_exitoso(self):
+        """HU-07 / TEST-D-002: Creación de vehículo asociado a cliente retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AC999ZZ",
+            "marca": "Volkswagen",
+            "modelo": "Golf",
+            "anio": 2020,
+            "kilometraje": 45000,
+            "color": "Negro"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "AC999ZZ")
+        self.assertEqual(response.data["marca"], "Volkswagen")
+
+    def test_actualizar_vehiculo_payload_valido_exitoso(self):
+        """HU-07 / TEST-D-005: Actualización de kilometraje de vehículo retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {"kilometraje": 50000}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["kilometraje"], 50000)
+
+
+class VehiculosOptimizacionORMTests(APITestCase):
+    """
+    TK168 / US-14: Pruebas automatizadas de consultas ORM sin N+1 con assertNumQueries.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_vehiculo_orm@example.com",
+            nombre="Admin",
+            apellido="Vehiculos",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Optimizacion",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF"
+        )
+        # Crear 5 vehículos, cada uno con un mantenimiento programado
+        from .models import MantenimientoProgramado
+        for i in range(5):
+            v = Vehiculo.objects.create(
+                cliente=self.cliente,
+                patente=f"ORM{i:03d}X",
+                marca="Ford",
+                modelo=f"Focus {i}",
+                anio=2021
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=v,
+                tipo_servicio=f"Service {i}0k",
+                kilometraje_objetivo=10000 * (i + 1)
+            )
+
+    def test_listar_vehiculos_con_consultas_orm_constantes_sin_n_plus_one(self):
+        """Verifica que el listado de vehículos ejecute exactamente 2 queries constantes (Vehiculo + MantenimientoProgramado)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+
+        # Act & Assert
+        with self.assertNumQueries(2):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 5)
+
+
 class SerializerErroresPorCampoVehiculosAPITests(APITestCase):
     """
     AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo en vehículos.
