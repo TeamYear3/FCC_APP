@@ -11,7 +11,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
-from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
+from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem, HistorialEstadoOrden, AdjuntoDiagnostico
 from .services import notificar_presupuesto_websocket
 from .signals import enviar_email_orden_background
 
@@ -1470,6 +1470,107 @@ class DetalleOrdenTrabajoAPITestCase(APITestCase):
         url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_consultar_detalle_orden_consolida_relaciones_precargadas(self):
+        """TK183: Verifica que el endpoint detalle consolida items_presupuesto, adjuntos_diagnostico e historial_estados."""
+        # 1. Crear item de presupuesto
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y balanceo computarizado",
+            precio_unitario=Decimal("15000.00"),
+            cantidad=Decimal("1.00")
+        )
+        # 2. Crear adjunto de diagnóstico
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            item_presupuesto=item,
+            url_secure="https://cloudinary.com/test-image.jpg",
+            nombre_archivo="evidencia_frenos.jpg",
+            creado_por=self.user_tecnico
+        )
+        # 3. Crear registro en el historial
+        historial = HistorialEstadoOrden.objects.create(
+            orden_trabajo=self.orden,
+            estado_anterior=None,
+            estado_nuevo=EstadoOrden.INGRESADO,
+            usuario=self.user_admin,
+            comentario="Recepción formal en taller"
+        )
+
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Validar presencia de colecciones consolidadas
+        self.assertIn('items_presupuesto', response.data)
+        self.assertIn('adjuntos_diagnostico', response.data)
+        self.assertIn('historial_estados', response.data)
+
+        # Validar datos en items_presupuesto
+        self.assertEqual(len(response.data['items_presupuesto']), 1)
+        self.assertEqual(response.data['items_presupuesto'][0]['id'], str(item.id))
+        self.assertEqual(response.data['items_presupuesto'][0]['descripcion'], "Alineación y balanceo computarizado")
+        # Validar adjuntos del item
+        self.assertEqual(len(response.data['items_presupuesto'][0]['adjuntos']), 1)
+        self.assertEqual(response.data['items_presupuesto'][0]['adjuntos'][0]['id'], str(adjunto.id))
+
+        # Validar adjuntos de la orden
+        self.assertEqual(len(response.data['adjuntos_diagnostico']), 1)
+        self.assertEqual(response.data['adjuntos_diagnostico'][0]['id'], str(adjunto.id))
+        self.assertEqual(response.data['adjuntos_diagnostico'][0]['creado_por_nombre'], "Tecnico Taller")
+
+        # Validar historial de estados
+        self.assertGreaterEqual(len(response.data['historial_estados']), 1)
+        historial_ids = [h['id'] for h in response.data['historial_estados']]
+        self.assertIn(str(historial.id), historial_ids)
+        entry = next(h for h in response.data['historial_estados'] if h['id'] == str(historial.id))
+        self.assertEqual(entry['estado_nuevo'], EstadoOrden.INGRESADO)
+        self.assertEqual(entry['usuario_nombre'], "Admin Taller")
+
+    def test_consultar_detalle_orden_eficiencia_queries_orm(self):
+        """TK183: Verifica que el prefetch_related evita consultas N+1 en las relaciones anidadas."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        # Crear múltiples registros para evidenciar ausencia de N+1
+        for i in range(5):
+            item = ItemPresupuesto.objects.create(
+                orden_trabajo=self.orden,
+                tipo=TipoItem.REPUESTO,
+                descripcion=f"Repuesto #{i+1}",
+                precio_unitario=Decimal("2000.00"),
+                cantidad=Decimal("1.00")
+            )
+            AdjuntoDiagnostico.objects.create(
+                orden_trabajo=self.orden,
+                item_presupuesto=item,
+                url_secure=f"https://cloudinary.com/test-{i+1}.jpg",
+                nombre_archivo=f"foto_{i+1}.jpg",
+                creado_por=self.user_tecnico
+            )
+            HistorialEstadoOrden.objects.create(
+                orden_trabajo=self.orden,
+                estado_anterior=EstadoOrden.INGRESADO,
+                estado_nuevo=EstadoOrden.EN_PROCESO,
+                usuario=self.user_admin,
+                comentario=f"Avance #{i+1}"
+            )
+
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+
+        # Al consultar la orden con 5 items, 5 adjuntos y múltiples historiales,
+        # las queries deben mantenerse constantes y no escalar por registro (sin N+1)
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['items_presupuesto']), 5)
+        self.assertEqual(len(response.data['adjuntos_diagnostico']), 5)
+        # Se verifica que la cantidad de queries ORM es exactamente 6 y completamente independiente de N (sin N+1)
+        self.assertEqual(len(queries), 6)
 
 
 class RegistrarPagoOrdenAPITestCase(APITestCase):
