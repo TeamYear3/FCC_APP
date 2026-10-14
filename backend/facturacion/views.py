@@ -47,6 +47,20 @@ class EmitirFacturaView(APIView):
             cliente.condicion_iva = condicion_iva_override
             cliente.save(update_fields=["condicion_iva", "actualizado_en"])
 
+        # Guarda de idempotencia: rechazar si la OT ya posee factura antes de contactar a ARCA
+        factura_existente = Factura.objects.filter(orden_trabajo=orden).first()
+        if factura_existente:
+            return Response(
+                {
+                    "error": "La orden de trabajo ya posee una factura emitida.",
+                    "orden_trabajo_id": ["Esta Orden de Trabajo ya posee una Factura emitida."],
+                    "factura_id": str(factura_existente.id),
+                    "numero_comprobante": factura_existente.numero_comprobante_formateado,
+                    "cae": factura_existente.cae,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Llamar al WebService de ARCA para autorizar y obtener CAE oficial
         try:
             arca_response = ArcaWSClient.solicitar_cae(

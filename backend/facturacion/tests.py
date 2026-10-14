@@ -1,5 +1,6 @@
 from decimal import Decimal
 from datetime import timedelta
+from unittest.mock import patch
 from django.utils import timezone
 from django.test import TestCase
 from django.urls import reverse
@@ -308,6 +309,33 @@ class FacturacionAPITest(APITestCase):
         response2 = self.client.post(url, payload)
         self.assertEqual(response2.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("orden_trabajo_id", response2.data)
+
+    @patch("facturacion.views.ArcaWSClient.solicitar_cae")
+    def test_reintento_emision_rechazado_sin_invocar_arca_ws(self, mock_solicitar_cae):
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-emitir")
+        payload = {"orden_trabajo_id": str(self.orden.id)}
+        Factura.objects.create(
+            orden_trabajo=self.orden,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            punto_venta=1,
+            numero_factura=99,
+            cae="74123456789012",
+            fecha_vencimiento_cae=timezone.localdate() + timedelta(days=10),
+            total=self.orden.monto_total,
+            estado=EstadoFactura.EMITIDA,
+            estado_pago=EstadoPago.SIN_INTERACCION,
+            fecha_vencimiento_pago=timezone.localdate() + timedelta(days=15),
+        )
+
+        # Act
+        response = self.client.post(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_solicitar_cae.assert_not_called()
+        self.assertIn("orden_trabajo_id", response.data)
 
     def test_emitir_factura_usuario_no_admin_retorna_403(self):
         self.client.force_authenticate(user=self.tecnico)
