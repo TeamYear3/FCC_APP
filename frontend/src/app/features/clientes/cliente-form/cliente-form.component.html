@@ -83,6 +83,7 @@
               <select
                 id="tipo_documento"
                 formControlName="tipo_documento"
+                data-testid="cliente-tipo-doc-select"
                 [tabindex]="isEditMode() ? -1 : 0"
                 class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all disabled:bg-color-surface-container disabled:text-color-text-secondary/60 disabled:border-white/5 disabled:cursor-not-allowed"
               >
@@ -104,6 +105,7 @@
                 id="dni_cuit"
                 type="text"
                 formControlName="dni_cuit"
+                data-testid="cliente-dnicuit-input"
                 [tabindex]="isEditMode() ? -1 : 0"
                 [attr.aria-invalid]="clienteForm.get('dni_cuit')?.invalid && clienteForm.get('dni_cuit')?.touched"
                 [attr.aria-describedby]="clienteForm.get('dni_cuit')?.invalid && clienteForm.get('dni_cuit')?.touched ? 'error-dni_cuit' : null"
@@ -196,6 +198,7 @@
                 id="nombre"
                 type="text"
                 formControlName="nombre"
+                data-testid="cliente-nombre-input"
                 [attr.aria-invalid]="clienteForm.get('nombre')?.invalid && clienteForm.get('nombre')?.touched"
                 [attr.aria-describedby]="clienteForm.get('nombre')?.invalid && clienteForm.get('nombre')?.touched ? 'error-nombre' : null"
                 placeholder="Ej: Juan o Logística Sur S.A."
@@ -244,6 +247,7 @@
                 id="apellido"
                 type="text"
                 formControlName="apellido"
+                data-testid="cliente-apellido-input"
                 [attr.aria-invalid]="clienteForm.get('apellido')?.invalid && clienteForm.get('apellido')?.touched"
                 [attr.aria-describedby]="clienteForm.get('apellido')?.invalid && clienteForm.get('apellido')?.touched ? 'error-apellido' : null"
                 placeholder="Ej: Pérez o S.R.L."
@@ -291,6 +295,7 @@
               <select
                 id="condicion_iva"
                 formControlName="condicion_iva"
+                data-testid="cliente-condicion-iva-select"
                 class="w-full p-md bg-black/40 border border-white/15 rounded-badge text-color-text-primary focus:outline-none focus:border-color-primary-accent focus:ring-1 focus:ring-color-primary-accent transition-all"
               >
                 <option value="CF">Consumidor Final (CF)</option>
@@ -320,6 +325,7 @@
                 id="telefono"
                 type="tel"
                 formControlName="telefono"
+                data-testid="cliente-telefono-input"
                 [attr.aria-invalid]="clienteForm.get('telefono')?.invalid && clienteForm.get('telefono')?.touched"
                 [attr.aria-describedby]="clienteForm.get('telefono')?.invalid && clienteForm.get('telefono')?.touched ? 'error-telefono' : null"
                 placeholder="Ej: +54 9 11 1234-5678"
@@ -367,6 +373,7 @@
                 id="domicilio"
                 type="text"
                 formControlName="domicilio"
+                data-testid="cliente-domicilio-input"
                 [attr.aria-invalid]="clienteForm.get('domicilio')?.invalid && clienteForm.get('domicilio')?.touched"
                 [attr.aria-describedby]="clienteForm.get('domicilio')?.invalid && clienteForm.get('domicilio')?.touched ? 'error-domicilio' : null"
                 placeholder="Ej: Av. San Martín 1500, Córdoba"
@@ -410,6 +417,7 @@
         >
           <a
             routerLink="/admin/clientes"
+            data-testid="cliente-cancelar-btn"
             class="w-full sm:w-auto text-center px-6 py-3 rounded-pill border border-white/20 hover:bg-white/5 transition-colors text-color-text-secondary font-medium text-sm"
           >
             Cancelar
@@ -418,6 +426,7 @@
           <!-- Pill Action Button principal del Sistema de Diseño -->
           <button
             type="submit"
+            data-testid="cliente-guardar-btn"
             [disabled]="isSubmitting() || (isEditMode() ? clienteForm.invalid : false)"
             class="w-full sm:w-auto min-h-[48px] px-8 py-3 rounded-pill bg-color-primary-accent hover:bg-yellow-400 text-black font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >

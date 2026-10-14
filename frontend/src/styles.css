@@ -60,3 +60,10 @@ input:-webkit-autofill:active {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* Accesibilidad WCAG 2.2 AA: Foco visible inconfundible para navegación por teclado (TK234 / ACC-03) */
+*:focus-visible {
+  outline: 2px solid #FFCC00 !important;
+  outline-offset: 2px !important;
+}
+
+
