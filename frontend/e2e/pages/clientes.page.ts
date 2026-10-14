@@ -14,14 +14,18 @@ import { BasePage } from './base.page';
  */
 export class ClientesPage extends BasePage {
   readonly searchInput: Locator;
+  readonly buscarInput: Locator;
   readonly nuevoClienteButton: Locator;
   readonly clientesTable: Locator;
+  readonly tablaClientes: Locator;
   readonly clienteRows: Locator;
   readonly modalCliente: Locator;
+  readonly formCliente: Locator;
   readonly nombreInput: Locator;
   readonly apellidoInput: Locator;
   readonly dniCuitInput: Locator;
   readonly tipoDocumentoSelect: Locator;
+  readonly tipoDocSelect: Locator;
   readonly condicionIvaSelect: Locator;
   readonly telefonoInput: Locator;
   readonly domicilioInput: Locator;
@@ -32,15 +36,19 @@ export class ClientesPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.searchInput = page.getByTestId('cliente-buscar-input').or(page.locator('input[type="text"], input[placeholder*="buscar"]'));
+    this.searchInput = page.getByTestId('cliente-buscar-input');
+    this.buscarInput = this.searchInput;
     this.nuevoClienteButton = page.getByTestId('cliente-nuevo-btn')
       .or(page.getByRole('link', { name: /nuevo cliente/i }))
       .or(page.getByRole('button', { name: /nuevo cliente/i }))
       .or(page.locator('a[routerlink*="clientes/nuevo"], a[href*="clientes/nuevo"]'));
     this.clientesTable = page.getByTestId('clientes-tabla').or(page.locator('table, [data-testid="tabla-clientes"], .clientes-table, cdk-virtual-scroll-viewport'));
+    this.tablaClientes = this.clientesTable;
     this.clienteRows = page.getByTestId('cliente-row').or(page.locator('table tbody tr, .rounded-card[data-testid="cliente-row"]'));
     this.modalCliente = page.getByTestId('modal-cliente').or(page.locator('app-cliente-form, .modal, [role="dialog"]'));
+    this.formCliente = page.locator('form');
     this.tipoDocumentoSelect = page.getByTestId('cliente-tipo-doc-select').or(page.locator('#tipo_documento, select[formcontrolname="tipo_documento"]'));
+    this.tipoDocSelect = this.tipoDocumentoSelect;
     this.dniCuitInput = page.getByTestId('cliente-dnicuit-input').or(page.locator('#dni_cuit, input[formcontrolname="dni_cuit"]'));
     this.nombreInput = page.getByTestId('cliente-nombre-input').or(page.locator('#nombre, input[formcontrolname="nombre"]'));
     this.apellidoInput = page.getByTestId('cliente-apellido-input').or(page.locator('#apellido, input[formcontrolname="apellido"]'));
@@ -71,22 +79,40 @@ export class ClientesPage extends BasePage {
     await this.waitForLoaded();
   }
 
+  async navigateNuevo(): Promise<void> {
+    await this.navegarANuevo();
+  }
+
   /**
    * Navega al formulario de edición de un cliente por su ID.
    */
-  async navegarAEdicion(clienteId: number): Promise<void> {
+  async navegarAEdicion(clienteId: string | number): Promise<void> {
     await this.setMockSession({ email: 'admin@taller.com', role: 'admin', nombre: 'Admin Taller' });
     await this.goto(`/admin/clientes/editar/${clienteId}`);
     await this.waitForLoaded();
+  }
+
+  async navigateEditar(clienteId: string | number): Promise<void> {
+    await this.navegarAEdicion(clienteId);
   }
 
   /**
    * Busca un cliente en el directorio filtrando interactivamente por texto.
    */
   async search(query: string): Promise<void> {
-    if (await this.searchInput.first().isVisible()) {
-      await this.searchInput.first().fill(query);
-    }
+    await this.searchInput.fill(query);
+    await this.searchInput.dispatchEvent('input');
+  }
+
+  async buscarCliente(query: string): Promise<void> {
+    await this.search(query);
+  }
+
+  /**
+   * Obtiene la tarjeta o fila correspondiente al cliente por su CUIT/DNI.
+   */
+  obtenerFilaPorCuit(cuit: string): Locator {
+    return this.clienteRows.filter({ hasText: cuit });
   }
 
   /**
@@ -102,22 +128,30 @@ export class ClientesPage extends BasePage {
    */
   async completarFormularioAlta(datos: {
     tipo_documento?: 'DNI' | 'CUIT';
-    dni_cuit: string;
+    tipoDocumento?: 'DNI' | 'CUIT';
+    dni_cuit?: string;
+    dniCuit?: string;
     nombre: string;
     apellido: string;
     condicion_iva?: string;
+    condicionIva?: string;
     telefono?: string;
     domicilio?: string;
   }): Promise<void> {
-    if (datos.tipo_documento && await this.tipoDocumentoSelect.isVisible()) {
-      await this.tipoDocumentoSelect.selectOption(datos.tipo_documento);
+    const tipoDoc = datos.tipo_documento || datos.tipoDocumento;
+    if (tipoDoc && await this.tipoDocumentoSelect.isVisible()) {
+      await this.tipoDocumentoSelect.selectOption(tipoDoc);
     }
-    await this.dniCuitInput.fill(datos.dni_cuit);
+    const docVal = datos.dni_cuit || datos.dniCuit;
+    if (docVal) {
+      await this.dniCuitInput.fill(docVal);
+    }
     await this.nombreInput.fill(datos.nombre);
     await this.apellidoInput.fill(datos.apellido);
 
-    if (datos.condicion_iva && await this.condicionIvaSelect.isVisible()) {
-      await this.condicionIvaSelect.selectOption(datos.condicion_iva);
+    const condIva = datos.condicion_iva || datos.condicionIva;
+    if (condIva && await this.condicionIvaSelect.isVisible()) {
+      await this.condicionIvaSelect.selectOption(condIva);
     }
     if (datos.telefono && await this.telefonoInput.isVisible()) {
       await this.telefonoInput.fill(datos.telefono);
@@ -125,6 +159,21 @@ export class ClientesPage extends BasePage {
     if (datos.domicilio && await this.domicilioInput.isVisible()) {
       await this.domicilioInput.fill(datos.domicilio);
     }
+  }
+
+  async completarClienteForm(datos: {
+    tipoDocumento?: 'DNI' | 'CUIT';
+    tipo_documento?: 'DNI' | 'CUIT';
+    dniCuit?: string;
+    dni_cuit?: string;
+    nombre: string;
+    apellido: string;
+    condicionIva?: string;
+    condicion_iva?: string;
+    telefono?: string;
+    domicilio?: string;
+  }): Promise<void> {
+    await this.completarFormularioAlta(datos);
   }
 
   /**
@@ -144,6 +193,10 @@ export class ClientesPage extends BasePage {
    */
   async guardar(): Promise<void> {
     await this.guardarButton.click();
+  }
+
+  async guardarCliente(): Promise<void> {
+    await this.guardar();
   }
 
   /**

@@ -18,6 +18,7 @@ export class VehiculosPage extends BasePage {
   readonly vehiculosTable: Locator;
   readonly vehiculoRows: Locator;
   readonly modalVehiculo: Locator;
+  readonly formVehiculo: Locator;
   readonly patenteInput: Locator;
   readonly marcaInput: Locator;
   readonly modeloInput: Locator;
@@ -26,6 +27,7 @@ export class VehiculosPage extends BasePage {
   readonly kilometrajeInput: Locator;
   readonly chasisInput: Locator;
   readonly clienteSearchInput: Locator;
+  readonly clienteSeleccionadoCard: Locator;
   readonly guardarButton: Locator;
   readonly cancelarButton: Locator;
 
@@ -36,14 +38,16 @@ export class VehiculosPage extends BasePage {
     this.vehiculosTable = page.getByTestId('vehiculos-tabla').or(page.locator('table, [data-testid="tabla-vehiculos"], .vehiculos-table'));
     this.vehiculoRows = page.getByTestId('vehiculo-row').or(page.locator('table tbody tr'));
     this.modalVehiculo = page.getByTestId('modal-vehiculo').or(page.locator('app-vehiculo-form, .modal, [role="dialog"]'));
+    this.formVehiculo = page.locator('form');
     this.patenteInput = page.getByTestId('vehiculo-patente-input').or(page.locator('input[name="patente"], input[formcontrolname="patente"]'));
     this.marcaInput = page.getByTestId('vehiculo-marca-input').or(page.locator('input[name="marca"], input[formcontrolname="marca"]'));
     this.modeloInput = page.getByTestId('vehiculo-modelo-input').or(page.locator('input[name="modelo"], input[formcontrolname="modelo"]'));
     this.anioInput = page.getByTestId('vehiculo-anio-input').or(page.locator('input[name="anio"], input[formcontrolname="anio"]'));
     this.tipoMotorSelect = page.getByTestId('vehiculo-tipo-motor-select').or(page.locator('select[formcontrolname="tipo_motor"]'));
     this.kilometrajeInput = page.locator('input[formcontrolname="kilometraje"]');
-    this.chasisInput = page.getByTestId('vehiculo-chasis-input').or(page.locator('input[formcontrolname="nro_chasis"]'));
+    this.chasisInput = page.getByTestId('vehiculo-chasis-input').or(page.locator('input[formcontrolname="nro_chasis"], input[formcontrolname="numero_chasis"]'));
     this.clienteSearchInput = page.locator('input[placeholder*="Buscar por Nombre"]');
+    this.clienteSeleccionadoCard = page.locator('.bg-white\\/5, .rounded-badge, div:has(button[title="Cambiar cliente"])').first();
     this.guardarButton = page.getByTestId('vehiculo-guardar-btn').or(page.getByRole('button', { name: /guardar/i }));
     this.cancelarButton = page.getByTestId('vehiculo-cancelar-btn').or(page.getByRole('link', { name: /arrow_back/i }));
   }
@@ -66,6 +70,10 @@ export class VehiculosPage extends BasePage {
     await this.waitForLoaded();
   }
 
+  async navigateNuevo(): Promise<void> {
+    await this.navegarANuevo();
+  }
+
   /**
    * Busca un vehículo por patente en el listado.
    */
@@ -80,9 +88,13 @@ export class VehiculosPage extends BasePage {
    */
   async seleccionarClientePropietario(nombreOQuery: string): Promise<void> {
     await this.clienteSearchInput.fill(nombreOQuery);
-    const dropdownItem = this.page.locator('div.divide-y div').filter({ hasText: nombreOQuery }).first();
+    const dropdownItem = this.page.locator('.absolute div, div.divide-y div').filter({ hasText: nombreOQuery }).first();
     await dropdownItem.waitFor({ state: 'visible', timeout: 5000 });
     await dropdownItem.click();
+  }
+
+  async buscarYSeleccionarCliente(nombreOQuery: string): Promise<void> {
+    await this.seleccionarClientePropietario(nombreOQuery);
   }
 
   /**
@@ -93,25 +105,54 @@ export class VehiculosPage extends BasePage {
     marca: string;
     modelo: string;
     anio: number | string;
-    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    tipoMotor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
     kilometraje?: number | string;
     nro_chasis?: string;
+    chasis?: string;
+    color?: string;
   }): Promise<void> {
     await this.marcaInput.fill(datos.marca);
     await this.modeloInput.fill(datos.modelo);
     await this.anioInput.fill(String(datos.anio));
 
-    if (datos.tipo_motor && await this.tipoMotorSelect.isVisible()) {
-      await this.tipoMotorSelect.selectOption(datos.tipo_motor);
+    let motor = datos.tipo_motor || datos.tipoMotor;
+    if (motor === 'DIESEL') {
+      motor = 'GASOLERO';
+    }
+    if (motor && await this.tipoMotorSelect.isVisible()) {
+      await this.tipoMotorSelect.selectOption(motor);
     }
     await this.patenteInput.fill(datos.patente);
 
-    if (datos.nro_chasis && await this.chasisInput.isVisible()) {
-      await this.chasisInput.fill(datos.nro_chasis);
+    const chasisVal = datos.nro_chasis || datos.chasis;
+    if (chasisVal && await this.chasisInput.isVisible()) {
+      await this.chasisInput.fill(chasisVal);
     }
     if (datos.kilometraje !== undefined && await this.kilometrajeInput.isVisible()) {
       await this.kilometrajeInput.fill(String(datos.kilometraje));
     }
+    if (datos.color) {
+      const colorInput = this.page.locator('input[formcontrolname="color"]');
+      if (await colorInput.isVisible()) {
+        await colorInput.fill(datos.color);
+      }
+    }
+  }
+
+  async completarVehiculoForm(datos: {
+    patente: string;
+    marca: string;
+    modelo: string;
+    anio: number | string;
+    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    tipoMotor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    kilometraje?: number | string;
+    nro_chasis?: string;
+    chasis?: string;
+    color?: string;
+  }): Promise<void> {
+    await this.completarFormularioVehiculo(datos);
   }
 
   /**
@@ -119,6 +160,10 @@ export class VehiculosPage extends BasePage {
    */
   async guardar(): Promise<void> {
     await this.guardarButton.click();
+  }
+
+  async guardarVehiculo(): Promise<void> {
+    await this.guardar();
   }
 
   /**
@@ -129,7 +174,7 @@ export class VehiculosPage extends BasePage {
     marca: string;
     modelo: string;
     anio: number | string;
-    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
     kilometraje?: number | string;
     nro_chasis?: string;
   }): Promise<void> {
