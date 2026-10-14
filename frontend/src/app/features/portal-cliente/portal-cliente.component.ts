@@ -42,6 +42,10 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   // Modal para perfil del cliente (TK201)
   readonly mostrarModalPerfil = signal<boolean>(false);
 
+  // Acciones de presupuesto (TK204)
+  readonly accionPresupuestoEnProgreso = signal<boolean>(false);
+  readonly mensajeAccion = signal<string | null>(null);
+
   private socketSub: Subscription | null = null;
 
   ngOnInit(): void {
@@ -227,6 +231,48 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
       const full = `${user.nombre || ''} ${user.apellido || ''}`.trim();
       this.userName.set(full || user.email || 'Cliente');
     }
+  }
+
+  aprobarPresupuesto(orden: OrdenResponse): void {
+    if (this.accionPresupuestoEnProgreso()) return;
+    this.accionPresupuestoEnProgreso.set(true);
+    this.mensajeAccion.set(null);
+
+    this.ordenService.actualizarEstado(orden.id, 'aprobado', 'Presupuesto aprobado por el cliente desde el portal').subscribe({
+      next: () => {
+        this.accionPresupuestoEnProgreso.set(false);
+        this.listaOrdenes.update(ordenes =>
+          ordenes.map(o => o.id === orden.id ? { ...o, estado: 'aprobado' } : o)
+        );
+        this.mensajeAccion.set(`¡Presupuesto para la orden ${orden.numero_ot || ''} aprobado con éxito!`);
+      },
+      error: (err) => {
+        console.error('Error al aprobar presupuesto:', err);
+        this.accionPresupuestoEnProgreso.set(false);
+        this.errorMessage.set(err.error?.error || 'No se pudo aprobar el presupuesto.');
+      }
+    });
+  }
+
+  rechazarPresupuesto(orden: OrdenResponse): void {
+    if (this.accionPresupuestoEnProgreso()) return;
+    this.accionPresupuestoEnProgreso.set(true);
+    this.mensajeAccion.set(null);
+
+    this.ordenService.actualizarEstado(orden.id, 'rechazado', 'Presupuesto rechazado por el cliente desde el portal').subscribe({
+      next: () => {
+        this.accionPresupuestoEnProgreso.set(false);
+        this.listaOrdenes.update(ordenes =>
+          ordenes.map(o => o.id === orden.id ? { ...o, estado: 'rechazado' } : o)
+        );
+        this.mensajeAccion.set(`Presupuesto para la orden ${orden.numero_ot || ''} marcado como rechazado.`);
+      },
+      error: (err) => {
+        console.error('Error al rechazar presupuesto:', err);
+        this.accionPresupuestoEnProgreso.set(false);
+        this.errorMessage.set(err.error?.error || 'No se pudo rechazar el presupuesto.');
+      }
+    });
   }
 
   logout(): void {

@@ -12,7 +12,7 @@ import { signal } from '@angular/core';
 describe('PortalClienteComponent', () => {
   let component: PortalClienteComponent;
   let fixture: ComponentFixture<PortalClienteComponent>;
-  let ordenServiceSpy: { obtenerOrdenes: ReturnType<typeof vi.fn>; obtenerEstadoHistorial: ReturnType<typeof vi.fn> };
+  let ordenServiceSpy: { obtenerOrdenes: ReturnType<typeof vi.fn>; obtenerEstadoHistorial: ReturnType<typeof vi.fn>; actualizarEstado: ReturnType<typeof vi.fn> };
   let vehiculoServiceSpy: { getVehiculos: ReturnType<typeof vi.fn>; obtenerMisVehiculos: ReturnType<typeof vi.fn>; obtenerMantenimientosProgramados: ReturnType<typeof vi.fn> };
   let authServiceSpy: { userRoleSignal: ReturnType<typeof vi.fn>; getUserFromToken: ReturnType<typeof vi.fn>; logout: ReturnType<typeof vi.fn> };
   let webSocketServiceSpy: { conectar: ReturnType<typeof vi.fn>; desconectar: ReturnType<typeof vi.fn>; escucharEvento: ReturnType<typeof vi.fn>; estadoConexion: any };
@@ -23,7 +23,8 @@ describe('PortalClienteComponent', () => {
 
     ordenServiceSpy = {
       obtenerOrdenes: vi.fn().mockReturnValue(of({ count: 1, results: [{ id: 'ot-1', numero_ot: 'OT-001', estado: 'ingresado' }] })),
-      obtenerEstadoHistorial: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', numero_ot: 'OT-001', estado_actual: 'ingresado', historial: [] }))
+      obtenerEstadoHistorial: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', numero_ot: 'OT-001', estado_actual: 'ingresado', historial: [] })),
+      actualizarEstado: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', estado_actual: 'aprobado' }))
     };
 
     vehiculoServiceSpy = {
@@ -92,5 +93,29 @@ describe('PortalClienteComponent', () => {
 
     expect(component.mostrarModalHistorial()).toBe(true);
     expect(ordenServiceSpy.obtenerEstadoHistorial).toHaveBeenCalledWith('ot-1');
+  });
+
+  it('debe permitir al cliente aprobar un presupuesto en_presupuesto (TK204)', () => {
+    ordenServiceSpy.actualizarEstado.mockReturnValue(of({ estado_actual: 'aprobado' }));
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'en_presupuesto' } as any;
+    component.listaOrdenes.set([mockOT]);
+
+    component.aprobarPresupuesto(mockOT);
+
+    expect(ordenServiceSpy.actualizarEstado).toHaveBeenCalledWith('ot-1', 'aprobado', expect.any(String));
+    expect(component.listaOrdenes()[0].estado).toBe('aprobado');
+    expect(component.mensajeAccion()).toContain('aprobado con éxito');
+  });
+
+  it('debe permitir al cliente rechazar un presupuesto en_presupuesto (TK204)', () => {
+    ordenServiceSpy.actualizarEstado.mockReturnValue(of({ estado_actual: 'rechazado' }));
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'en_presupuesto' } as any;
+    component.listaOrdenes.set([mockOT]);
+
+    component.rechazarPresupuesto(mockOT);
+
+    expect(ordenServiceSpy.actualizarEstado).toHaveBeenCalledWith('ot-1', 'rechazado', expect.any(String));
+    expect(component.listaOrdenes()[0].estado).toBe('rechazado');
+    expect(component.mensajeAccion()).toContain('rechazado');
   });
 });

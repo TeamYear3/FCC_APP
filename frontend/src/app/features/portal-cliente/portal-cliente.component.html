@@ -127,6 +127,23 @@
             ></div>
             <p class="text-xs text-gray-400 font-medium">Cargando tus órdenes de trabajo...</p>
           </div>
+        <!-- Mensaje de Confirmación de Acción -->
+        @if (mensajeAccion()) {
+          <div
+            class="bg-emerald-900/40 border border-emerald-500/80 text-emerald-200 px-4 py-3 rounded-xl flex items-start gap-3 shadow-md animate-fadeIn"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-6 h-6 text-emerald-400 shrink-0 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <div class="text-sm font-medium">{{ mensajeAccion() }}</div>
+          </div>
         }
         <!-- Mensaje de Error si la llamada API falla -->
         @if (!cargando() && errorMessage()) {
@@ -275,6 +292,54 @@
                     <span class="text-[10px] text-gray-500">Mano de obra e insumos</span>
                   </div>
                 </div>
+
+                <!-- Módulo de Revisión y Decisión de Presupuesto (TK204) -->
+                @if (ot.estado === 'en_presupuesto') {
+                  <div
+                    class="bg-[#141414] border border-[#FFCC00]/30 rounded-xl p-4 space-y-3"
+                    data-testid="panel-decision-presupuesto"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-[#FFCC00] uppercase tracking-wider flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Presupuesto Pendiente de Autorización
+                      </span>
+                      <span class="text-xs text-gray-400">Total: <strong class="text-[#FFCC00] font-mono">${{ ot.monto_total || 0 | number: '1.2-2' }}</strong></span>
+                    </div>
+                    <p class="text-xs text-gray-300 leading-relaxed">
+                      El presupuesto para su orden está listo. Por favor, revise el monto y seleccione si autoriza o rechaza los trabajos para que el equipo técnico pueda proceder.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                      <button
+                        type="button"
+                        (click)="aprobarPresupuesto(ot)"
+                        data-testid="btn-aprobar-presupuesto"
+                        [disabled]="accionPresupuestoEnProgreso()"
+                        class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-all shadow-md"
+                      >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Aprobar Presupuesto</span>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="rechazarPresupuesto(ot)"
+                        data-testid="btn-rechazar-presupuesto"
+                        [disabled]="accionPresupuestoEnProgreso()"
+                        class="bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/40 disabled:opacity-50 font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-2 cursor-pointer transition-all"
+                      >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        <span>Rechazar Presupuesto</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+
                 <!-- Botón para ver el historial cronológico -->
                 <div class="pt-2 border-t border-[#2A2A2A] flex justify-end">
                   <button
