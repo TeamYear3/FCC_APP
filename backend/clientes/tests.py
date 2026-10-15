@@ -510,3 +510,54 @@ class MetodosNoPermitidosClientesAPITests(APITestCase):
         self.assertIn("Allow", response.headers)
         self.assertNotIn("POST", response.headers["Allow"])
 
+
+class SerializerErroresPorCampoClientesAPITests(APITestCase):
+    """
+    AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo (400 Bad Request).
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_400_cli@test.com",
+            nombre="Admin",
+            apellido="Validador",
+            rol="admin",
+            password="adminpassword123"
+        )
+
+    def test_crear_cliente_payload_vacio_retorna_400_con_campos_requeridos(self):
+        """AUT-BE-04 / HU-06: Payload vacío retorna 400 Bad Request especificando campos obligatorios."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {}
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("nombre", response.data)
+        self.assertIn("dni_cuit", response.data)
+
+    def test_crear_cliente_dni_formato_invalido_retorna_400_especifico(self):
+        """AUT-BE-04 / HU-06: DNI con longitud menor a 7 dígitos retorna 400 con mensaje en dni_cuit."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {
+            "nombre": "Esteban",
+            "apellido": "Invalido",
+            "tipo_documento": "DNI",
+            "dni_cuit": "123",
+            "condicion_iva": "CF"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("dni_cuit", response.data)
+

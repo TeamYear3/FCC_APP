@@ -1032,5 +1032,65 @@ class MetodosNoPermitidosVehiculosAPITests(APITestCase):
         self.assertNotIn("PUT", response.headers["Allow"])
 
 
+class SerializerErroresPorCampoVehiculosAPITests(APITestCase):
+    """
+    AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo en vehículos.
+    """
 
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_400_veh@test.com",
+            nombre="Admin",
+            apellido="Vehicular",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Lucas",
+            apellido="Prueba",
+            tipo_documento="DNI",
+            dni_cuit="29887766",
+            condicion_iva="CF"
+        )
+
+    def test_crear_vehiculo_patente_formato_invalido_retorna_400(self):
+        """AUT-BE-04 / HU-07: Patente con formato incorrecto retorna 400 Bad Request con error en patente."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "PATENTE-INVALIDA-999",
+            "marca": "Ford",
+            "modelo": "Fiesta",
+            "kilometraje": 20000
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("patente", response.data)
+
+    def test_crear_vehiculo_kilometraje_negativo_retorna_400(self):
+        """AUT-BE-04 / HU-07: Kilometraje negativo retorna 400 Bad Request con error en kilometraje."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AB123CD",
+            "marca": "Ford",
+            "modelo": "Fiesta",
+            "kilometraje": -100
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje", response.data)
 
