@@ -777,4 +777,64 @@ class FacturaClienteAPITest(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_descargar_pdf_factura_como_admin_exitoso(self):
+        """TK208 / US-11: Un usuario administrador puede generar y descargar cualquier factura en PDF."""
+        # Arrange
+        admin_user = User.objects.create_user(
+            email="admin_pdf@taller.com",
+            nombre="Admin",
+            apellido="PDF",
+            rol="admin",
+            password="AdminPassword123!"
+        )
+        self.client.force_authenticate(user=admin_user)
+        url = reverse("factura-pdf", kwargs={"id": self.factura1.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.headers.get("Content-Type"), "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertIn("factura_B-0001-00000101.pdf", response.headers.get("Content-Disposition", ""))
+
+    def test_descargar_pdf_factura_como_cliente_propietario_exitoso(self):
+        """TK208 / US-11: El cliente propietario puede descargar su factura en formato PDF oficial."""
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente1)
+        url = reverse("factura-pdf", kwargs={"id": self.factura1.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.headers.get("Content-Type"), "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+
+    def test_descargar_pdf_factura_como_cliente_ajeno_retorna_403(self):
+        """TK208: Un cliente no puede descargar una factura perteneciente a otro cliente."""
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente2)
+        url = reverse("factura-pdf", kwargs={"id": self.factura1.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_descargar_pdf_factura_anonimo_retorna_401(self):
+        """TK208: La descarga de comprobante sin autenticación debe retornar 401."""
+        # Arrange
+        url = reverse("factura-pdf", kwargs={"id": self.factura1.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 

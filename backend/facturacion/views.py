@@ -1,7 +1,12 @@
+import base64
+import io
+import json
 from datetime import timedelta
 from decimal import Decimal
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
@@ -334,3 +339,335 @@ class ActualizarEstadoPagoFacturaView(APIView):
             FacturaSerializer(factura).data,
             status=status.HTTP_200_OK
         )
+
+
+class FacturaPDFView(APIView):
+    """
+    TK208: Endpoint GET /api/facturas/<uuid:id>/pdf/
+    Generación y descarga de la representación oficial en PDF de la factura electrónica autorizada por ARCA,
+    incluyendo código CAE, vencimiento fiscal, desglose de ítems y código QR oficial.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id, *args, **kwargs):
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+            from reportlab.graphics.shapes import Drawing
+            from reportlab.graphics.barcode.qr import QrCodeWidget
+        except ImportError:
+            return HttpResponse("Biblioteca ReportLab no disponible en este entorno.", status=501)
+
+        factura = get_object_or_404(
+            Factura.objects.select_related("orden_trabajo__vehiculo__cliente__usuario"),
+            id=id
+        )
+
+        # Validación de autorización si el usuario es cliente
+        if getattr(request.user, "rol", None) == "cliente":
+            vehiculo = getattr(factura.orden_trabajo, "vehiculo", None)
+            cliente = getattr(vehiculo, "cliente", None) if vehiculo else None
+            cliente_usuario_id = getattr(cliente, "usuario_id", None)
+            if not cliente or cliente_usuario_id != request.user.id:
+                return Response(
+                    {"error": "No tiene autorización para descargar este comprobante fiscal."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        orden = factura.orden_trabajo
+        vehiculo = orden.vehiculo if orden else None
+        cliente = vehiculo.cliente if vehiculo else None
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=36,
+            leftMargin=36,
+            topMargin=36,
+            bottomMargin=36
+        )
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'FacTitle',
+            parent=styles['Heading1'],
+            fontName='Helvetica-Bold',
+            fontSize=13,
+            textColor=colors.HexColor('#111827'),
+            spaceAfter=2
+        )
+        small_bold = ParagraphStyle(
+            'FacSmallBold',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=8,
+            textColor=colors.HexColor('#1F2937'),
+            leading=10
+        )
+        small_regular = ParagraphStyle(
+            'FacSmallRegular',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=7.5,
+            textColor=colors.HexColor('#4B5563'),
+            leading=10
+        )
+        letter_style = ParagraphStyle(
+            'FacLetter',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=26,
+            alignment=1,
+            textColor=colors.HexColor('#111827')
+        )
+        letter_sub = ParagraphStyle(
+            'FacLetterSub',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=7,
+            alignment=1,
+            textColor=colors.HexColor('#4B5563')
+        )
+        section_title = ParagraphStyle(
+            'FacSectionTitle',
+            parent=styles['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=9,
+            textColor=colors.HexColor('#1F2937'),
+            spaceBefore=6,
+            spaceAfter=3
+        )
+        table_header = ParagraphStyle(
+            'FacTableHeader',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=8,
+            textColor=colors.HexColor('#FFFFFF'),
+            leading=10
+        )
+        table_cell = ParagraphStyle(
+            'FacTableCell',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=7.5,
+            textColor=colors.HexColor('#1F2937'),
+            leading=10
+        )
+        table_cell_bold = ParagraphStyle(
+            'FacTableCellBold',
+            parent=table_cell,
+            fontName='Helvetica-Bold'
+        )
+
+        elements = []
+
+        # 1. ENCABEZADO FISCAL OFICIAL CON LETRA CENTRAL
+        tipo_letra = factura.tipo_comprobante or "B"
+        cod_cbte = "COD. 01" if tipo_letra == "A" else ("COD. 06" if tipo_letra == "B" else "COD. 11")
+
+        col_izq = [
+            Paragraph("<b>FCC TALLER MECÁNICO</b>", title_style),
+            Paragraph("Razón Social: FCC Servicios Automotores S.A.", small_regular),
+            Paragraph(f"<b>CUIT Emisor:</b> {factura.cuit_emisor}", small_regular),
+            Paragraph("<b>Condición IVA:</b> IVA Responsable Inscripto", small_regular),
+            Paragraph("<b>Domicilio Comercial:</b> Av. Colón 1234, Córdoba", small_regular),
+        ]
+
+        col_centro = [
+            Paragraph(f"<b>{tipo_letra}</b>", letter_style),
+            Paragraph(f"<b>{cod_cbte}</b>", letter_sub),
+        ]
+
+        fecha_emi_str = factura.fecha_emision.strftime('%d/%m/%Y') if factura.fecha_emision else "-"
+        fecha_vto_pago_str = factura.fecha_vencimiento_pago.strftime('%d/%m/%Y') if factura.fecha_vencimiento_pago else "-"
+
+        col_der = [
+            Paragraph("<b>FACTURA ELECTRÓNICA</b>", title_style),
+            Paragraph(f"<b>Punto de Venta:</b> {str(factura.punto_venta).zfill(4)} · <b>Comp. N°:</b> {str(factura.numero_factura).zfill(8)}", small_bold),
+            Paragraph(f"<b>Fecha de Emisión:</b> {fecha_emi_str}", small_regular),
+            Paragraph(f"<b>Fecha Vto. para el Pago:</b> {fecha_vto_pago_str}", small_regular),
+            Paragraph(f"<b>Estado Comprobante:</b> {factura.estado.upper()}", small_bold),
+        ]
+
+        header_data = [[col_izq, col_centro, col_der]]
+        header_table = Table(header_data, colWidths=[240, 60, 240])
+        header_table.setStyle(TableStyle([
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#9CA3AF')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+            ('BACKGROUND', (1, 0), (1, 0), colors.HexColor('#F3F4F6')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        elements.append(header_table)
+        elements.append(Spacer(1, 5))
+
+        # 2. DATOS DEL CLIENTE / RECEPTOR
+        nombre_cli = f"{cliente.nombre} {cliente.apellido}".strip() if cliente else "Consumidor Final"
+        dni_cuit_cli = getattr(cliente, "dni_cuit", "-") or "-"
+        cond_iva_cli = getattr(cliente, "condicion_iva", "CF") or "CF"
+        cond_iva_map = {
+            "RI": "Responsable Inscripto",
+            "CF": "Consumidor Final",
+            "EX": "Exento",
+            "MT": "Monotributista"
+        }
+        cond_iva_desc = cond_iva_map.get(cond_iva_cli, cond_iva_cli)
+
+        veh_str = f"{vehiculo.marca} {vehiculo.modelo} ({vehiculo.anio}) - Patente: {vehiculo.patente}" if vehiculo else "No registrado"
+        ot_num = f"#{orden.numero_ot or str(orden.id)[:8]}" if orden else "-"
+
+        cliente_data = [
+            [
+                Paragraph("<b>Apellido y Nombre / Razón Social:</b>", small_bold),
+                Paragraph(nombre_cli, small_regular),
+                Paragraph("<b>CUIT / DNI:</b>", small_bold),
+                Paragraph(dni_cuit_cli, small_regular)
+            ],
+            [
+                Paragraph("<b>Condición frente al IVA:</b>", small_bold),
+                Paragraph(cond_iva_desc, small_regular),
+                Paragraph("<b>Condición de Venta:</b>", small_bold),
+                Paragraph("Contado / Cuenta Corriente", small_regular)
+            ],
+            [
+                Paragraph("<b>Vehículo Asociado:</b>", small_bold),
+                Paragraph(veh_str, small_regular),
+                Paragraph("<b>Orden de Trabajo:</b>", small_bold),
+                Paragraph(ot_num, small_regular)
+            ]
+        ]
+        cliente_table = Table(cliente_data, colWidths=[140, 160, 110, 130])
+        cliente_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F9FAFB')),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        elements.append(cliente_table)
+        elements.append(Spacer(1, 6))
+
+        # 3. DETALLE DE ÍTEMS Y CONCEPTOS FACTURADOS
+        elements.append(Paragraph("DETALLE DE CONCEPTOS LIQUIDADOS", section_title))
+        items_header = [
+            Paragraph("Tipo", table_header),
+            Paragraph("Descripción del Concepto / Repuesto", table_header),
+            Paragraph("Cant.", table_header),
+            Paragraph("Precio Unitario", table_header),
+            Paragraph("Subtotal", table_header)
+        ]
+        items_data = [items_header]
+
+        items_presupuesto = list(orden.items_presupuesto.all()) if orden else []
+        if items_presupuesto:
+            for it in items_presupuesto:
+                tipo_display = "Mano de Obra" if it.tipo == "mano_obra" else "Repuesto"
+                subtotal_it = it.subtotal
+                items_data.append([
+                    Paragraph(tipo_display, table_cell),
+                    Paragraph(it.descripcion or "-", table_cell),
+                    Paragraph(f"{it.cantidad:.2f}", table_cell),
+                    Paragraph(f"${it.precio_unitario:,.2f}", table_cell),
+                    Paragraph(f"${subtotal_it:,.2f}", table_cell_bold),
+                ])
+        else:
+            items_data.append([
+                Paragraph("Servicio", table_cell),
+                Paragraph(orden.descripcion_problema if orden else "Servicio de reparación automotriz", table_cell),
+                Paragraph("1.00", table_cell),
+                Paragraph(f"${factura.total:,.2f}", table_cell),
+                Paragraph(f"${factura.total:,.2f}", table_cell_bold),
+            ])
+
+        # Totales
+        subtotal_gravado = factura.total / Decimal("1.21") if tipo_letra == "A" else factura.total
+        iva_liquidado = factura.total - subtotal_gravado if tipo_letra == "A" else Decimal("0.00")
+
+        if tipo_letra == "A":
+            items_data.append([
+                Paragraph("", table_cell),
+                Paragraph("<b>Subtotal Gravado (21%):</b>", table_cell),
+                Paragraph("", table_cell),
+                Paragraph("", table_cell),
+                Paragraph(f"${subtotal_gravado:,.2f}", table_cell_bold)
+            ])
+            items_data.append([
+                Paragraph("", table_cell),
+                Paragraph("<b>IVA Liquidado (21%):</b>", table_cell),
+                Paragraph("", table_cell),
+                Paragraph("", table_cell),
+                Paragraph(f"${iva_liquidado:,.2f}", table_cell_bold)
+            ])
+
+        items_data.append([
+            Paragraph("", table_cell),
+            Paragraph("<b>TOTAL FACTURADO:</b>", table_cell_bold),
+            Paragraph("", table_cell),
+            Paragraph("", table_cell),
+            Paragraph(f"<b>${factura.total:,.2f}</b>", table_cell_bold)
+        ])
+
+        items_table = Table(items_data, colWidths=[70, 250, 45, 85, 90])
+        items_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F2937')),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#9CA3AF')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+            ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        elements.append(items_table)
+        elements.append(Spacer(1, 8))
+
+        # 4. PIE FISCAL OFICIAL ARCA CON QR Y CÓDIGO CAE
+        qr_data = (
+            f"https://www.afip.gob.ar/fe/qr/?p="
+            f"{base64.b64encode(json.dumps({'ver':1,'fecha':fecha_emi_str,'cuit':30718293849,'ptoVta':factura.punto_venta,'tipoCmp':6 if tipo_letra=='B' else (1 if tipo_letra=='A' else 11),'nroCmp':factura.numero_factura,'importe':float(factura.total),'moneda':'PES','ctz':1,'tipoDocRec':96,'nroDocRec':int(dni_cuit_cli.replace('-','')) if dni_cuit_cli.replace('-','').isdigit() else 0,'tipoCodAut':'E','codAut':int(factura.cae) if factura.cae.isdigit() else 0}).encode('utf-8')).decode('utf-8')}"
+        )
+
+        qr_widget = QrCodeWidget(qr_data)
+        bounds = qr_widget.getBounds()
+        w = bounds[2] - bounds[0]
+        h = bounds[3] - bounds[1]
+        qr_drawing = Drawing(65, 65, transform=[65/w, 0, 0, 65/h, 0, 0])
+        qr_drawing.add(qr_widget)
+
+        fecha_vto_cae_str = factura.fecha_vencimiento_cae.strftime('%d/%m/%Y') if factura.fecha_vencimiento_cae else "-"
+
+        pie_fiscal_info = [
+            Paragraph("<b>Comprobante Autorizado por ARCA (Agencia de Recaudación y Control Aduanero)</b>", small_bold),
+            Paragraph(f"<b>CAE N°:</b> <font size=10 color='#1E40AF'><b>{factura.cae}</b></font>", small_bold),
+            Paragraph(f"<b>Fecha de Vencimiento de CAE:</b> {fecha_vto_cae_str}", small_regular),
+            Paragraph("La validez de este comprobante puede ser contrastada escaneando el código QR fiscal o en arca.gob.ar.", small_regular)
+        ]
+
+        pie_table = Table([[qr_drawing, pie_fiscal_info]], colWidths=[75, 465])
+        pie_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F3F4F6')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#9CA3AF')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        elements.append(pie_table)
+
+        doc.build(elements)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        filename = f"factura_{factura.numero_comprobante_formateado}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+
