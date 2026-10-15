@@ -47,8 +47,21 @@ def enviar_notificacion_email_turno(turno, accion="confirmado"):
     try:
         cuerpo_html = render_to_string("turnos/email_turno_confirmado.html", context)
     except Exception as exc:
-        logger.warning(f"[TK212] Error renderizando plantilla HTML de turno: {exc}. Usando fallback.")
-        cuerpo_html = None
+        logger.warning(f"[TK212] Error renderizando plantilla HTML de turno: {exc}. Usando fallback HTML.")
+        titulo_accion = "Tu turno ha sido reprogramado" if accion == "modificado" else "¡Tu turno ha sido confirmado con éxito!"
+        cuerpo_html = (
+            f"<!DOCTYPE html><html><body style='font-family: sans-serif; background: #f3f4f6; color: #1f2937; padding: 20px;'>"
+            f"<div style='max-width: 600px; margin: auto; background: #ffffff; padding: 24px; border-radius: 8px; border-left: 4px solid #ffcc00;'>"
+            f"<h2 style='color: #111827;'>{titulo_accion}</h2>"
+            f"<p>Hola <strong>{nombre_cliente}</strong>, te notificamos los detalles correspondientes a la cita agendada en nuestro taller:</p>"
+            f"<p><strong>Fecha y Hora:</strong> {fecha_hora_formateada}<br>"
+            f"<strong>Vehículo:</strong> {vehiculo_str}<br>"
+            f"<strong>Motivo:</strong> {turno.motivo}<br>"
+            f"<strong>Estado:</strong> {turno.estado}</p>"
+            f"<p>Dirección del Taller: Av. Colón 1234, Córdoba Capital<br>Teléfono: (0351) 456-7890</p>"
+            f"<p>Saludos cordiales,<br>Equipo de FCC Taller Mecánico</p>"
+            f"</div></body></html>"
+        )
 
     cuerpo_texto = (
         f"Hola {nombre_cliente},\n\n"
