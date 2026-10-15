@@ -138,7 +138,7 @@
             : 'text-gray-400 border-transparent hover:text-white'
         "
       >
-        Mis Turnos Agendados
+        Mis Turnos
       </button>
     </div>
 
@@ -752,9 +752,9 @@
             </button>
           </div>
         } @else {
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div data-testid="portal-turnos-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             @for (turno of listaTurnos(); track turno.id) {
-              <div class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5 flex flex-col justify-between hover:border-[#FFCC00]/40 transition-all space-y-4">
+              <div data-testid="card-turno-item" class="bg-[#1E1E1E] border border-[#2A2A2A] rounded-2xl p-5 flex flex-col justify-between hover:border-[#FFCC00]/40 transition-all space-y-4">
                 <div class="space-y-3">
                   <div class="flex items-start justify-between gap-2">
                     <span
