@@ -1111,3 +1111,109 @@ class SerializerErroresPorCampoVehiculosAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("kilometraje", response.data)
 
+
+from .models import MantenimientoProgramado
+
+class VehiculoOptimizacionORMTests(APITestCase):
+    """
+    TK182 / US-05: Validación de optimización ORM con select_related('cliente__usuario')
+    y prefetch_related('mantenimientos_programados') para eliminar consultas N+1.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_veh_orm@example.com",
+            nombre="Admin",
+            apellido="VehORM",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        # Crear clientes con usuarios vinculados
+        self.clientes = []
+        for i in range(1, 3):
+            usr = User.objects.create_user(
+                email=f"cliente_veh_usr_{i}@example.com",
+                nombre=f"CliNom{i}",
+                apellido=f"CliApe{i}",
+                rol="cliente",
+                password="password123"
+            )
+            cli = Cliente.objects.create(
+                usuario=usr,
+                nombre=f"ClienteAuto{i}",
+                apellido=f"ApeAuto{i}",
+                tipo_documento="DNI",
+                dni_cuit=f"3100000{i}",
+                condicion_iva="CF",
+                telefono=f"35111111{i}",
+                domicilio=f"Calle Vehiculo {i}"
+            )
+            self.clientes.append(cli)
+
+        # Crear 4 vehículos con mantenimientos asociados
+        self.vehiculos = []
+        patentes = ["AA100AA", "AA100AB", "AA100AC", "AA100AD"]
+        for idx, pat in enumerate(patentes):
+            veh = Vehiculo.objects.create(
+                cliente=self.clientes[idx % 2],
+                patente=pat,
+                marca="Toyota",
+                modelo=f"Corolla {idx}",
+                anio=2020 + idx,
+                kilometraje=15000 * (idx + 1),
+                kilometraje_actual=15000 * (idx + 1),
+                activo=True
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=veh,
+                tipo_servicio="Cambio de Aceite",
+                kilometraje_objetivo=20000 * (idx + 1)
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=veh,
+                tipo_servicio="Alineación y Balanceo",
+                kilometraje_objetivo=25000 * (idx + 1)
+            )
+            self.vehiculos.append(veh)
+
+    def test_listado_vehiculos_precarga_cliente_usuario_y_mantenimientos_sin_n_mas_1(self):
+        """
+        Valida que CrearVehiculoView utiliza select_related('cliente__usuario') y
+        prefetch_related('mantenimientos_programados') ejecutando un número determinista de queries.
+        """
+        # Arrange
+        url = reverse("crear-vehiculo")
+
+        # Act & Assert
+        # 3 queries: 1 count de paginación + 1 select de vehículos con JOIN a clientes y auth_user + 1 prefetch de mantenimientos
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 4)
+
+        # Validar que los mantenimientos vienen embebidos sin queries extra
+        primer_item = results[0]
+        self.assertIn("mantenimientos_programados", primer_item)
+        self.assertGreaterEqual(len(primer_item["mantenimientos_programados"]), 1)
+
+    def test_detalle_vehiculo_precarga_cliente_usuario_y_mantenimientos(self):
+        """
+        Valida que DetalleVehiculoView precarga relaciones en una sola consulta
+        con JOIN y un prefetch de mantenimientos (2 queries en total).
+        """
+        # Arrange
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculos[0].id})
+
+        # Act & Assert
+        with self.assertNumQueries(2):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["patente"], self.vehiculos[0].patente)
+        self.assertIn("mantenimientos_programados", response.data)
+

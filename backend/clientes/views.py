@@ -12,6 +12,9 @@ class CrearClienteView(generics.ListCreateAPIView):
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'apellido', 'dni_cuit']
 
+    def get_queryset(self):
+        return Cliente.objects.select_related('usuario').all().order_by('-creado_en', 'apellido')
+
 class DetalleClienteView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Cliente.objects.select_related('usuario').all()
     serializer_class = ClienteSerializer
