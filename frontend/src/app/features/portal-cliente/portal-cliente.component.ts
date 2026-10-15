@@ -47,7 +47,6 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly errorReserva = signal<string | null>(null);
   readonly exitoReserva = signal<string | null>(null);
   readonly warningOverbooking = signal<boolean>(false);
-  readonly forceBooking = signal<boolean>(false);
 
   // Modal para consultar historial de la OT seleccionada
   readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
@@ -259,7 +258,6 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     this.errorReserva.set(null);
     this.exitoReserva.set(null);
     this.warningOverbooking.set(false);
-    this.forceBooking.set(false);
     this.mostrarModalReserva.set(true);
   }
 
@@ -268,7 +266,6 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     this.errorReserva.set(null);
     this.exitoReserva.set(null);
     this.warningOverbooking.set(false);
-    this.forceBooking.set(false);
   }
 
   confirmarReservaTurno(): void {
@@ -295,8 +292,7 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     const payload: TurnoPayload = {
       vehiculo,
       fecha_hora: new Date(fechaHora).toISOString(),
-      motivo,
-      force_booking: this.forceBooking()
+      motivo
     };
 
     this.turnoService.crearTurno(payload).subscribe({
@@ -312,7 +308,7 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
         this.cargandoReserva.set(false);
         if (err.error?.warning_overbooking) {
           this.warningOverbooking.set(true);
-          this.errorReserva.set(err.error?.detail || 'Capacidad alta para esta fecha. Marca la casilla para forzar la reserva.');
+          this.errorReserva.set(err.error?.detail || 'Capacidad completa para esta fecha. Por favor, selecciona otro horario o día.');
         } else if (err.error?.fecha_hora) {
           this.errorReserva.set(Array.isArray(err.error.fecha_hora) ? err.error.fecha_hora[0] : err.error.fecha_hora);
         } else if (err.error?.vehiculo) {

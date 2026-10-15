@@ -59,10 +59,13 @@ class TurnoSerializer(serializers.ModelSerializer):
         force_booking = attrs.get("force_booking", False)
 
         request = self.context.get("request")
-        if request and getattr(request.user, "rol", None) == "cliente":
+        is_cliente = request and getattr(request.user, "rol", None) == "cliente"
+        if is_cliente:
             if hasattr(request.user, "cliente_perfil"):
                 cliente = request.user.cliente_perfil
                 attrs["cliente"] = cliente
+            attrs["estado"] = "pendiente"
+            force_booking = False
 
         # Si estamos actualizando, recuperamos los valores actuales si no se enviaron
         if self.instance:
@@ -113,11 +116,16 @@ class TurnoSerializer(serializers.ModelSerializer):
                 turnos_dia = turnos_dia.exclude(pk=self.instance.pk)
                 
             count = turnos_dia.count()
-            if count >= 2 and not force_booking:
-                raise serializers.ValidationError({
-                    "warning_overbooking": True,
-                    "detail": "El día seleccionado ya cuenta con 2 o más turnos activos. ¿Desea forzar la reserva?"
-                })
+            if count >= 2:
+                if is_cliente:
+                    raise serializers.ValidationError({
+                        "fecha_hora": "El día seleccionado no cuenta con cupos disponibles para nuevos turnos. Por favor seleccione otra fecha."
+                    })
+                elif not force_booking:
+                    raise serializers.ValidationError({
+                        "warning_overbooking": True,
+                        "detail": "El día seleccionado ya cuenta con 2 o más turnos activos. ¿Desea forzar la reserva?"
+                    })
 
         # Quitar force_booking para que no se pase al constructor del modelo Turno
         attrs.pop("force_booking", None)

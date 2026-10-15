@@ -897,19 +897,16 @@
             ></textarea>
           </div>
 
-          <!-- Opción de Sobre-cupo (si salta warning de overbooking) -->
+          <!-- Aviso de Capacidad Completa para Clientes -->
           @if (warningOverbooking()) {
-            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
-              <label class="flex items-center gap-2 cursor-pointer text-xs text-amber-300 font-medium">
-                <input
-                  type="checkbox"
-                  [ngModel]="forceBooking()"
-                  (ngModelChange)="forceBooking.set($event)"
-                  name="force_booking"
-                  class="rounded border-[#2A2A2A] text-[#FFCC00] focus:ring-0"
-                />
-                <span>Confirmar solicitud de turno aun con alta demanda técnica</span>
-              </label>
+            <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1 text-xs text-amber-300">
+              <p class="font-bold flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span>Sin cupos para la fecha seleccionada</span>
+              </p>
+              <p class="text-gray-300 text-[11px]">El taller ya alcanzó la capacidad máxima de turnos para este día. Por favor elija otra fecha.</p>
             </div>
           }
 
