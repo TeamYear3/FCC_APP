@@ -118,4 +118,34 @@ describe('PortalClienteComponent', () => {
     expect(component.listaOrdenes()[0].estado).toBe('rechazado');
     expect(component.mensajeAccion()).toContain('rechazado');
   });
+
+  it('debe calcular correctamente el desglose de mano de obra y repuestos (TK204)', () => {
+    const mockOT = {
+      id: 'ot-1',
+      items_presupuesto: [
+        { tipo: 'mano_de_obra', subtotal: 35000 },
+        { tipo: 'mano_de_obra', subtotal: 15000 },
+        { tipo: 'repuesto', subtotal: 80000 },
+      ]
+    } as any;
+
+    expect(component.getTotalManoDeObra(mockOT)).toBe(50000);
+    expect(component.getTotalRepuestos(mockOT)).toBe(80000);
+  });
+
+  it('debe enviar el motivo personalizado de rechazo al taller (TK204)', () => {
+    ordenServiceSpy.actualizarEstado.mockReturnValue(of({ estado_actual: 'rechazado' }));
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'en_presupuesto' } as any;
+    component.listaOrdenes.set([mockOT]);
+
+    component.iniciarRechazo(mockOT);
+    expect(component.ordenRechazoEnCurso()).toBe('ot-1');
+
+    component.motivoRechazo.set('Presupuesto excede el límite autorizado');
+    component.confirmarRechazoPresupuesto(mockOT);
+
+    expect(ordenServiceSpy.actualizarEstado).toHaveBeenCalledWith('ot-1', 'rechazado', 'Presupuesto excede el límite autorizado');
+    expect(component.ordenRechazoEnCurso()).toBeNull();
+  });
 });
+

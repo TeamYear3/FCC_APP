@@ -233,6 +233,9 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     }
   }
 
+  readonly ordenRechazoEnCurso = signal<string | null>(null);
+  readonly motivoRechazo = signal<string>('');
+
   aprobarPresupuesto(orden: OrdenResponse): void {
     if (this.accionPresupuestoEnProgreso()) return;
     this.accionPresupuestoEnProgreso.set(true);
@@ -254,12 +257,34 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     });
   }
 
-  rechazarPresupuesto(orden: OrdenResponse): void {
+  iniciarRechazo(orden: OrdenResponse): void {
+    if (this.ordenRechazoEnCurso() === orden.id) {
+      this.ordenRechazoEnCurso.set(null);
+    } else {
+      this.ordenRechazoEnCurso.set(orden.id);
+      this.motivoRechazo.set('');
+    }
+  }
+
+  cancelarRechazo(): void {
+    this.ordenRechazoEnCurso.set(null);
+    this.motivoRechazo.set('');
+  }
+
+  confirmarRechazoPresupuesto(orden: OrdenResponse): void {
+    const motivo = this.motivoRechazo().trim() || 'Presupuesto rechazado por el cliente desde el portal';
+    this.rechazarPresupuesto(orden, motivo);
+    this.cancelarRechazo();
+  }
+
+  rechazarPresupuesto(orden: OrdenResponse, motivo?: string): void {
     if (this.accionPresupuestoEnProgreso()) return;
     this.accionPresupuestoEnProgreso.set(true);
     this.mensajeAccion.set(null);
 
-    this.ordenService.actualizarEstado(orden.id, 'rechazado', 'Presupuesto rechazado por el cliente desde el portal').subscribe({
+    const motivoFinal = motivo || 'Presupuesto rechazado por el cliente desde el portal';
+
+    this.ordenService.actualizarEstado(orden.id, 'rechazado', motivoFinal).subscribe({
       next: () => {
         this.accionPresupuestoEnProgreso.set(false);
         this.listaOrdenes.update(ordenes =>
@@ -273,6 +298,18 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
         this.errorMessage.set(err.error?.error || 'No se pudo rechazar el presupuesto.');
       }
     });
+  }
+
+  getTotalManoDeObra(orden: OrdenResponse): number {
+    return (orden.items_presupuesto || [])
+      .filter(i => i.tipo === 'mano_de_obra')
+      .reduce((sum, i) => sum + (Number(i.subtotal) || (Number(i.cantidad) * Number(i.precio_unitario)) || 0), 0);
+  }
+
+  getTotalRepuestos(orden: OrdenResponse): number {
+    return (orden.items_presupuesto || [])
+      .filter(i => i.tipo === 'repuesto')
+      .reduce((sum, i) => sum + (Number(i.subtotal) || (Number(i.cantidad) * Number(i.precio_unitario)) || 0), 0);
   }
 
   logout(): void {
