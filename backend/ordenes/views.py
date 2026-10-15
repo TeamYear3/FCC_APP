@@ -711,3 +711,31 @@ class OrdenTrabajoAuditoriaView(APIView):
             'auditoria': registros_nosql
         }, status=status.HTTP_200_OK)
 
+
+class OrdenEventosWebSocketView(APIView):
+    """
+    TK192 (US-13): Endpoint GET /api/ordenes/<orden_id>/eventos-websocket/
+    Recupera el historial cronológico de eventos WebSocket persistidos en MongoDB.
+    """
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar los eventos WebSocket de esta Orden.")
+
+        from core.mongo import obtener_historial_eventos_websocket
+        eventos = obtener_historial_eventos_websocket(orden_id=orden.id, numero_ot=orden.numero_ot)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'origen_datos': 'MongoDB',
+            'total_eventos': len(eventos),
+            'eventos': eventos
+        }, status=status.HTTP_200_OK)
+
+
