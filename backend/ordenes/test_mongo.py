@@ -387,3 +387,205 @@ class OrdenesConsumerTestCase(TestCase):
         consumer.send.assert_awaited_once()
 
 
+class MongoDiagnosticoOBD2TestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = Usuario.objects.create_superuser(
+            email="admin_obd@fcc.com",
+            password="password123",
+            nombre="AdminOBD",
+            apellido="Taller",
+            rol="admin"
+        )
+        self.tecnico = Usuario.objects.create_user(
+            email="tecnico_obd@fcc.com",
+            password="password123",
+            nombre="Carlos",
+            apellido="Tecnico",
+            rol="tecnico"
+        )
+        self.cliente_user = Usuario.objects.create_user(
+            email="cliente_obd@fcc.com",
+            password="password123",
+            nombre="Duenio",
+            apellido="Vehiculo",
+            rol="cliente"
+        )
+        self.otro_cliente_user = Usuario.objects.create_user(
+            email="otro_obd@fcc.com",
+            password="password123",
+            nombre="Ajeno",
+            apellido="Vehiculo",
+            rol="cliente"
+        )
+
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            nombre="Duenio",
+            apellido="Vehiculo",
+            dni_cuit="20777777777",
+            telefono="1133221100"
+        )
+
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="OBD123",
+            marca="Chevrolet",
+            modelo="Cruze",
+            anio=2020
+        )
+
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.tecnico,
+            descripcion_problema="Luz de Check Engine encendida",
+            estado=EstadoOrden.INGRESADO
+        )
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_registrar_diagnostico_obd2_exitoso(self, mock_get_db):
+        from core.mongo import registrar_diagnostico_obd2
+        mock_db = MagicMock()
+        mock_col = MagicMock()
+        mock_db.__getitem__.return_value = mock_col
+        mock_get_db.return_value = mock_db
+
+        codigos = [
+            {"codigo": "p0300", "descripcion": "Fallo de encendido en cilindro aleatorio", "sistema": "Powertrain"},
+            {"codigo": "P0420", "descripcion": "Eficiencia catalizador banco 1 bajo el umbral"}
+        ]
+        params = {
+            "rpm": 820,
+            "temperatura_refrigerante_c": 92,
+            "stft_pct": 2.3,
+            "voltaje_bateria_v": 13.8
+        }
+
+        doc = registrar_diagnostico_obd2(
+            orden_id=self.orden.id,
+            codigos_dtc=codigos,
+            parametros_en_vivo=params,
+            escaner="Launch X431 Pro",
+            notas="Prueba de banco realizada con motor a temperatura de régimen.",
+            tecnico=self.tecnico,
+            numero_ot=self.orden.numero_ot,
+            patente=self.vehiculo.patente
+        )
+
+        self.assertIsNotNone(doc)
+        mock_col.insert_one.assert_called_once()
+        self.assertEqual(doc["orden_id"], str(self.orden.id))
+        self.assertEqual(doc["patente"], "OBD123")
+        self.assertEqual(len(doc["codigos_dtc"]), 2)
+        self.assertEqual(doc["codigos_dtc"][0]["codigo"], "P0300")
+        self.assertEqual(doc["parametros_en_vivo"]["rpm"], 820)
+        self.assertEqual(doc["tecnico"]["email"], "tecnico_obd@fcc.com")
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_registrar_diagnostico_obd2_normalizacion_strings(self, mock_get_db):
+        from core.mongo import registrar_diagnostico_obd2
+        mock_db = MagicMock()
+        mock_col = MagicMock()
+        mock_db.__getitem__.return_value = mock_col
+        mock_get_db.return_value = mock_db
+
+        doc = registrar_diagnostico_obd2(
+            orden_id=self.orden.id,
+            codigos_dtc="p0171, p0301",
+            parametros_en_vivo={"stft": 15.2}
+        )
+
+        self.assertIsNotNone(doc)
+        self.assertEqual(len(doc["codigos_dtc"]), 2)
+        self.assertEqual(doc["codigos_dtc"][0]["codigo"], "P0171")
+        self.assertEqual(doc["codigos_dtc"][1]["codigo"], "P0301")
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_obtener_diagnosticos_obd2(self, mock_get_db):
+        from core.mongo import obtener_diagnosticos_obd2
+        mock_db = MagicMock()
+        mock_col = MagicMock()
+        mock_cursor = MagicMock()
+
+        doc_fake = {
+            "_id": "607f1f77bcf86cd799439100",
+            "diagnostico_id": "diag-1",
+            "orden_id": str(self.orden.id),
+            "patente": "OBD123",
+            "codigos_dtc": [{"codigo": "P0300"}],
+            "timestamp": "2026-10-14T22:00:00Z"
+        }
+        mock_cursor.sort.return_value.limit.return_value = [doc_fake]
+        mock_col.find.return_value = mock_cursor
+        mock_db.__getitem__.return_value = mock_col
+        mock_get_db.return_value = mock_db
+
+        res = obtener_diagnosticos_obd2(orden_id=self.orden.id)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["diagnostico_id"], "diag-1")
+        self.assertEqual(res[0]["codigos_dtc"][0]["codigo"], "P0300")
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_fallback_mongo_offline_obd2(self, mock_get_db):
+        from core.mongo import registrar_diagnostico_obd2, obtener_diagnosticos_obd2
+        mock_get_db.return_value = None
+
+        self.assertIsNone(registrar_diagnostico_obd2(self.orden.id, ["P0300"]))
+        self.assertEqual(obtener_diagnosticos_obd2(self.orden.id), [])
+
+    @patch("core.mongo.registrar_diagnostico_obd2")
+    def test_endpoint_post_diagnostico_obd2_tecnico(self, mock_registrar):
+        mock_registrar.return_value = {
+            "_id": "doc123",
+            "diagnostico_id": "diag-new",
+            "orden_id": str(self.orden.id),
+            "codigos_dtc": [{"codigo": "P0300", "descripcion": "Misfire"}],
+            "parametros_en_vivo": {"rpm": 800}
+        }
+
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse("orden-diagnostico-obd2", kwargs={"orden_id": self.orden.id})
+        payload = {
+            "codigos_dtc": [{"codigo": "P0300", "descripcion": "Misfire"}],
+            "parametros_en_vivo": {"rpm": 800},
+            "escaner": "Bosch KTS",
+            "notas": "Inspección de encendido"
+        }
+        response = self.client.post(url, data=payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["diagnostico"]["diagnostico_id"], "diag-new")
+        mock_registrar.assert_called_once()
+
+    def test_endpoint_post_diagnostico_obd2_cliente_prohibido(self):
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("orden-diagnostico-obd2", kwargs={"orden_id": self.orden.id})
+        response = self.client.post(url, data={"codigos_dtc": ["P0300"]}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("core.mongo.obtener_diagnosticos_obd2")
+    def test_endpoint_get_diagnostico_obd2_admin_y_cliente_propio(self, mock_obtener):
+        mock_obtener.return_value = [
+            {"diagnostico_id": "d-1", "codigos_dtc": [{"codigo": "P0420"}]}
+        ]
+
+        # Admin consulta
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("orden-diagnostico-obd2", kwargs={"orden_id": self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_diagnosticos"], 1)
+
+        # Cliente propietario consulta
+        self.client.force_authenticate(user=self.cliente_user)
+        response_cliente = self.client.get(url)
+        self.assertEqual(response_cliente.status_code, status.HTTP_200_OK)
+
+    def test_endpoint_get_diagnostico_obd2_cliente_ajeno_denegado(self):
+        self.client.force_authenticate(user=self.otro_cliente_user)
+        url = reverse("orden-diagnostico-obd2", kwargs={"orden_id": self.orden.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+
