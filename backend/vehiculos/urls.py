@@ -1,5 +1,13 @@
 from django.urls import path
-from .views import CrearVehiculoView, DetalleVehiculoView, HistorialVehiculoView, ExportarHistorialPDFView, ReasignarVehiculoView, MantenimientoProgramadoView
+from .views import (
+    CrearVehiculoView,
+    DetalleVehiculoView,
+    HistorialVehiculoView,
+    ExportarHistorialPDFView,
+    ReasignarVehiculoView,
+    MantenimientoProgramadoView,
+    DetalleMantenimientoProgramadoView
+)
 
 urlpatterns = [
     path('', CrearVehiculoView.as_view(), name='crear-vehiculo'),
@@ -8,6 +16,7 @@ urlpatterns = [
     path('<uuid:pk>/historial/pdf/', ExportarHistorialPDFView.as_view(), name='exportar-historial-pdf'),
     path('<uuid:pk>/reasignar/', ReasignarVehiculoView.as_view(), name='reasignar-vehiculo'),
     path('<uuid:pk>/mantenimientos/', MantenimientoProgramadoView.as_view(), name='mantenimiento-vehiculo'),
+    path('<uuid:pk>/mantenimientos/<uuid:mantenimiento_pk>/', DetalleMantenimientoProgramadoView.as_view(), name='detalle-mantenimiento-vehiculo'),
 ]
 
 

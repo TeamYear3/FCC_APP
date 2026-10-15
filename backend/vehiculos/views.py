@@ -328,7 +328,7 @@ class MantenimientoProgramadoView(generics.ListCreateAPIView):
             if not vehiculo.cliente or vehiculo.cliente.usuario_id != user.id:
                 raise PermissionDenied("No tiene autorización para consultar los mantenimientos de este vehículo.")
 
-        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).order_by('-creado_en')
+        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).select_related('vehiculo').order_by('-creado_en')
 
     def perform_create(self, serializer):
         vehiculo_id = self.kwargs.get('pk')
@@ -338,6 +338,19 @@ class MantenimientoProgramadoView(generics.ListCreateAPIView):
             raise NotFound("El vehículo especificado no existe.")
 
         serializer.save(vehiculo=vehiculo)
+
+
+class DetalleMantenimientoProgramadoView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = MantenimientoProgramadoSerializer
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def get_queryset(self):
+        vehiculo_id = self.kwargs.get('pk')
+        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).select_related('vehiculo')
 
 
 
