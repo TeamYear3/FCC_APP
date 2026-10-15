@@ -270,3 +270,137 @@ def obtener_historial_eventos_websocket(orden_id=None, numero_ot=None, tipo_even
         logger.error(f"Excepción al consultar historial de eventos WebSocket en MongoDB: {e}")
         return []
 
+
+def registrar_diagnostico_obd2(orden_id, codigos_dtc, parametros_en_vivo=None, escaner=None, notas=None, tecnico=None, numero_ot=None, patente=None):
+    """
+    Registra una lectura de diagnóstico computarizado y códigos OBD-II en MongoDB (TK193 / US-07).
+    Colección: 'diagnosticos_obd2'
+    Documento:
+    - diagnostico_id: str (UUID)
+    - orden_id: str
+    - numero_ot: str | None
+    - patente: str | None
+    - codigos_dtc: list (objetos o strings normalizados con codigo, descripcion, etc.)
+    - parametros_en_vivo: dict (lecturas dinámicas de sensores: RPM, STFT, LTFT, temperatura, etc.)
+    - escaner: str | None
+    - notas: str | None
+    - tecnico: dict | None (id, email, nombre)
+    - timestamp: ISO-8601 UTC
+    """
+    try:
+        import uuid
+        db = MongoDBClient().get_db()
+        if db is None:
+            logger.warning("MongoDB no disponible. Omitiendo registro de diagnóstico OBD-II NoSQL.")
+            return None
+
+        coleccion = db["diagnosticos_obd2"]
+
+        # Normalizar códigos DTC
+        dtc_normalizados = []
+        if isinstance(codigos_dtc, list):
+            for item in codigos_dtc:
+                if isinstance(item, dict):
+                    dtc_normalizados.append({
+                        "codigo": str(item.get("codigo", "")).strip().upper(),
+                        "descripcion": str(item.get("descripcion", "")).strip(),
+                        "sistema": str(item.get("sistema", "")).strip() or None,
+                        "estado": str(item.get("estado", "activo")).strip().lower()
+                    })
+                elif isinstance(item, str):
+                    dtc_normalizados.append({
+                        "codigo": item.strip().upper(),
+                        "descripcion": "",
+                        "sistema": None,
+                        "estado": "activo"
+                    })
+        elif isinstance(codigos_dtc, str):
+            for c in codigos_dtc.split(","):
+                code = c.strip().upper()
+                if code:
+                    dtc_normalizados.append({
+                        "codigo": code,
+                        "descripcion": "",
+                        "sistema": None,
+                        "estado": "activo"
+                    })
+
+        # Normalizar parámetros en vivo (serializable dict)
+        live_params = {}
+        if isinstance(parametros_en_vivo, dict):
+            for k, v in parametros_en_vivo.items():
+                if hasattr(v, "isoformat"):
+                    live_params[k] = v.isoformat()
+                elif hasattr(v, "value"):
+                    live_params[k] = str(v.value)
+                elif hasattr(v, "__str__") and not isinstance(v, (str, int, float, bool, list, dict, type(None))):
+                    live_params[k] = str(v)
+                else:
+                    live_params[k] = v
+        elif parametros_en_vivo is not None:
+            live_params = {"raw": str(parametros_en_vivo)}
+
+        tecnico_info = None
+        if tecnico:
+            if hasattr(tecnico, "id"):
+                tecnico_info = {
+                    "id": str(tecnico.id),
+                    "email": getattr(tecnico, "email", None),
+                    "nombre": f"{getattr(tecnico, 'nombre', '')} {getattr(tecnico, 'apellido', '')}".strip() or None
+                }
+            elif isinstance(tecnico, dict):
+                tecnico_info = tecnico
+
+        diagnostico_id = str(uuid.uuid4())
+        documento = {
+            "diagnostico_id": diagnostico_id,
+            "orden_id": str(orden_id),
+            "numero_ot": str(numero_ot) if numero_ot else None,
+            "patente": str(patente).upper() if patente else None,
+            "codigos_dtc": dtc_normalizados,
+            "parametros_en_vivo": live_params,
+            "escaner": str(escaner) if escaner else None,
+            "notas": str(notas) if notas else None,
+            "tecnico": tecnico_info,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        coleccion.insert_one(documento)
+        logger.info(f"Diagnóstico OBD-II registrado en MongoDB para OT #{numero_ot or orden_id} (DTCs: {len(dtc_normalizados)})")
+        if "_id" in documento:
+            documento["_id"] = str(documento["_id"])
+        return documento
+    except Exception as e:
+        logger.error(f"Excepción al registrar diagnóstico OBD-II en MongoDB: {e}")
+        return None
+
+
+def obtener_diagnosticos_obd2(orden_id=None, patente=None, limit=50):
+    """
+    Recupera el historial de diagnósticos y lecturas OBD-II NoSQL desde MongoDB (TK193 / US-07).
+    """
+    try:
+        db = MongoDBClient().get_db()
+        if db is None:
+            return []
+
+        coleccion = db["diagnosticos_obd2"]
+        filtro = {}
+        if orden_id:
+            filtro["orden_id"] = str(orden_id)
+        if patente:
+            filtro["patente"] = str(patente).upper()
+
+        cursor = coleccion.find(filtro).sort("timestamp", -1).limit(limit)
+
+        registros = []
+        for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            registros.append(doc)
+
+        return registros
+    except Exception as e:
+        logger.error(f"Excepción al consultar diagnósticos OBD-II en MongoDB: {e}")
+        return []
+
+

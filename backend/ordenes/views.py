@@ -756,3 +756,68 @@ class OrdenEventosWebSocketView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class OrdenDiagnosticoOBD2View(APIView):
+    """
+    TK193 (US-07): Endpoints para registrar y consultar diagnósticos técnicos OBD-II en MongoDB.
+    POST /api/ordenes/<orden_id>/diagnostico-obd2/ -> Registrar informe/lectura OBD-II (Técnicos y Administradores).
+    GET  /api/ordenes/<orden_id>/diagnostico-obd2/ -> Consultar historial de lecturas OBD-II (Admins, Técnicos, Cliente propietario).
+    """
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar los diagnósticos técnicos de esta Orden.")
+
+        from core.mongo import obtener_diagnosticos_obd2
+        patente = orden.vehiculo.patente if orden.vehiculo else None
+        diagnosticos = obtener_diagnosticos_obd2(orden_id=orden.id, patente=patente)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'patente': patente,
+            'origen_datos': 'MongoDB',
+            'total_diagnosticos': len(diagnosticos),
+            'diagnosticos': diagnosticos
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo'), id=orden_id)
+
+        codigos_dtc = request.data.get('codigos_dtc', [])
+        parametros_en_vivo = request.data.get('parametros_en_vivo', {})
+        escaner = request.data.get('escaner')
+        notas = request.data.get('notas')
+
+        from core.mongo import registrar_diagnostico_obd2
+        patente = orden.vehiculo.patente if orden.vehiculo else None
+
+        resultado = registrar_diagnostico_obd2(
+            orden_id=orden.id,
+            codigos_dtc=codigos_dtc,
+            parametros_en_vivo=parametros_en_vivo,
+            escaner=escaner,
+            notas=notas,
+            tecnico=request.user,
+            numero_ot=orden.numero_ot,
+            patente=patente
+        )
+
+        if resultado is None:
+            return Response({
+                'error': 'No se pudo persistir el diagnóstico OBD-II en la base de datos NoSQL MongoDB.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response({
+            'message': 'Diagnóstico OBD-II registrado exitosamente en MongoDB.',
+            'diagnostico': resultado
+        }, status=status.HTTP_201_CREATED)
+
+
+
