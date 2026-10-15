@@ -31,6 +31,9 @@ class OrdenTrabajoPagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
             'total_items': self.page.paginator.count,
             'total_pages': self.page.paginator.num_pages,
             'current_page': self.page.number,
@@ -286,15 +289,30 @@ class AdjuntoDiagnosticoListCreateView(APIView):
 
     def get(self, request, orden_id=None, *args, **kwargs):
         target_orden_id = orden_id or request.query_params.get('orden_id') or request.query_params.get('orden_trabajo')
-        if target_orden_id:
-            orden = get_object_or_404(OrdenTrabajo, id=target_orden_id)
-            adjuntos = orden.adjuntos_diagnostico.all()
+        user = request.user
+
+        if getattr(user, 'rol', '') == 'cliente':
+            if not target_orden_id:
+                return Response({'error': 'Debe especificar el ID de la orden de trabajo.'}, status=status.HTTP_400_BAD_REQUEST)
+            orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente'), id=target_orden_id)
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != user.id:
+                return Response({'error': 'No tiene permisos para ver adjuntos de una orden de trabajo ajena.'}, status=status.HTTP_403_FORBIDDEN)
+            adjuntos = orden.adjuntos_diagnostico.filter(mime_type__startswith='image/')
         else:
-            adjuntos = AdjuntoDiagnostico.objects.all()
+            if target_orden_id:
+                orden = get_object_or_404(OrdenTrabajo, id=target_orden_id)
+                adjuntos = orden.adjuntos_diagnostico.all()
+            else:
+                adjuntos = AdjuntoDiagnostico.objects.all()
+
         serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, orden_id=None, *args, **kwargs):
+        user = request.user
+        if getattr(user, 'rol', '') == 'cliente':
+            return Response({'error': 'Los clientes no tienen permisos para subir adjuntos de diagnóstico.'}, status=status.HTTP_403_FORBIDDEN)
+
         target_orden_id = orden_id or request.data.get('orden_trabajo') or request.data.get('orden_id')
         if not target_orden_id:
             return Response({'error': 'Debe especificar el ID de la orden de trabajo.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -305,6 +323,8 @@ class AdjuntoDiagnosticoListCreateView(APIView):
             return Response({'error': 'No se adjuntó ningún archivo de imagen.'}, status=status.HTTP_400_BAD_REQUEST)
 
         resultado_upload = subir_imagen_diagnostico(file_obj, orden.id)
+        if resultado_upload.get('mime_type') and not resultado_upload['mime_type'].startswith('image/'):
+            return Response({'error': 'Solo se admiten archivos de imagen (JPEG, PNG, WebP).'}, status=status.HTTP_400_BAD_REQUEST)
 
         item_id = request.data.get('item_presupuesto_id') or request.data.get('item_presupuesto')
         item_obj = None
@@ -715,4 +735,97 @@ class OrdenTrabajoAuditoriaView(APIView):
             'total_registros': len(registros_nosql),
             'auditoria': registros_nosql
         }, status=status.HTTP_200_OK)
+
+
+class OrdenEventosWebSocketView(APIView):
+    """
+    TK192 (US-13): Endpoint GET /api/ordenes/<orden_id>/eventos-websocket/
+    Recupera el historial cronológico de eventos WebSocket persistidos en MongoDB.
+    """
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar los eventos WebSocket de esta Orden.")
+
+        from core.mongo import obtener_historial_eventos_websocket
+        eventos = obtener_historial_eventos_websocket(orden_id=orden.id, numero_ot=orden.numero_ot)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'origen_datos': 'MongoDB',
+            'total_eventos': len(eventos),
+            'eventos': eventos
+        }, status=status.HTTP_200_OK)
+
+
+class OrdenDiagnosticoOBD2View(APIView):
+    """
+    TK193 (US-07): Endpoints para registrar y consultar diagnósticos técnicos OBD-II en MongoDB.
+    POST /api/ordenes/<orden_id>/diagnostico-obd2/ -> Registrar informe/lectura OBD-II (Técnicos y Administradores).
+    GET  /api/ordenes/<orden_id>/diagnostico-obd2/ -> Consultar historial de lecturas OBD-II (Admins, Técnicos, Cliente propietario).
+    """
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar los diagnósticos técnicos de esta Orden.")
+
+        from core.mongo import obtener_diagnosticos_obd2
+        patente = orden.vehiculo.patente if orden.vehiculo else None
+        diagnosticos = obtener_diagnosticos_obd2(orden_id=orden.id, patente=patente)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'patente': patente,
+            'origen_datos': 'MongoDB',
+            'total_diagnosticos': len(diagnosticos),
+            'diagnosticos': diagnosticos
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo'), id=orden_id)
+
+        codigos_dtc = request.data.get('codigos_dtc', [])
+        parametros_en_vivo = request.data.get('parametros_en_vivo', {})
+        escaner = request.data.get('escaner')
+        notas = request.data.get('notas')
+
+        from core.mongo import registrar_diagnostico_obd2
+        patente = orden.vehiculo.patente if orden.vehiculo else None
+
+        resultado = registrar_diagnostico_obd2(
+            orden_id=orden.id,
+            codigos_dtc=codigos_dtc,
+            parametros_en_vivo=parametros_en_vivo,
+            escaner=escaner,
+            notas=notas,
+            tecnico=request.user,
+            numero_ot=orden.numero_ot,
+            patente=patente
+        )
+
+        if resultado is None:
+            return Response({
+                'error': 'No se pudo persistir el diagnóstico OBD-II en la base de datos NoSQL MongoDB.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response({
+            'message': 'Diagnóstico OBD-II registrado exitosamente en MongoDB.',
+            'diagnostico': resultado
+        }, status=status.HTTP_201_CREATED)
+
+
 

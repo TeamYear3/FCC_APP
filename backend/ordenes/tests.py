@@ -922,7 +922,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import AdjuntoDiagnostico
 
 
-class AdjuntoDiagnosticoAPITest(APITestCase):
+class AdjuntoDiagnosticoSecurityAPITest(APITestCase):
     def setUp(self):
         self.user_tecnico = User.objects.create_user(
             email="tecnico_foto@fcc.com",
@@ -1005,6 +1005,87 @@ class AdjuntoDiagnosticoAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(AdjuntoDiagnostico.objects.filter(id=adjunto.id).count(), 0)
+
+    def test_cliente_no_puede_subir_adjuntos_diagnostico_retorna_403(self):
+        # Arrange
+        user_cliente = User.objects.create_user(
+            email="cliente_subir@fcc.com",
+            password="Password123!",
+            rol="cliente",
+            nombre="Cliente",
+            apellido="Subir"
+        )
+        self.client.force_authenticate(user=user_cliente)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        foto_mock = SimpleUploadedFile("motor.jpg", b"fake_data", content_type="image/jpeg")
+
+        # Act
+        response = self.client.post(url, {'archivo': foto_mock}, format='multipart')
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cliente_no_puede_ver_adjuntos_de_ot_ajena_retorna_403(self):
+        # Arrange
+        otro_user_cliente = User.objects.create_user(
+            email="otro_cliente@fcc.com",
+            password="Password123!",
+            rol="cliente",
+            nombre="Otro",
+            apellido="Cliente"
+        )
+        self.client.force_authenticate(user=otro_user_cliente)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cliente_ve_solo_adjuntos_imagen_de_su_ot(self):
+        # Arrange: vincular el cliente de self.orden a un usuario cliente
+        user_cliente = User.objects.create_user(
+            email="dueno_ot@fcc.com",
+            password="Password123!",
+            rol="cliente",
+            nombre="Dueño",
+            apellido="OT"
+        )
+        self.cliente.usuario = user_cliente
+        self.cliente.save()
+
+        # Crear una imagen y un archivo PDF en la misma OT
+        AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/foto.jpg",
+            public_id="diagnosticos/foto.jpg",
+            nombre_archivo="foto.jpg",
+            mime_type="image/jpeg",
+            tamanio=1024,
+            creado_por=self.user_tecnico
+        )
+        AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/manual.pdf",
+            public_id="diagnosticos/manual.pdf",
+            nombre_archivo="manual.pdf",
+            mime_type="application/pdf",
+            tamanio=2048,
+            creado_por=self.user_tecnico
+        )
+
+        self.client.force_authenticate(user=user_cliente)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['nombre_archivo'], 'foto.jpg')
+
 
 
 class ItemsPresupuestoAPITest(APITestCase):
@@ -1918,6 +1999,91 @@ class ClienteAprobacionPresupuestoTests(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+
+class SerializerErroresPorCampoOrdenesAPITests(APITestCase):
+    """
+    AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo en órdenes y presupuestos.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_400_ot@test.com",
+            nombre="Admin",
+            apellido="Validador",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Diego",
+            apellido="Maradona",
+            tipo_documento="DNI",
+            dni_cuit="14222333",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AD789EF",
+            marca="Fiat",
+            modelo="Cronos",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Falla en encendido",
+            fecha_ingreso=timezone.now().date(),
+            estado=EstadoOrden.INGRESADO
+        )
+
+    def test_crear_orden_sin_campos_obligatorios_retorna_400(self):
+        """AUT-BE-04 / HU-08: Creación de OT sin vehiculo_id ni descripción retorna 400 Bad Request."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+        payload = {}
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("vehiculo_id", response.data)
+        self.assertIn("descripcion_problema", response.data)
+
+    def test_agregar_mano_de_obra_precio_negativo_retorna_400(self):
+        """AUT-BE-04 / HU-08: Mano de obra con precio unitario negativo retorna 400 Bad Request."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("agregar-mano-de-obra", kwargs={"orden_id": self.orden.id})
+        payload = {
+            "descripcion": "Diagnóstico computarizado",
+            "precio_unitario": "-5000.00",
+            "cantidad": "1.00"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("precio_unitario", response.data)
+
+    def test_actualizar_estado_transicion_invalida_retorna_400(self):
+        """AUT-BE-04 / HU-08: Transición ilegal de estado (ingresado a entregado) retorna 400 Bad Request."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {
+            "estado": "entregado",
+            "comentario": "Intento de salto directo a entregado"
+        }
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
 
 
 

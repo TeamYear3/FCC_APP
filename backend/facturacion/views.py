@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
@@ -37,89 +38,106 @@ class EmitirFacturaView(APIView):
         observaciones = serializer.validated_data.get("observaciones", "")
         condicion_iva_override = serializer.validated_data.get("condicion_iva", "")
 
-        orden = (
-            OrdenTrabajo.objects.select_related("vehiculo__cliente")
-            .prefetch_related("items_presupuesto")
-            .get(id=orden_id)
-        )
-        cliente = orden.vehiculo.cliente if orden.vehiculo else None
+        with transaction.atomic():
+            orden = (
+                OrdenTrabajo.objects.select_for_update()
+                .select_related("vehiculo__cliente")
+                .prefetch_related("items_presupuesto")
+                .get(id=orden_id)
+            )
+            cliente = orden.vehiculo.cliente if orden.vehiculo else None
 
-        if condicion_iva_override and cliente:
-            cliente.condicion_iva = condicion_iva_override
-            cliente.save(update_fields=["condicion_iva", "actualizado_en"])
+            # Guarda de idempotencia pesimista ante concurrencia
+            factura_existente = Factura.objects.filter(orden_trabajo=orden).first()
+            if factura_existente:
+                return Response(
+                    {
+                        "error": "La orden de trabajo ya posee una factura emitida.",
+                        "orden_trabajo_id": ["Esta Orden de Trabajo ya posee una Factura emitida."],
+                        "factura_id": str(factura_existente.id),
+                        "numero_comprobante": factura_existente.numero_comprobante_formateado,
+                        "cae": factura_existente.cae,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        datos_solicitud = {
-            "orden_id": str(orden.id),
-            "total": str(orden.monto_total),
-            "tipo_comprobante": tipo_comprobante,
-            "punto_venta": punto_venta,
-            "doc_tipo": getattr(cliente, "tipo_documento", "DNI"),
-            "doc_nro": getattr(cliente, "dni_cuit", "0"),
-        }
+            # La actualizacion de condicion_iva solo se efectiviza si la OT no tiene factura
+            if condicion_iva_override and cliente:
+                cliente.condicion_iva = condicion_iva_override
+                cliente.save(update_fields=["condicion_iva", "actualizado_en"])
 
-        # Llamar al WebService de ARCA para autorizar y obtener CAE oficial
-        try:
-            arca_response = ArcaWSClient.solicitar_cae(
-                total=orden.monto_total,
-                punto_venta=punto_venta,
+            datos_solicitud = {
+                "orden_id": str(orden.id),
+                "total": str(orden.monto_total),
+                "tipo_comprobante": tipo_comprobante,
+                "punto_venta": punto_venta,
+                "doc_tipo": getattr(cliente, "tipo_documento", "DNI"),
+                "doc_nro": getattr(cliente, "dni_cuit", "0"),
+            }
+
+            # Llamar al WebService de ARCA para autorizar y obtener CAE oficial
+            try:
+                arca_response = ArcaWSClient.solicitar_cae(
+                    total=orden.monto_total,
+                    punto_venta=punto_venta,
+                    tipo_comprobante=tipo_comprobante,
+                    doc_tipo=getattr(cliente, "tipo_documento", "DNI"),
+                    doc_nro=getattr(cliente, "dni_cuit", "0"),
+                    condicion_iva=getattr(cliente, "condicion_iva", "CF")
+                )
+                registrar_telemetria_arca(
+                    datos_solicitud=datos_solicitud,
+                    respuesta_arca=arca_response,
+                    orden_id=orden.id,
+                    exitoso=True
+                )
+            except ArcaFiscalError as exc:
+                registrar_telemetria_arca(
+                    datos_solicitud=datos_solicitud,
+                    respuesta_arca={"observaciones": exc.observaciones},
+                    orden_id=orden.id,
+                    exitoso=False,
+                    error=str(exc)
+                )
+                return Response(
+                    {"error": str(exc), "observaciones": exc.observaciones},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except ArcaAuthError as exc:
+                registrar_telemetria_arca(
+                    datos_solicitud=datos_solicitud,
+                    respuesta_arca=None,
+                    orden_id=orden.id,
+                    exitoso=False,
+                    error=str(exc)
+                )
+                return Response(
+                    {"error": f"Falla de autenticación fiscal con ARCA: {str(exc)}"},
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+            hoy = timezone.localdate()
+            fecha_vencimiento_pago = hoy + timedelta(days=dias_vencimiento)
+
+            factura = Factura.objects.create(
+                orden_trabajo=orden,
                 tipo_comprobante=tipo_comprobante,
-                doc_tipo=getattr(cliente, "tipo_documento", "DNI"),
-                doc_nro=getattr(cliente, "dni_cuit", "0"),
-                condicion_iva=getattr(cliente, "condicion_iva", "CF")
+                punto_venta=punto_venta,
+                numero_factura=arca_response["numero_factura"],
+                cae=arca_response["cae"],
+                fecha_vencimiento_cae=arca_response["fecha_vencimiento_cae"],
+                total=orden.monto_total,
+                estado=EstadoFactura.EMITIDA,
+                estado_pago=EstadoPago.SIN_INTERACCION,
+                fecha_vencimiento_pago=fecha_vencimiento_pago,
+                cuit_emisor=arca_response["cuit_emisor"],
+                observaciones=observaciones
             )
-            registrar_telemetria_arca(
-                datos_solicitud=datos_solicitud,
-                respuesta_arca=arca_response,
-                orden_id=orden.id,
-                exitoso=True
-            )
-        except ArcaFiscalError as exc:
-            registrar_telemetria_arca(
-                datos_solicitud=datos_solicitud,
-                respuesta_arca={"observaciones": exc.observaciones},
-                orden_id=orden.id,
-                exitoso=False,
-                error=str(exc)
-            )
+
             return Response(
-                {"error": str(exc), "observaciones": exc.observaciones},
-                status=status.HTTP_400_BAD_REQUEST
+                FacturaSerializer(factura).data,
+                status=status.HTTP_201_CREATED
             )
-        except ArcaAuthError as exc:
-            registrar_telemetria_arca(
-                datos_solicitud=datos_solicitud,
-                respuesta_arca=None,
-                orden_id=orden.id,
-                exitoso=False,
-                error=str(exc)
-            )
-            return Response(
-                {"error": f"Falla de autenticación fiscal con ARCA: {str(exc)}"},
-                status=status.HTTP_502_BAD_GATEWAY
-            )
-
-        hoy = timezone.localdate()
-        fecha_vencimiento_pago = hoy + timedelta(days=dias_vencimiento)
-
-        factura = Factura.objects.create(
-            orden_trabajo=orden,
-            tipo_comprobante=tipo_comprobante,
-            punto_venta=punto_venta,
-            numero_factura=arca_response["numero_factura"],
-            cae=arca_response["cae"],
-            fecha_vencimiento_cae=arca_response["fecha_vencimiento_cae"],
-            total=orden.monto_total,
-            estado=EstadoFactura.EMITIDA,
-            estado_pago=EstadoPago.SIN_INTERACCION,
-            fecha_vencimiento_pago=fecha_vencimiento_pago,
-            cuit_emisor=arca_response["cuit_emisor"],
-            observaciones=observaciones
-        )
-
-        return Response(
-            FacturaSerializer(factura).data,
-            status=status.HTTP_201_CREATED
-        )
 
 
 class FacturaListView(APIView):
