@@ -48,41 +48,41 @@ export class OrdenesPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.searchInput = page.locator('input[type="text"], [data-testid="input-buscar-orden"]');
-    this.nuevaOrdenButton = page.locator('button:has-text("Nueva Orden"), [data-testid="btn-nueva-orden"]');
-    this.kanbanBoard = page.locator('[data-testid="ordenes-kanban"], .grid, .kanban-board');
-    this.tablaOrdenes = page.locator('table');
-    this.filasOrdenes = page.locator('tbody tr');
-    this.expedienteActivo = page.locator('#expediente-activo');
-    this.tituloVehiculoExpediente = page.locator('h2.typography-h2-section');
-    this.badgeEstadoExpediente = page.locator('span.rounded-badge, span[class*="rounded-full"]:has-text("Ingresado"), span[class*="rounded-full"]:has-text("En Presupuesto"), span[class*="rounded-full"]:has-text("En Proceso"), span[class*="rounded-full"]:has-text("Aprobado")');
-    this.totalPresupuestoHeader = page.locator('p.typography-h2-section.text-color-primary-accent');
+    this.searchInput = page.getByTestId('input-buscar-orden').or(page.getByPlaceholder(/buscar/i)).or(page.locator('input[type="text"]'));
+    this.nuevaOrdenButton = page.getByTestId('btn-nueva-orden').or(page.getByRole('button', { name: /nueva orden/i }));
+    this.kanbanBoard = page.getByTestId('ordenes-kanban').or(page.locator('[data-testid="ordenes-kanban"]'));
+    this.tablaOrdenes = page.getByTestId('tabla-ordenes').or(page.getByRole('table'));
+    this.filasOrdenes = page.getByTestId('orden-fila').or(page.getByRole('row')).or(page.locator('tbody tr'));
+    this.expedienteActivo = page.getByTestId('expediente-activo').or(page.locator('#expediente-activo'));
+    this.tituloVehiculoExpediente = page.getByTestId('titulo-vehiculo-expediente').or(page.getByRole('heading', { level: 2 }));
+    this.badgeEstadoExpediente = page.getByTestId('badge-estado-expediente').or(page.getByText(/ingresado|en presupuesto|en proceso|aprobado/i));
+    this.totalPresupuestoHeader = page.getByTestId('total-presupuesto-header').or(page.locator('[data-testid="total-presupuesto-header"]'));
 
-    // Pestañas
-    this.tabResumen = page.locator('button:has-text("Resumen")');
-    this.tabPresupuesto = page.locator('button:has-text("Carga de Mano de Obra y Repuestos")');
-    this.tabImagenes = page.locator('button:has-text("Imágenes")');
+    // Pestañas semánticas
+    this.tabResumen = page.getByRole('tab', { name: /resumen/i }).or(page.getByRole('button', { name: /resumen/i }));
+    this.tabPresupuesto = page.getByRole('tab', { name: /carga de mano de obra y repuestos/i }).or(page.getByRole('button', { name: /carga de mano de obra y repuestos/i }));
+    this.tabImagenes = page.getByRole('tab', { name: /imágenes|imagenes/i }).or(page.getByRole('button', { name: /imágenes|imagenes/i }));
 
-    // Formulario de presupuesto
-    this.tipoItemRepuestoBtn = page.locator('.type-btn:has-text("Repuesto")');
-    this.tipoItemManoDeObraBtn = page.locator('.type-btn:has-text("Mano de Obra")');
-    this.descripcionItemInput = page.locator('input[placeholder*="Pastillas de freno"], input[placeholder*="Cambio de aceite"]');
-    this.cantidadItemInput = page.locator('.form-group:has-text("Cantidad") input');
-    this.precioUnitarioItemInput = page.locator('.form-group:has-text("Precio Unitario") input');
-    this.subtotalItemBadge = page.locator('.subtotal-badge');
-    this.totalEstimadoBadge = page.locator('.total-amount');
-    this.agregarItemBtn = page.locator('button:has-text("Agregar Ítem")');
-    this.tablaItemsPresupuesto = page.locator('.items-list-container');
-    this.alertaExitoItem = page.locator('.alert-success');
+    // Formulario de presupuesto sin clases CSS de presentación
+    this.tipoItemRepuestoBtn = page.getByTestId('tipo-item-repuesto-btn');
+    this.tipoItemManoDeObraBtn = page.getByTestId('tipo-item-mano-obra-btn');
+    this.descripcionItemInput = page.getByTestId('item-descripcion-input').or(page.getByPlaceholder(/pastillas de freno|cambio de aceite/i));
+    this.cantidadItemInput = page.getByTestId('item-cantidad-input').or(page.getByLabel(/^cantidad$/i));
+    this.precioUnitarioItemInput = page.getByTestId('item-precio-unitario-input').or(page.getByLabel(/precio unitario/i));
+    this.subtotalItemBadge = page.getByTestId('subtotal-badge').or(page.locator('.subtotal-badge'));
+    this.totalEstimadoBadge = page.getByTestId('total-amount').or(page.locator('.total-amount'));
+    this.agregarItemBtn = page.getByTestId('agregar-item-btn').or(page.getByRole('button', { name: /agregar ítem|agregar item/i }));
+    this.tablaItemsPresupuesto = page.getByTestId('items-presupuesto-tabla').or(page.getByRole('table'));
+    this.alertaExitoItem = page.getByTestId('alerta-exito-item').or(page.getByRole('alert')).or(page.getByRole('status')).or(page.locator('.alert-success'));
 
-    // Aprobación
-    this.ctaPrincipalBtn = page.locator('button:has-text("Aprobar Presupuesto y Convertir en OT")');
-    this.modalAprobarPresupuesto = page.locator('.fixed.inset-0:has(h3:has-text("Aprobar Presupuesto"))');
-    this.canalWhatsAppBtn = page.locator('button:has-text("WhatsApp")');
-    this.canalTelefonoBtn = page.locator('button:has-text("Llamada Telefónica")');
-    this.canalPresencialBtn = page.locator('button:has-text("Atención Presencial")');
-    this.confirmarAprobacionBtn = page.locator('button:has-text("Confirmar y Pasar a EN PROCESO")');
-    this.cancelarAprobacionBtn = page.locator('button:has-text("Cancelar")');
+    // Aprobación y Modales
+    this.ctaPrincipalBtn = page.getByTestId('cta-aprobar-presupuesto-btn').or(page.getByRole('button', { name: /aprobar presupuesto/i }));
+    this.modalAprobarPresupuesto = page.getByTestId('modal-aprobar-presupuesto').or(page.getByRole('dialog', { name: /aprobar presupuesto/i })).or(page.locator('[data-testid="modal-aprobar-presupuesto"]'));
+    this.canalWhatsAppBtn = page.getByTestId('canal-whatsapp-btn').or(page.getByRole('button', { name: /whatsapp/i }));
+    this.canalTelefonoBtn = page.getByTestId('canal-telefono-btn').or(page.getByRole('button', { name: /llamada telefónica|llamada telefonica/i }));
+    this.canalPresencialBtn = page.getByTestId('canal-presencial-btn').or(page.getByRole('button', { name: /atención presencial|atencion presencial/i }));
+    this.confirmarAprobacionBtn = page.getByTestId('confirmar-aprobacion-btn').or(page.getByRole('button', { name: /confirmar y pasar a en proceso/i }));
+    this.cancelarAprobacionBtn = page.getByTestId('cancelar-aprobacion-btn').or(page.getByRole('button', { name: /cancelar/i }));
   }
 
   async navigate(): Promise<void> {
