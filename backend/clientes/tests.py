@@ -355,7 +355,6 @@ class ClienteAPITestCase(APITestCase):
         response = self.client.get(url_detalle)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-
 class ClientesCasosFelicesAPITest(APITestCase):
     """
     AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
@@ -444,6 +443,74 @@ class ClientesCasosFelicesAPITest(APITestCase):
         self.assertEqual(response.data["telefono"], "1122334455")
 
 
+class MetodosNoPermitidosClientesAPITests(APITestCase):
+    """
+    AUT-BE-02: Validación de verbos HTTP no permitidos (405 Method Not Allowed)
+    en endpoints de colección y detalle de clientes.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_405_cli@example.com",
+            nombre="Admin",
+            apellido="Metodos",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Prueba",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF",
+            telefono="1144332211",
+            domicilio="Av. Rivadavia 2000"
+        )
+
+    def test_coleccion_clientes_rechaza_put_con_405(self):
+        """AUT-BE-02 / HU-06: Endpoint coleccion de clientes no admite PUT global."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.put(url, {"nombre": "Invalido"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_coleccion_clientes_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-06: Endpoint coleccion de clientes no admite DELETE masivo."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+    def test_detalle_cliente_rechaza_post_con_405(self):
+        """AUT-BE-02 / HU-06: Endpoint detalle de cliente no admite POST."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+
+        # Act
+        response = self.client.post(url, {"nombre": "Nuevo"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+
 class SerializerErroresPorCampoClientesAPITests(APITestCase):
     """
     AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo (400 Bad Request).
@@ -493,3 +560,4 @@ class SerializerErroresPorCampoClientesAPITests(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("dni_cuit", response.data)
+
