@@ -56,4 +56,16 @@ describe('TallerService', () => {
     expect(res.length).toBe(1);
     expect(res[0].monto_total_facturado).toBe(15000);
   });
+
+  it('debe exponer el recurso reactivo getResumenMecanicosResource con defaultValue', () => {
+    const resource = service.getResumenMecanicosResource();
+    expect(resource).toBeDefined();
+    expect(resource.value()).toEqual([]);
+  });
+
+  it('debe exponer el recurso reactivo getResumenClientesResource con defaultValue', () => {
+    const resource = service.getResumenClientesResource();
+    expect(resource).toBeDefined();
+    expect(resource.value()).toEqual([]);
+  });
 });

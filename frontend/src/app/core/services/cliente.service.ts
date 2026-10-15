@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, ResourceRef, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { httpResource } from '../utils/http-resource.util';
 
 export interface ClientePayload {
   nombre: string;
@@ -35,6 +36,7 @@ export interface ClientesPaginadosResponse {
 })
 export class ClienteService {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly apiUrl = `${environment.apiUrl}/clientes/`;
 
   private normalizarPayload(payload: Partial<ClientePayload>): Partial<ClientePayload> {
@@ -106,5 +108,28 @@ export class ClienteService {
   actualizarCliente(id: string, payload: Partial<ClientePayload>): Observable<ClienteResponse> {
     const sanitized = this.normalizarPayload(payload);
     return this.http.patch<ClienteResponse>(`${this.apiUrl}${id}/`, sanitized);
+  }
+
+  /**
+   * Recurso reactivo para listado de clientes que responde a cambios en un signal de búsqueda (TK178)
+   */
+  getClientesResource(searchSignal?: () => string | undefined): ResourceRef<ClienteResponse[] | undefined> {
+    return httpResource<ClienteResponse[], string | undefined>({
+      params: searchSignal,
+      loader: (termino) => this.obtenerClientes(termino),
+      defaultValue: [],
+      injector: this.injector
+    });
+  }
+
+  /**
+   * Recurso reactivo para detalle de cliente por id reactivo (TK178)
+   */
+  getClienteDetalleResource(idSignal: () => string | null | undefined): ResourceRef<ClienteResponse | undefined> {
+    return httpResource<ClienteResponse, string | null | undefined>({
+      params: idSignal,
+      loader: (id) => (id ? this.obtenerClientePorId(id) : new Observable<ClienteResponse>((s) => s.complete())),
+      injector: this.injector
+    });
   }
 }
