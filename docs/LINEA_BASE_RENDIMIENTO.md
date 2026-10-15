@@ -136,3 +136,6 @@ python manage.py test core.tests.AuditPerformanceCommandTests
 La línea base ha quedado formalmente registrada con evidencia empírica. Se ha comprobado que el sistema presenta un comportamiento ágil en lecturas individuales (< 10 ms), pero exhibe patrones clásicos de consultas **N+1** en relaciones foráneas no precargadas (`vehiculos` y `items_presupuesto`).
 
 Con estos valores de referencia documentados, queda cumplido al 100% el alcance de **TK167 (#252)** y se habilitan de inmediato las tareas de optimización de **TK168 (#253)** y **TK183 (#227)**.
+
+> **Consolidación Final:** Para consultar las métricas post-optimización, la erradicación total de consultas N+1 y las ganancias en Core Web Vitals, referirse al documento consolidado: [EVALUACION_OPTIMIZACIONES_RENDIMIENTO.md](EVALUACION_OPTIMIZACIONES_RENDIMIENTO.md) (**TK173 / #256**).
+
