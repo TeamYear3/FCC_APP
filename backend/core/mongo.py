@@ -170,3 +170,103 @@ def obtener_telemetria_arca(orden_id=None, limit=50):
     except Exception as e:
         logger.error(f"Excepción al consultar telemetría ARCA en MongoDB: {e}")
         return []
+
+
+def registrar_evento_websocket(tipo_evento, payload, grupo=None):
+    """
+    Registra un evento emitido por WebSocket en MongoDB (TK192 / US-13).
+    Colección: 'eventos_websocket'
+    Documento:
+    - evento_id: str
+    - tipo_evento: str
+    - orden_id: str | None (extraído de payload)
+    - numero_ot: str | None (extraído de payload)
+    - payload: dict (serializable)
+    - grupo: str | None
+    - timestamp: ISO-8601 UTC
+    """
+    try:
+        import uuid
+        db = MongoDBClient().get_db()
+        if db is None:
+            logger.warning("MongoDB no disponible. Omitiendo persistencia de evento WebSocket.")
+            return False
+
+        coleccion = db["eventos_websocket"]
+
+        orden_id = None
+        numero_ot = None
+        evento_id = None
+        payload_dict = {}
+        if isinstance(payload, dict):
+            evento_id = payload.get("evento_id")
+            orden_id = payload.get("orden_id")
+            numero_ot = payload.get("numero_ot")
+            for k, v in payload.items():
+                if hasattr(v, "isoformat"):
+                    payload_dict[k] = v.isoformat()
+                elif hasattr(v, "value"):
+                    payload_dict[k] = str(v.value)
+                elif hasattr(v, "__str__") and not isinstance(v, (str, int, float, bool, list, dict, type(None))):
+                    payload_dict[k] = str(v)
+                else:
+                    payload_dict[k] = v
+        else:
+            payload_dict = {"raw": str(payload)}
+
+        if evento_id:
+            existente = coleccion.find_one({"evento_id": str(evento_id)})
+            if existente:
+                return True
+        else:
+            evento_id = str(uuid.uuid4())
+            payload_dict["evento_id"] = evento_id
+
+        documento = {
+            "evento_id": str(evento_id),
+            "tipo_evento": str(tipo_evento),
+            "orden_id": str(orden_id) if orden_id else None,
+            "numero_ot": str(numero_ot) if numero_ot else None,
+            "payload": payload_dict,
+            "grupo": str(grupo) if grupo else None,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        coleccion.insert_one(documento)
+        logger.info(f"Evento WebSocket '{tipo_evento}' persistido exitosamente en MongoDB (OT #{numero_ot or orden_id})")
+        return True
+    except Exception as e:
+        logger.error(f"Excepción al persistir evento WebSocket en MongoDB: {e}")
+        return False
+
+
+def obtener_historial_eventos_websocket(orden_id=None, numero_ot=None, tipo_evento=None, limit=50):
+    """
+    Recupera el historial cronológico de eventos WebSocket persistidos en MongoDB (TK192 / US-13).
+    """
+    try:
+        db = MongoDBClient().get_db()
+        if db is None:
+            return []
+
+        coleccion = db["eventos_websocket"]
+        filtro = {}
+        if orden_id:
+            filtro["orden_id"] = str(orden_id)
+        if numero_ot:
+            filtro["numero_ot"] = str(numero_ot)
+        if tipo_evento:
+            filtro["tipo_evento"] = str(tipo_evento)
+
+        cursor = coleccion.find(filtro).sort("timestamp", -1).limit(limit)
+
+        registros = []
+        for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            registros.append(doc)
+
+        return registros
+    except Exception as e:
+        logger.error(f"Excepción al consultar historial de eventos WebSocket en MongoDB: {e}")
+        return []
+
