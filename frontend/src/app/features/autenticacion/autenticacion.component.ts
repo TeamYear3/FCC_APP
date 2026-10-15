@@ -189,8 +189,8 @@ export class AutenticacionComponent implements OnInit {
     this.authService.registro(nombre, apellido, email, password).subscribe({
       next: () => {
         this.isSubmitting.set(false);
-        this.successMessage.set('Registro exitoso. Ya puedes iniciar sesión.');
         this.changeMode('login');
+        this.successMessage.set('Registro exitoso. Ya puedes iniciar sesión.');
       },
       error: (err) => {
         this.isSubmitting.set(false);

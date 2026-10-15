@@ -102,3 +102,71 @@ def obtener_auditoria_ot(orden_id):
     except Exception as e:
         logger.error(f"Excepción al consultar auditoría MongoDB para OT #{orden_id}: {e}")
         return []
+
+
+def registrar_telemetria_arca(datos_solicitud, respuesta_arca, orden_id=None, exitoso=True, error=None):
+    """
+    Registra la telemetría y respuesta fiscal de ARCA (ex-AFIP) en colecciones NoSQL de MongoDB (TK191 / US-11).
+    """
+    try:
+        db = MongoDBClient().get_db()
+        if db is None:
+            logger.warning("MongoDB no disponible. Omitiendo registro de telemetría ARCA NoSQL.")
+            return False
+
+        coleccion = db["telemetria_arca"]
+
+        respuesta_serializable = {}
+        if isinstance(respuesta_arca, dict):
+            for k, v in respuesta_arca.items():
+                if hasattr(v, "isoformat"):
+                    respuesta_serializable[k] = v.isoformat()
+                elif hasattr(v, "__str__"):
+                    respuesta_serializable[k] = str(v)
+                else:
+                    respuesta_serializable[k] = v
+        else:
+            respuesta_serializable = str(respuesta_arca) if respuesta_arca else {}
+
+        documento = {
+            "orden_id": str(orden_id) if orden_id else None,
+            "solicitud": datos_solicitud or {},
+            "respuesta": respuesta_serializable,
+            "exitoso": bool(exitoso),
+            "error": str(error) if error else None,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        coleccion.insert_one(documento)
+        logger.info(f"Telemetría ARCA persistida exitosamente en MongoDB para OT #{orden_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Excepción al persistir telemetría fiscal ARCA en MongoDB: {e}")
+        return False
+
+
+def obtener_telemetria_arca(orden_id=None, limit=50):
+    """
+    Recupera el historial de telemetría fiscal NoSQL de ARCA desde MongoDB.
+    """
+    try:
+        db = MongoDBClient().get_db()
+        if db is None:
+            return []
+
+        coleccion = db["telemetria_arca"]
+        filtro = {}
+        if orden_id:
+            filtro["orden_id"] = str(orden_id)
+
+        cursor = coleccion.find(filtro).sort("timestamp", -1).limit(limit)
+
+        registros = []
+        for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            registros.append(doc)
+
+        return registros
+    except Exception as e:
+        logger.error(f"Excepción al consultar telemetría ARCA en MongoDB: {e}")
+        return []

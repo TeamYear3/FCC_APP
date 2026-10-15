@@ -39,6 +39,10 @@ export interface OrdenResponse {
   estado_cobro?: 'pendiente' | 'cobrado' | string;
   metodo_pago?: string | null;
   fecha_cobro?: string | null;
+  aprobado_por_cliente?: boolean;
+  items_presupuesto?: ItemPresupuesto[];
+  adjuntos_diagnostico?: AdjuntoDiagnostico[];
+  historial_estados?: HistorialEstadoItem[];
 }
 
 export interface OrdenFiltros {

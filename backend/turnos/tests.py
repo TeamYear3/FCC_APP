@@ -1,4 +1,5 @@
 from io import StringIO
+import uuid
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.test import TestCase
@@ -454,6 +455,7 @@ class RecordatoriosTurnosCommandTests(TestCase):
             modelo="Corolla",
             anio=2021
         )
+        mail.outbox.clear()
 
     def test_enviar_recordatorio_turno_24h_anticipacion_exitoso(self):
         # Arrange
@@ -517,6 +519,66 @@ class RecordatoriosTurnosCommandTests(TestCase):
         output = out.getvalue()
         self.assertIn("[DRY-RUN] Simulado envío a notificar@cliente.com", output)
         self.assertEqual(len(mail.outbox), 0)
+    def test_no_reenviar_recordatorio_si_ya_fue_notificado(self):
+        # Arrange: Turno dentro de la ventana de 24h
+        fecha_manana = timezone.now() + timedelta(hours=24)
+        turno = Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=fecha_manana,
+            motivo="Cambio de pastillas",
+            estado="pendiente"
+        )
+        out1 = StringIO()
+        out2 = StringIO()
+
+        # Act 1: Primer envío
+        call_command("enviar_recordatorios_turnos", "--horas=24", stdout=out1)
+        self.assertEqual(len(mail.outbox), 1)
+        turno.refresh_from_db()
+        self.assertIsNotNone(turno.recordatorio_enviado_en)
+
+        # Act 2: Segunda ejecución inmediata (idempotencia)
+        call_command("enviar_recordatorios_turnos", "--horas=24", stdout=out2)
+
+        # Assert: No debe enviar un segundo correo
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("No hay turnos pendientes para recordar en este período.", out2.getvalue())
 
 
+class MetodosNoPermitidosTurnosAPITests(APITestCase):
+    """AUT-BE-02: rutas de turnos rechazan métodos HTTP que no existen."""
 
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            email="admin_405_turnos@example.com",
+            password="adminpassword123",
+            nombre="Admin",
+            apellido="Métodos HTTP",
+            rol="admin",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_lista_turnos_rechaza_trace(self):
+        # Arrange
+        url = reverse("turno-list")
+
+        # Act
+        response = self.client.generic("TRACE", url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("TRACE", response.headers["Allow"])
+
+    def test_detalle_turno_rechaza_trace(self):
+        # Arrange
+        url = reverse("turno-detail", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.generic("TRACE", url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("TRACE", response.headers["Allow"])

@@ -52,6 +52,7 @@ class Command(BaseCommand):
             Turno.objects.select_related("cliente__usuario", "vehiculo")
             .filter(
                 estado="pendiente",
+                recordatorio_enviado_en__isnull=True,
                 fecha_hora__gte=inicio_ventana,
                 fecha_hora__lte=fin_ventana,
             )
@@ -127,6 +128,8 @@ class Command(BaseCommand):
                 )
                 if exito:
                     enviados += 1
+                    turno.recordatorio_enviado_en = timezone.now()
+                    turno.save(update_fields=["recordatorio_enviado_en"])
                     self.stdout.write(
                         self.style.SUCCESS(f"[ENVIADO] Recordatorio enviado a {destinatario} (Turno #{turno.id})")
                     )
