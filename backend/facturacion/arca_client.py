@@ -223,11 +223,22 @@ class WSFEClient:
         """
         try:
             root = ET.fromstring(xml_str)
-            resultado = root.find(".//Resultado")
-            cae = root.find(".//CAE")
-            cae_fch_vto = root.find(".//CAEFchVto")
-            obs = [elem.text for elem in root.findall(".//Obs/Msg") if elem.text]
-            err = [elem.text for elem in root.findall(".//Err/Msg") if elem.text]
+            resultado = root.find(".//{*}Resultado") if root.find(".//{*}Resultado") is not None else root.find(".//Resultado")
+            cae = root.find(".//{*}CAE") if root.find(".//{*}CAE") is not None else root.find(".//CAE")
+            cae_fch_vto = root.find(".//{*}CAEFchVto") if root.find(".//{*}CAEFchVto") is not None else root.find(".//CAEFchVto")
+            obs = [elem.text for elem in root.findall(".//{*}Obs/{*}Msg") if elem.text] or [elem.text for elem in root.findall(".//Obs/Msg") if elem.text]
+            err = []
+            for elem in (root.findall(".//{*}Err") or root.findall(".//Err")):
+                c = elem.find("{*}Code") if elem.find("{*}Code") is not None else elem.find("Code")
+                m = elem.find("{*}Msg") if elem.find("{*}Msg") is not None else elem.find("Msg")
+                c_text = c.text if c is not None and c.text else ""
+                m_text = m.text if m is not None and m.text else ""
+                if c_text and m_text:
+                    err.append(f"[{c_text}] {m_text}")
+                elif m_text:
+                    err.append(m_text)
+                elif c_text:
+                    err.append(f"[{c_text}]")
 
             return {
                 "resultado": resultado.text if resultado is not None else None,

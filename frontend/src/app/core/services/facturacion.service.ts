@@ -80,4 +80,19 @@ export class FacturacionService {
   actualizarEstadoPago(id: string, estado_pago: EstadoPago): Observable<Factura> {
     return this.http.patch<Factura>(`${this.baseUrl}/${id}/pago/`, { estado_pago });
   }
+
+  /**
+   * TK206: Obtiene el listado de facturas emitidas correspondientes al cliente autenticado.
+   */
+  getFacturasCliente(): Observable<Factura[]> {
+    return this.http.get<Factura[]>(`${this.baseUrl}/mis-facturas/`);
+  }
+
+  /**
+   * TK208: Descarga la representación oficial en PDF de la factura electrónica.
+   */
+  descargarPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${id}/pdf/`, { responseType: 'blob' });
+  }
 }
+
