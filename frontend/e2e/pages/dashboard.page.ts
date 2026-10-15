@@ -22,12 +22,12 @@ export class DashboardPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.navbar = page.locator('nav, [data-testid="navbar"]');
-    this.userBadge = page.locator('[data-testid="user-badge"], .user-profile, .user-name').or(page.getByText(/admin|tecnico|recepcionista/i));
-    this.clientesLink = page.getByRole('link', { name: /clientes/i }).or(page.locator('[data-testid="nav-clientes"]'));
-    this.vehiculosLink = page.getByRole('link', { name: /vehículos|vehiculos/i }).or(page.locator('[data-testid="nav-vehiculos"]'));
-    this.ordenesLink = page.getByRole('link', { name: /órdenes|ordenes/i }).or(page.locator('[data-testid="nav-ordenes"]'));
-    this.logoutButton = page.getByRole('button', { name: /cerrar sesión|salir/i }).or(page.locator('[data-testid="btn-logout"]'));
+    this.navbar = page.getByTestId('navbar').or(page.getByRole('navigation')).or(page.locator('nav'));
+    this.userBadge = page.getByTestId('user-badge').or(page.getByText(/admin|tecnico|recepcionista/i));
+    this.clientesLink = page.getByTestId('nav-clientes').or(page.getByRole('link', { name: /clientes/i }));
+    this.vehiculosLink = page.getByTestId('nav-vehiculos').or(page.getByRole('link', { name: /vehículos|vehiculos/i }));
+    this.ordenesLink = page.getByTestId('nav-ordenes').or(page.getByRole('link', { name: /órdenes|ordenes/i }));
+    this.logoutButton = page.getByTestId('btn-logout').or(page.getByRole('button', { name: /cerrar sesión|salir/i }));
   }
 
   /**

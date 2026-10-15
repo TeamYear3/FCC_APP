@@ -1,3 +1,5 @@
+import uuid
+
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
@@ -462,3 +464,39 @@ class TurnosCasosFelicesAPITest(APITestCase):
         self.assertEqual(response.data["motivo"], "Revisión técnica y alineación")
 
 
+class MetodosNoPermitidosTurnosAPITests(APITestCase):
+    """AUT-BE-02: rutas de turnos rechazan métodos HTTP que no existen."""
+
+    def setUp(self):
+        self.admin = Usuario.objects.create_user(
+            email="admin_405_turnos@example.com",
+            password="adminpassword123",
+            nombre="Admin",
+            apellido="Métodos HTTP",
+            rol="admin",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_lista_turnos_rechaza_trace(self):
+        # Arrange
+        url = reverse("turno-list")
+
+        # Act
+        response = self.client.generic("TRACE", url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("TRACE", response.headers["Allow"])
+
+    def test_detalle_turno_rechaza_trace(self):
+        # Arrange
+        url = reverse("turno-detail", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.generic("TRACE", url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("TRACE", response.headers["Allow"])

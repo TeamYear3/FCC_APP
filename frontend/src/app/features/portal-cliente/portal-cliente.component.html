@@ -668,6 +668,9 @@
   <!-- Modal de Historial Cronológico de la OT -->
   @if (mostrarModalHistorial()) {
     <div
+      role="dialog"
+      aria-modal="true"
+      data-testid="modal-historial"
       class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
     >
       <div
