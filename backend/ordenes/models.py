@@ -182,6 +182,10 @@ class OrdenTrabajo(models.Model):
         if nuevo_estado == EstadoOrden.APROBADO:
             self.aprobado_por_cliente = True
             update_fields.append('aprobado_por_cliente')
+        elif nuevo_estado == EstadoOrden.RECHAZADO:
+            self.aprobado_por_cliente = False
+            self.comentario_rechazo = comentario
+            update_fields.extend(['aprobado_por_cliente', 'comentario_rechazo'])
         if nuevo_estado == EstadoOrden.ENTREGADO and not self.fecha_entrega:
             self.fecha_entrega = timezone.now().date()
             update_fields.append('fecha_entrega')

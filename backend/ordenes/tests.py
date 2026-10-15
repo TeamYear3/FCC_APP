@@ -1906,6 +1906,100 @@ class ItemsPresupuestoOptimizacionORMTests(APITestCase):
         self.assertEqual(len(response.data), 5)
 
 
+class ClienteAprobacionPresupuestoTests(APITestCase):
+    """Pruebas para aprobación y rechazo de presupuestos por el cliente desde el portal (TK204 / US-18)."""
+
+    def setUp(self):
+        self.user_cliente = User.objects.create_user(
+            email="portal_cliente@test.com",
+            nombre="Juan",
+            apellido="Cliente",
+            password="password123",
+            rol="cliente"
+        )
+        self.user_ajeno = User.objects.create_user(
+            email="otro_cliente@test.com",
+            nombre="Pedro",
+            apellido="Ajeno",
+            password="password123",
+            rol="cliente"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Juan",
+            apellido="Cliente",
+            tipo_documento="DNI",
+            dni_cuit="30111222"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA999BB",
+            marca="Ford",
+            modelo="Fiesta",
+            anio=2019
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Problemas de embrague",
+            estado=EstadoOrden.EN_PRESUPUESTO
+        )
+
+    def test_cliente_puede_aprobar_presupuesto_en_su_orden(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "aprobado", "comentario": "Presupuesto aprobado por el cliente"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.APROBADO)
+        self.assertTrue(self.orden.aprobado_por_cliente)
+
+    def test_cliente_puede_rechazar_presupuesto_en_su_orden(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "rechazado", "comentario": "Costo de repuestos muy elevado"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.RECHAZADO)
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.assertEqual(self.orden.comentario_rechazo, "Costo de repuestos muy elevado")
+
+    def test_cliente_no_puede_modificar_orden_de_otro_cliente(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_ajeno)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "aprobado"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cliente_no_puede_transicionar_a_estados_operativos_internos(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "finalizado"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
 class SerializerErroresPorCampoOrdenesAPITests(APITestCase):
     """
     AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo en órdenes y presupuestos.
