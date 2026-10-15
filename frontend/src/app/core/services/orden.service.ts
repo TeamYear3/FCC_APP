@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface OrdenPayload {
@@ -59,6 +59,9 @@ export interface OrdenFiltros {
 }
 
 export interface OrdenesPaginadasResponse {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
   total_items: number;
   total_pages: number;
   current_page: number;
@@ -152,7 +155,20 @@ export class OrdenService {
     if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
     if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
 
-    return this.http.get<OrdenesPaginadasResponse>(this.apiUrl, { params });
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
+      map((res: any) => {
+        const results = Array.isArray(res) ? res : (res?.results || []);
+        return {
+          count: res?.count ?? res?.total_items ?? results.length,
+          total_items: res?.total_items ?? res?.count ?? results.length,
+          total_pages: res?.total_pages ?? Math.ceil((res?.count || results.length) / limit),
+          current_page: res?.current_page ?? page,
+          next: res?.next ?? null,
+          previous: res?.previous ?? null,
+          results
+        } as OrdenesPaginadasResponse;
+      })
+    );
   }
 
   /**

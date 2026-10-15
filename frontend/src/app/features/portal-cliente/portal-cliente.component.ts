@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/services/orden.service';
+import { OrdenService, OrdenResponse, OrdenHistorialResponse, AdjuntoDiagnostico } from '../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, MantenimientoProgramadoResponse } from '../../core/services/vehiculo.service';
 import { TurnoService, TurnoResponse, TurnoPayload } from '../../core/services/turno.service';
 import { WebSocketService } from '../../core/services/websocket.service';
@@ -53,6 +53,12 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly historialDatos = signal<OrdenHistorialResponse | null>(null);
   readonly cargandoHistorial = signal<boolean>(false);
   readonly mostrarModalHistorial = signal<boolean>(false);
+
+  // Modal para galería y fotos de diagnóstico (TK205)
+  readonly adjuntosOT = signal<AdjuntoDiagnostico[]>([]);
+  readonly cargandoAdjuntos = signal<boolean>(false);
+  readonly mostrarModalGaleria = signal<boolean>(false);
+  readonly fotoSeleccionada = signal<string | null>(null);
 
   // Modal para perfil del cliente (TK201)
   readonly mostrarModalPerfil = signal<boolean>(false);
@@ -202,6 +208,38 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     this.mostrarModalHistorial.set(false);
     this.ordenSeleccionada.set(null);
     this.historialDatos.set(null);
+  }
+
+  verFotosDiagnostico(orden: OrdenResponse): void {
+    this.ordenSeleccionada.set(orden);
+    this.mostrarModalGaleria.set(true);
+    this.cargandoAdjuntos.set(true);
+    this.adjuntosOT.set([]);
+
+    this.ordenService.obtenerAdjuntosDiagnostico(orden.id).subscribe({
+      next: (res) => {
+        this.adjuntosOT.set(res || []);
+        this.cargandoAdjuntos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar fotos de diagnóstico:', err);
+        this.adjuntosOT.set([]);
+        this.cargandoAdjuntos.set(false);
+      }
+    });
+  }
+
+  cerrarModalGaleria(): void {
+    this.mostrarModalGaleria.set(false);
+    this.fotoSeleccionada.set(null);
+  }
+
+  ampliarFoto(url: string): void {
+    this.fotoSeleccionada.set(url);
+  }
+
+  cerrarVisorAmpliado(): void {
+    this.fotoSeleccionada.set(null);
   }
 
   getEstadoBadgeClass(estado: string): string {

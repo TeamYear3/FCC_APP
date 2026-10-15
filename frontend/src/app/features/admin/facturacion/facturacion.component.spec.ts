@@ -80,4 +80,14 @@ describe('FacturacionComponent', () => {
     expect(component.facturaReciente()?.cae).toBe('74998877665544');
     expect(component.modalEmisionAbierto()).toBe(false);
   });
+
+  it('no debe emitir si ya hay una emisión en progreso para evitar duplicados', () => {
+    const spy = vi.spyOn(facturacionService, 'emitirFactura');
+    component.emitirEnProgreso.set(true);
+    component.ordenSeleccionadaId = 'ot-1';
+
+    component.confirmarEmision();
+
+    expect(spy).not.toHaveBeenCalled();
+  });
 });

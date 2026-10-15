@@ -7,13 +7,16 @@ import { TurnoService } from '../../core/services/turno.service';
 import { WebSocketService } from '../../core/services/websocket.service';
 import { provideRouter } from '@angular/router';
 import { of, throwError, Subject } from 'rxjs';
-import { vi } from 'vitest';
 import { signal } from '@angular/core';
 
 describe('PortalClienteComponent', () => {
   let component: PortalClienteComponent;
   let fixture: ComponentFixture<PortalClienteComponent>;
-  let ordenServiceSpy: { obtenerOrdenes: ReturnType<typeof vi.fn>; obtenerEstadoHistorial: ReturnType<typeof vi.fn> };
+  let ordenServiceSpy: {
+    obtenerOrdenes: ReturnType<typeof vi.fn>;
+    obtenerEstadoHistorial: ReturnType<typeof vi.fn>;
+    obtenerAdjuntosDiagnostico: ReturnType<typeof vi.fn>;
+  };
   let vehiculoServiceSpy: { getVehiculos: ReturnType<typeof vi.fn>; obtenerMisVehiculos: ReturnType<typeof vi.fn>; obtenerMantenimientosProgramados: ReturnType<typeof vi.fn> };
   let turnoServiceSpy: { obtenerTurnos: ReturnType<typeof vi.fn>; crearTurno: ReturnType<typeof vi.fn> };
   let authServiceSpy: { userRoleSignal: ReturnType<typeof vi.fn>; getUserFromToken: ReturnType<typeof vi.fn>; logout: ReturnType<typeof vi.fn> };
@@ -25,7 +28,8 @@ describe('PortalClienteComponent', () => {
 
     ordenServiceSpy = {
       obtenerOrdenes: vi.fn().mockReturnValue(of({ count: 1, results: [{ id: 'ot-1', numero_ot: 'OT-001', estado: 'ingresado' }] })),
-      obtenerEstadoHistorial: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', numero_ot: 'OT-001', estado_actual: 'ingresado', historial: [] }))
+      obtenerEstadoHistorial: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', numero_ot: 'OT-001', estado_actual: 'ingresado', historial: [] })),
+      obtenerAdjuntosDiagnostico: vi.fn().mockReturnValue(of([{ id: 'adj-1', url_secure: 'https://cloudinary.com/foto1.jpg', nombre_archivo: 'frente.jpg', tamanio: 1024, mime_type: 'image/jpeg', creado_en: '2026-10-14T10:00:00Z' }]))
     };
 
     vehiculoServiceSpy = {
@@ -119,5 +123,23 @@ describe('PortalClienteComponent', () => {
 
     expect(turnoServiceSpy.crearTurno).toHaveBeenCalled();
     expect(component.exitoReserva()).toContain('correctamente');
+  });
+
+  it('debe abrir la galería de fotos de diagnóstico y permitir ampliar y cerrar fotos (TK205)', () => {
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'ingresado' } as any;
+    component.verFotosDiagnostico(mockOT);
+
+    expect(component.mostrarModalGaleria()).toBe(true);
+    expect(ordenServiceSpy.obtenerAdjuntosDiagnostico).toHaveBeenCalledWith('ot-1');
+    expect(component.adjuntosOT().length).toBe(1);
+
+    component.ampliarFoto('https://cloudinary.com/foto1.jpg');
+    expect(component.fotoSeleccionada()).toBe('https://cloudinary.com/foto1.jpg');
+
+    component.cerrarVisorAmpliado();
+    expect(component.fotoSeleccionada()).toBeNull();
+
+    component.cerrarModalGaleria();
+    expect(component.mostrarModalGaleria()).toBe(false);
   });
 });
