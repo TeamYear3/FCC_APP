@@ -15,6 +15,7 @@ class CrearVehiculoView(generics.ListCreateAPIView):
             Vehiculo.objects.filter(activo=True)
             .select_related('cliente')
             .prefetch_related('mantenimientos_programados')
+            .order_by('-creado_en')
         )
         if getattr(user, 'rol', None) == 'cliente':
             return base_qs.filter(cliente__usuario=user)
