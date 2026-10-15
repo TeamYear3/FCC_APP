@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.core import mail
 from django.urls import reverse
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from core.utils.email_service import send_email_service
 
 
@@ -274,5 +274,81 @@ class AuditPerformanceCommandTests(TestCase):
         output = out.getvalue()
         self.assertIn("Reporte de Línea Base de Rendimiento", output)
         self.assertIn("/api/clientes/", output)
+
+
+class MongoTelemetriaArcaTests(TestCase):
+    """Pruebas unitarias para la telemetría NoSQL de ARCA en MongoDB (TK191 / US-11)."""
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_registrar_telemetria_arca_persiste_documento_con_timestamp(self, mock_get_db):
+        # Arrange
+        from core.mongo import registrar_telemetria_arca
+        mock_collection = MagicMock()
+        mock_db = MagicMock()
+        mock_db.__getitem__.return_value = mock_collection
+        mock_get_db.return_value = mock_db
+
+        datos_solicitud = {"total": "150000.00", "tipo_comprobante": "B", "punto_venta": 1}
+        respuesta_arca = {"resultado": "Aprobado", "cae": "74123456789012", "numero_factura": 42}
+        orden_id = "ot-12345"
+
+        # Act
+        resultado = registrar_telemetria_arca(
+            datos_solicitud=datos_solicitud,
+            respuesta_arca=respuesta_arca,
+            orden_id=orden_id,
+            exitoso=True
+        )
+
+        # Assert
+        self.assertTrue(resultado)
+        mock_db.__getitem__.assert_called_with("telemetria_arca")
+        self.assertTrue(mock_collection.insert_one.called)
+        doc = mock_collection.insert_one.call_args[0][0]
+        self.assertEqual(doc["orden_id"], "ot-12345")
+        self.assertEqual(doc["solicitud"], datos_solicitud)
+        self.assertEqual(doc["respuesta"]["cae"], "74123456789012")
+        self.assertTrue(doc["exitoso"])
+        self.assertIn("timestamp", doc)
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_registrar_telemetria_arca_falla_graceful_si_mongo_offline(self, mock_get_db):
+        # Arrange
+        from core.mongo import registrar_telemetria_arca
+        mock_get_db.return_value = None
+
+        # Act
+        resultado = registrar_telemetria_arca(
+            datos_solicitud={"total": "50000"},
+            respuesta_arca=None,
+            orden_id="ot-offline",
+            exitoso=False,
+            error="Connection timeout"
+        )
+
+        # Assert
+        self.assertFalse(resultado)
+
+    @patch("core.mongo.MongoDBClient.get_db")
+    def test_obtener_telemetria_arca_recupera_historial(self, mock_get_db):
+        # Arrange
+        from core.mongo import obtener_telemetria_arca
+        mock_collection = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.sort.return_value.limit.return_value = [
+            {"_id": "mongo_id_1", "orden_id": "ot-100", "timestamp": "2026-10-14T10:00:00Z"}
+        ]
+        mock_collection.find.return_value = mock_cursor
+        mock_db = MagicMock()
+        mock_db.__getitem__.return_value = mock_collection
+        mock_get_db.return_value = mock_db
+
+        # Act
+        registros = obtener_telemetria_arca(orden_id="ot-100")
+
+        # Assert
+        self.assertEqual(len(registros), 1)
+        self.assertEqual(registros[0]["_id"], "mongo_id_1")
+        self.assertEqual(registros[0]["orden_id"], "ot-100")
 
 
