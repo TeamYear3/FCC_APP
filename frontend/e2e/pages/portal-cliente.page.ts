@@ -31,21 +31,21 @@ export class PortalClientePage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.pageHeader = page.locator('header');
-    this.searchInput = page.locator('input[placeholder*="patente"], [data-testid="input-buscar-patente"]');
+    this.pageHeader = page.getByRole('banner').or(page.locator('header'));
+    this.searchInput = page.getByTestId('input-buscar-patente').or(page.getByPlaceholder(/patente/i));
     this.perfilButton = page.getByRole('button', { name: /Mi Perfil/i });
     this.logoutButton = page.getByRole('button', { name: /Cerrar Sesión/i });
-    this.orderCards = page.locator('[data-testid="orden-card"], .rounded-2xl.border, .border-\\[\\#2A2A2A\\]');
-    this.badgesEstado = page.locator('span[class*="rounded"]:has-text("Ingresado"), span[class*="rounded"]:has-text("En Presupuesto"), span[class*="rounded"]:has-text("Aprobado"), span[class*="rounded"]:has-text("En Proceso"), span[class*="rounded"]:has-text("Finalizado")');
-    this.tabOrdenesBtn = page.locator('button:has-text("Órdenes de Trabajo")');
-    this.tabVehiculosBtn = page.locator('button:has-text("Mis Vehículos")');
+    this.orderCards = page.getByTestId('orden-card').or(page.getByRole('article')).or(page.locator('[data-testid="orden-card"]'));
+    this.badgesEstado = page.getByTestId('badge-estado-orden').or(page.getByText(/ingresado|en presupuesto|aprobado|en proceso|finalizado/i));
+    this.tabOrdenesBtn = page.getByRole('button', { name: /órdenes de trabajo|ordenes de trabajo/i });
+    this.tabVehiculosBtn = page.getByRole('button', { name: /mis vehículos|mis vehiculos/i });
 
-    // Modal de Historial
-    this.modalHistorial = page.locator('.fixed.inset-0:has(h3:has-text("Historial de Estados"))');
-    this.botonesVerHistorial = page.locator('button:has-text("Ver Historial de Estados")');
-    this.cerrarModalHistorialBtn = this.modalHistorial.locator('button:has-text("Cerrar")');
-    this.timelineItems = page.locator('.space-y-4 .flex.gap-4, .timeline-item');
-    this.badgeEstadoModal = page.locator('.modal span[class*="rounded-full"]');
+    // Modal de Historial y trazabilidad
+    this.modalHistorial = page.getByTestId('modal-historial').or(page.getByRole('dialog', { name: /historial de estados/i })).or(page.locator('[data-testid="modal-historial"]'));
+    this.botonesVerHistorial = page.getByRole('button', { name: /ver historial de estados/i });
+    this.cerrarModalHistorialBtn = this.modalHistorial.getByRole('button', { name: /cerrar|close/i });
+    this.timelineItems = page.getByTestId('timeline-item').or(page.getByRole('listitem'));
+    this.badgeEstadoModal = page.getByTestId('badge-estado-modal').or(this.modalHistorial.locator('span'));
   }
 
   async navigate(usuario: { email?: string; role?: string; nombre?: string } = {}): Promise<void> {
@@ -86,12 +86,12 @@ export class PortalClientePage extends BasePage {
   }
 
   async cerrarHistorial(): Promise<void> {
-    const btnCerrar = this.modalHistorial.locator('button:has-text("Cerrar")').first();
+    const btnCerrar = this.modalHistorial.getByRole('button', { name: /cerrar|close/i }).first();
     if (await btnCerrar.isVisible()) {
       await btnCerrar.click({ force: true });
       return;
     }
-    const botonCruz = this.modalHistorial.locator('button').filter({ has: this.page.locator('path[d*="M6 18L18 6"]') }).first();
+    const botonCruz = this.modalHistorial.getByRole('button', { name: /cerrar/i }).or(this.modalHistorial.locator('button[aria-label*="cerrar"]')).first();
     if (await botonCruz.isVisible()) {
       await botonCruz.click({ force: true });
     }
