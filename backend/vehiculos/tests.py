@@ -1,3 +1,5 @@
+import uuid
+
 from django.test import TestCase
 from django.db import IntegrityError
 from clientes.models import Cliente
@@ -944,7 +946,90 @@ class VehiculosOptimizacionORMTests(APITestCase):
         self.assertGreaterEqual(len(response.data), 5)
 
 
+class MetodosNoPermitidosVehiculosAPITests(APITestCase):
+    """AUT-BE-02: los endpoints de vehículos rechazan verbos no admitidos."""
 
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_405_vehiculos@example.com",
+            nombre="Admin",
+            apellido="Métodos HTTP",
+            rol="admin",
+            password="adminpassword123",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_coleccion_vehiculos_rechaza_put(self):
+        # Arrange
+        url = reverse("crear-vehiculo")
+
+        # Act
+        response = self.client.put(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_detalle_vehiculo_rechaza_post(self):
+        # Arrange
+        url = reverse("detalle-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_historial_vehiculo_rechaza_post(self):
+        # Arrange
+        url = reverse("historial-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_exportacion_historial_rechaza_post(self):
+        # Arrange
+        url = reverse("exportar-historial-pdf", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_reasignacion_vehiculo_rechaza_get(self):
+        # Arrange
+        url = reverse("reasignar-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("GET", response.headers["Allow"])
+
+    def test_mantenimiento_vehiculo_rechaza_put(self):
+        # Arrange
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.put(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
 
 
 

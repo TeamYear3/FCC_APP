@@ -413,7 +413,6 @@ class FacturacionAPITest(APITestCase):
         self.assertEqual(res_patch.data["estado_pago"], "pagada")
         self.assertEqual(res_patch.data["semaforo"], "pagada")
 
-
 class FacturacionCasosFelicesAPITest(APITestCase):
     """
     AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
@@ -527,4 +526,92 @@ class FacturacionCasosFelicesAPITest(APITestCase):
         self.assertEqual(len(response.data["cae"]), 14)
         self.assertEqual(response.data["estado"], "emitida")
 
+
+class MetodosNoPermitidosFacturacionAPITests(APITestCase):
+    """
+    AUT-BE-02: Validación de verbos HTTP no permitidos (405 Method Not Allowed)
+    en endpoints transaccionales y de calendario de facturación.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_405_fac@example.com",
+            nombre="Admin",
+            apellido="Metodos",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Mariano",
+            apellido="Moreno",
+            tipo_documento="DNI",
+            dni_cuit="25998877",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AC654XY",
+            marca="Peugeot",
+            modelo="208",
+            anio=2020
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Cambio de aceite y filtros"
+        )
+        self.factura = Factura.objects.create(
+            orden_trabajo=self.orden,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            numero_factura=2001,
+            punto_venta=1,
+            cae="12345678901234",
+            fecha_vencimiento_cae=timezone.localdate() + timedelta(days=10),
+            total=Decimal("45000.00"),
+            estado=EstadoFactura.EMITIDA,
+            estado_pago=EstadoPago.SIN_INTERACCION
+        )
+
+    def test_emitir_factura_rechaza_get_con_405(self):
+        """AUT-BE-02 / HU-11: Endpoint emitir factura es exclusivo POST, rechaza GET."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertIn("POST", response.headers["Allow"])
+        self.assertNotIn("GET", response.headers["Allow"])
+
+    def test_emitir_factura_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-11: Endpoint emitir factura rechaza DELETE destructivo."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+    def test_calendario_facturas_rechaza_post_con_405(self):
+        """AUT-BE-02 / HU-11: Endpoint calendario fiscal es solo lectura, rechaza POST."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("factura-calendario")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
 
