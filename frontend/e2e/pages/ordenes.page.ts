@@ -69,11 +69,11 @@ export class OrdenesPage extends BasePage {
     this.descripcionItemInput = page.getByTestId('item-descripcion-input').or(page.getByPlaceholder(/pastillas de freno|cambio de aceite/i));
     this.cantidadItemInput = page.getByTestId('item-cantidad-input').or(page.getByLabel(/^cantidad$/i));
     this.precioUnitarioItemInput = page.getByTestId('item-precio-unitario-input').or(page.getByLabel(/precio unitario/i));
-    this.subtotalItemBadge = page.getByTestId('subtotal-badge').or(page.locator('.subtotal-badge'));
-    this.totalEstimadoBadge = page.getByTestId('total-amount').or(page.locator('.total-amount'));
+    this.subtotalItemBadge = page.getByTestId('subtotal-badge');
+    this.totalEstimadoBadge = page.getByTestId('total-amount');
     this.agregarItemBtn = page.getByTestId('agregar-item-btn').or(page.getByRole('button', { name: /agregar ítem|agregar item/i }));
     this.tablaItemsPresupuesto = page.getByTestId('items-presupuesto-tabla').or(page.getByRole('table'));
-    this.alertaExitoItem = page.getByTestId('alerta-exito-item').or(page.getByRole('alert')).or(page.getByRole('status')).or(page.locator('.alert-success'));
+    this.alertaExitoItem = page.getByTestId('alerta-exito-item').or(page.getByRole('alert')).or(page.getByRole('status'));
 
     // Aprobación y Modales
     this.ctaPrincipalBtn = page.getByTestId('cta-aprobar-presupuesto-btn').or(page.getByRole('button', { name: /aprobar presupuesto/i }));
