@@ -14,6 +14,7 @@ describe('PortalClienteComponent', () => {
   let ordenServiceSpy: {
     obtenerOrdenes: ReturnType<typeof vi.fn>;
     obtenerEstadoHistorial: ReturnType<typeof vi.fn>;
+    actualizarEstado: ReturnType<typeof vi.fn>;
     obtenerAdjuntosDiagnostico: ReturnType<typeof vi.fn>;
   };
   let vehiculoServiceSpy: { getVehiculos: ReturnType<typeof vi.fn>; obtenerMisVehiculos: ReturnType<typeof vi.fn>; obtenerMantenimientosProgramados: ReturnType<typeof vi.fn> };
@@ -27,6 +28,7 @@ describe('PortalClienteComponent', () => {
     ordenServiceSpy = {
       obtenerOrdenes: vi.fn().mockReturnValue(of({ count: 1, results: [{ id: 'ot-1', numero_ot: 'OT-001', estado: 'ingresado' }] })),
       obtenerEstadoHistorial: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', numero_ot: 'OT-001', estado_actual: 'ingresado', historial: [] })),
+      actualizarEstado: vi.fn().mockReturnValue(of({ orden_id: 'ot-1', estado_actual: 'aprobado' })),
       obtenerAdjuntosDiagnostico: vi.fn().mockReturnValue(of([{ id: 'adj-1', url_secure: 'https://cloudinary.com/foto1.jpg', nombre_archivo: 'frente.jpg', tamanio: 1024, mime_type: 'image/jpeg', creado_en: '2026-10-14T10:00:00Z' }]))
     };
 
@@ -98,6 +100,60 @@ describe('PortalClienteComponent', () => {
     expect(ordenServiceSpy.obtenerEstadoHistorial).toHaveBeenCalledWith('ot-1');
   });
 
+  it('debe permitir al cliente aprobar un presupuesto en_presupuesto (TK204)', () => {
+    ordenServiceSpy.actualizarEstado.mockReturnValue(of({ estado_actual: 'aprobado' }));
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'en_presupuesto' } as any;
+    component.listaOrdenes.set([mockOT]);
+
+    component.aprobarPresupuesto(mockOT);
+
+    expect(ordenServiceSpy.actualizarEstado).toHaveBeenCalledWith('ot-1', 'aprobado', expect.any(String));
+    expect(component.listaOrdenes()[0].estado).toBe('aprobado');
+    expect(component.mensajeAccion()).toContain('aprobado con éxito');
+  });
+
+  it('debe permitir al cliente rechazar un presupuesto en_presupuesto (TK204)', () => {
+    ordenServiceSpy.actualizarEstado.mockReturnValue(of({ estado_actual: 'rechazado' }));
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'en_presupuesto' } as any;
+    component.listaOrdenes.set([mockOT]);
+
+    component.rechazarPresupuesto(mockOT);
+
+    expect(ordenServiceSpy.actualizarEstado).toHaveBeenCalledWith('ot-1', 'rechazado', expect.any(String));
+    expect(component.listaOrdenes()[0].estado).toBe('rechazado');
+    expect(component.mensajeAccion()).toContain('rechazado');
+  });
+
+  it('debe calcular correctamente el desglose de mano de obra y repuestos (TK204)', () => {
+    const mockOT = {
+      id: 'ot-1',
+      items_presupuesto: [
+        { tipo: 'mano_de_obra', subtotal: 35000 },
+        { tipo: 'mano_de_obra', subtotal: 15000 },
+        { tipo: 'repuesto', subtotal: 80000 },
+      ]
+    } as any;
+
+    expect(component.getTotalManoDeObra(mockOT)).toBe(50000);
+    expect(component.getTotalRepuestos(mockOT)).toBe(80000);
+  });
+
+  it('debe enviar el motivo personalizado de rechazo al taller (TK204)', () => {
+    ordenServiceSpy.actualizarEstado.mockReturnValue(of({ estado_actual: 'rechazado' }));
+    const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'en_presupuesto' } as any;
+    component.listaOrdenes.set([mockOT]);
+
+    component.iniciarRechazo(mockOT);
+    expect(component.ordenRechazoEnCurso()).toBe('ot-1');
+
+    component.motivoRechazo.set('Presupuesto excede el límite autorizado');
+    component.confirmarRechazoPresupuesto(mockOT);
+
+    expect(ordenServiceSpy.actualizarEstado).toHaveBeenCalledWith('ot-1', 'rechazado', 'Presupuesto excede el límite autorizado');
+    expect(component.ordenRechazoEnCurso()).toBeNull();
+  });
+
+
   it('debe abrir la galería de fotos de diagnóstico y permitir ampliar y cerrar fotos (TK205)', () => {
     const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'ingresado' } as any;
     component.verFotosDiagnostico(mockOT);
@@ -116,3 +172,4 @@ describe('PortalClienteComponent', () => {
     expect(component.mostrarModalGaleria()).toBe(false);
   });
 });
+

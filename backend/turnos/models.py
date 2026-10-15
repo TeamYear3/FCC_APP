@@ -30,6 +30,11 @@ class Turno(models.Model):
     )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    recordatorio_enviado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha y hora de envío de recordatorio"
+    )
 
     class Meta:
         ordering = ["fecha_hora"]
