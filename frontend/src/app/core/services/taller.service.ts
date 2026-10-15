@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, ResourceRef, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { httpResource } from '../utils/http-resource.util';
 
 export interface MecanicoResumen {
   id: string;
@@ -33,6 +34,7 @@ export interface ClienteResumen {
 })
 export class TallerService {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly apiUrl = `${environment.apiUrl}/taller`;
 
   getResumenMecanicos(): Observable<MecanicoResumen[]> {
@@ -41,5 +43,27 @@ export class TallerService {
 
   getResumenClientes(): Observable<ClienteResumen[]> {
     return this.http.get<ClienteResumen[]>(`${this.apiUrl}/clientes/`);
+  }
+
+  /**
+   * Recurso reactivo para mecánicos que sustituye suscripciones manuales (TK178)
+   */
+  getResumenMecanicosResource(): ResourceRef<MecanicoResumen[] | undefined> {
+    return httpResource<MecanicoResumen[]>({
+      loader: () => this.getResumenMecanicos(),
+      defaultValue: [],
+      injector: this.injector
+    });
+  }
+
+  /**
+   * Recurso reactivo para clientes del taller que sustituye suscripciones manuales (TK178)
+   */
+  getResumenClientesResource(): ResourceRef<ClienteResumen[] | undefined> {
+    return httpResource<ClienteResumen[]>({
+      loader: () => this.getResumenClientes(),
+      defaultValue: [],
+      injector: this.injector
+    });
   }
 }

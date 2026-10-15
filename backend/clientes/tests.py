@@ -572,3 +572,68 @@ class SerializerErroresPorCampoClientesAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("dni_cuit", response.data)
 
+
+class ClienteOptimizacionORMTests(APITestCase):
+    """
+    TK181 / US-04: Validación de optimización ORM con select_related('usuario')
+    en el listado de clientes para prevenir consultas N+1.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_orm_test@example.com",
+            nombre="Admin",
+            apellido="ORM",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        # Crear 4 clientes con sus respectivos usuarios vinculados
+        for i in range(1, 5):
+            usr = User.objects.create_user(
+                email=f"cliente_orm_{i}@example.com",
+                nombre=f"Nombre{i}",
+                apellido=f"Apellido{i}",
+                rol="cliente",
+                password="password123"
+            )
+            Cliente.objects.create(
+                usuario=usr,
+                nombre=f"Cliente{i}",
+                apellido=f"Apellido{i}",
+                tipo_documento="DNI",
+                dni_cuit=f"3000000{i}",
+                condicion_iva="CF",
+                telefono=f"351000000{i}",
+                domicilio=f"Calle Test {i}"
+            )
+
+    def test_listado_clientes_precarga_usuario_con_select_related_sin_n_mas_1(self):
+        """
+        Verifica que CrearClienteView utiliza select_related('usuario')
+        manteniendo un número constante y determinista de queries al listar.
+        """
+        # Arrange
+        url = reverse("crear-cliente")
+
+        # Act & Assert
+        # 1 query: conteo o lista unificada con JOIN de usuario
+        with self.assertNumQueries(2):  # 1 count (paginador) + 1 select_related con JOIN a auth_user
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 4)
+
+        # Comprobar que en el queryset directo la relación usuario está en cache sin queries extra
+        from clientes.views import CrearClienteView
+        view = CrearClienteView()
+        qs = view.get_queryset()
+        with self.assertNumQueries(1):
+            lista_clientes = list(qs[:4])
+            for c in lista_clientes:
+                if c.usuario:
+                    _ = c.usuario.email
+

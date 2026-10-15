@@ -235,10 +235,11 @@ class ConsultarHistorialOrdenView(APIView):
 
 class ActualizarEstadoOrdenView(APIView):
     """
-    TK033 & TK035: Endpoint PATCH /api/ordenes/<orden_id>/estado/
-    Permite a Administradores y Técnicos actualizar el estado de la OT y registra el cambio en HistorialEstadoOrden.
+    TK033, TK035 & TK204: Endpoint PATCH /api/ordenes/<orden_id>/estado/
+    Permite a Administradores y Técnicos actualizar el estado de la OT,
+    y a Clientes autorizados aprobar o rechazar presupuestos en estado 'en_presupuesto'.
     """
-    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico | EsCliente]
 
     def patch(self, request, orden_id, *args, **kwargs):
         orden = get_object_or_404(OrdenTrabajo, id=orden_id)
@@ -249,6 +250,13 @@ class ActualizarEstadoOrdenView(APIView):
         nuevo_estado = serializer.validated_data['estado']
         comentario = serializer.validated_data.get('comentario', '')
         estado_anterior = orden.estado
+
+        # Control de permisos para rol 'cliente' (TK204 / US-18)
+        if getattr(request.user, "rol", None) == "cliente":
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para modificar esta Orden de Trabajo.")
+            if orden.estado != EstadoOrden.EN_PRESUPUESTO or nuevo_estado not in (EstadoOrden.APROBADO, EstadoOrden.RECHAZADO):
+                raise PermissionDenied("El cliente únicamente puede aprobar o rechazar presupuestos en estado 'En Presupuesto'.")
 
         if estado_anterior != nuevo_estado:
             try:
