@@ -13,7 +13,7 @@ class CrearVehiculoView(generics.ListCreateAPIView):
         user = self.request.user
         base_qs = (
             Vehiculo.objects.filter(activo=True)
-            .select_related('cliente')
+            .select_related('cliente__usuario')
             .prefetch_related('mantenimientos_programados')
             .order_by('-creado_en')
         )
@@ -44,7 +44,7 @@ class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return (
             Vehiculo.objects.filter(activo=True)
-            .select_related('cliente')
+            .select_related('cliente__usuario')
             .prefetch_related('mantenimientos_programados')
         )
 
