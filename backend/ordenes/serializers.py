@@ -303,6 +303,25 @@ class RegistrarPagoSerializer(serializers.Serializer):
     condicion_iva = serializers.CharField(max_length=10, required=False, allow_blank=True)
 
 
+class DetalleOrdenTrabajoSerializer(OrdenTrabajoSerializer):
+    """
+    TK183: Serializer para el detalle individual de la Orden de Trabajo.
+    Consolida las relaciones precargadas por el ORM (items_presupuesto,
+    adjuntos_diagnostico e historial_estados) evitando consultas y llamadas HTTP adicionales.
+    """
+    items_presupuesto = ItemPresupuestoSerializer(many=True, read_only=True)
+    adjuntos_diagnostico = AdjuntoDiagnosticoSerializer(many=True, read_only=True)
+    historial_estados = HistorialEstadoOrdenSerializer(many=True, read_only=True)
+
+    class Meta(OrdenTrabajoSerializer.Meta):
+        fields = OrdenTrabajoSerializer.Meta.fields + [
+            'items_presupuesto',
+            'adjuntos_diagnostico',
+            'historial_estados',
+        ]
+
+
+
 
 
 

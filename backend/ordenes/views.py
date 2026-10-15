@@ -6,12 +6,13 @@ from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from rest_framework.exceptions import PermissionDenied
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
 from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico, ItemPresupuesto, EstadoCobro, EstadoOrden
 from .serializers import (
     OrdenTrabajoSerializer,
+    DetalleOrdenTrabajoSerializer,
     ItemManoDeObraSerializer,
     ItemRepuestoSerializer,
     ItemPresupuestoSerializer,
@@ -132,11 +133,12 @@ CrearOrdenTrabajoView = ListarCrearOrdenTrabajoView
 
 class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
     """
-    TK095: Endpoint GET /api/ordenes/<uuid:id>/
-    Retorna el detalle completo de una Orden de Trabajo individual.
+    TK095 & TK183: Endpoint GET /api/ordenes/<uuid:id>/
+    Retorna el detalle completo y consolidado de una Orden de Trabajo individual
+    con sus items de presupuesto, adjuntos de diagnóstico e historial de estados precargados.
     Restringe el acceso si el rol es 'cliente' y la OT no pertenece a sus vehículos.
     """
-    serializer_class = OrdenTrabajoSerializer
+    serializer_class = DetalleOrdenTrabajoSerializer
     lookup_field = 'id'
     lookup_url_kwarg = 'id'
 
@@ -144,10 +146,16 @@ class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
         return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get_queryset(self):
+        adjuntos_qs = AdjuntoDiagnostico.objects.select_related('creado_por', 'item_presupuesto')
+        items_qs = ItemPresupuesto.objects.prefetch_related(
+            Prefetch('adjuntos', queryset=adjuntos_qs)
+        )
         return OrdenTrabajo.objects.select_related(
             'vehiculo__cliente__usuario', 'tecnico'
         ).prefetch_related(
-            'items_presupuesto', 'adjuntos_diagnostico', 'historial_estados'
+            Prefetch('items_presupuesto', queryset=items_qs),
+            Prefetch('adjuntos_diagnostico', queryset=adjuntos_qs),
+            'historial_estados__usuario'
         ).all()
 
     def check_object_permissions(self, request, obj):

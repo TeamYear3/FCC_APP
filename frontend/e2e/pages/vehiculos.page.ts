@@ -18,28 +18,38 @@ export class VehiculosPage extends BasePage {
   readonly vehiculosTable: Locator;
   readonly vehiculoRows: Locator;
   readonly modalVehiculo: Locator;
+  readonly formVehiculo: Locator;
   readonly patenteInput: Locator;
   readonly marcaInput: Locator;
   readonly modeloInput: Locator;
   readonly anioInput: Locator;
-  readonly clienteSelect: Locator;
+  readonly tipoMotorSelect: Locator;
+  readonly kilometrajeInput: Locator;
+  readonly chasisInput: Locator;
+  readonly clienteSearchInput: Locator;
+  readonly clienteSeleccionadoCard: Locator;
   readonly guardarButton: Locator;
   readonly cancelarButton: Locator;
 
   constructor(page: Page) {
     super(page);
-    this.searchInput = page.getByTestId('vehiculo-buscar-input').or(page.locator('input[placeholder*="patente"], input[type="text"]'));
+    this.searchInput = page.getByTestId('vehiculo-buscar-input').or(page.getByPlaceholder(/patente/i)).or(page.locator('input[type="text"]'));
     this.nuevoVehiculoButton = page.getByTestId('vehiculo-nuevo-btn').or(page.getByRole('button', { name: /nuevo vehículo|nuevo vehiculo/i }));
-    this.vehiculosTable = page.getByTestId('vehiculos-tabla').or(page.locator('table, [data-testid="tabla-vehiculos"], .vehiculos-table'));
-    this.vehiculoRows = page.getByTestId('vehiculo-row').or(page.locator('table tbody tr'));
-    this.modalVehiculo = page.getByTestId('modal-vehiculo').or(page.locator('app-vehiculo-form, .modal, [role="dialog"]'));
-    this.patenteInput = page.getByTestId('vehiculo-patente-input').or(page.locator('input[name="patente"], input[formcontrolname="patente"]'));
-    this.marcaInput = page.getByTestId('vehiculo-marca-input').or(page.locator('input[name="marca"], input[formcontrolname="marca"]'));
-    this.modeloInput = page.getByTestId('vehiculo-modelo-input').or(page.locator('input[name="modelo"], input[formcontrolname="modelo"]'));
-    this.anioInput = page.getByTestId('vehiculo-anio-input').or(page.locator('input[name="anio"], input[formcontrolname="anio"]'));
-    this.clienteSelect = page.getByTestId('vehiculo-cliente-select').or(page.locator('select[name="cliente"], select[formcontrolname="cliente"]'));
-    this.guardarButton = page.getByTestId('vehiculo-guardar-btn').or(page.getByRole('button', { name: /guardar|crear/i }));
-    this.cancelarButton = page.getByTestId('vehiculo-cancelar-btn').or(page.getByRole('button', { name: /cancelar/i }));
+    this.vehiculosTable = page.getByTestId('vehiculos-tabla').or(page.getByRole('table'));
+    this.vehiculoRows = page.getByTestId('vehiculo-row').or(page.getByRole('row'));
+    this.modalVehiculo = page.getByTestId('modal-vehiculo').or(page.getByRole('dialog'));
+    this.formVehiculo = page.locator('form');
+    this.patenteInput = page.getByTestId('vehiculo-patente-input').or(page.locator('input[formcontrolname="patente"]'));
+    this.marcaInput = page.getByTestId('vehiculo-marca-input').or(page.locator('input[formcontrolname="marca"]'));
+    this.modeloInput = page.getByTestId('vehiculo-modelo-input').or(page.locator('input[formcontrolname="modelo"]'));
+    this.anioInput = page.getByTestId('vehiculo-anio-input').or(page.locator('input[formcontrolname="anio"]'));
+    this.tipoMotorSelect = page.getByTestId('vehiculo-tipo-motor-select').or(page.locator('select[formcontrolname="tipo_motor"]'));
+    this.kilometrajeInput = page.getByTestId('vehiculo-kilometraje-input').or(page.locator('input[formcontrolname="kilometraje"]'));
+    this.chasisInput = page.getByTestId('vehiculo-chasis-input').or(page.locator('input[formcontrolname="nro_chasis"], input[formcontrolname="numero_chasis"]'));
+    this.clienteSearchInput = page.getByPlaceholder(/buscar por nombre/i).or(page.locator('input[placeholder*="Buscar por Nombre"]'));
+    this.clienteSeleccionadoCard = page.getByTestId('cliente-seleccionado-card').or(page.locator('div:has(button[title="Cambiar cliente"])')).first();
+    this.guardarButton = page.getByTestId('vehiculo-guardar-btn').or(page.getByRole('button', { name: /guardar/i }));
+    this.cancelarButton = page.getByTestId('vehiculo-cancelar-btn').or(page.getByRole('link', { name: /arrow_back|cancelar|volver/i }));
   }
 
   /**
@@ -52,6 +62,19 @@ export class VehiculosPage extends BasePage {
   }
 
   /**
+   * Navega directamente al formulario de alta de nuevo vehículo.
+   */
+  async navegarANuevo(): Promise<void> {
+    await this.setMockSession({ email: 'admin@taller.com', role: 'admin', nombre: 'Admin Taller' });
+    await this.goto('/admin/vehiculos/nuevo');
+    await this.waitForLoaded();
+  }
+
+  async navigateNuevo(): Promise<void> {
+    await this.navegarANuevo();
+  }
+
+  /**
    * Busca un vehículo por patente en el listado.
    */
   async search(patente: string): Promise<void> {
@@ -61,38 +84,108 @@ export class VehiculosPage extends BasePage {
   }
 
   /**
-   * Abre el formulario o modal para registrar un nuevo vehículo.
+   * Busca y selecciona interactivamente al cliente propietario mediante el buscador typeahead.
    */
-  async abrirNuevoVehiculo(): Promise<void> {
-    await this.nuevoVehiculoButton.click();
-    await this.waitForLoaded();
+  async seleccionarClientePropietario(nombreOQuery: string): Promise<void> {
+    await this.clienteSearchInput.fill(nombreOQuery);
+    const dropdownItem = this.page.getByTestId('cliente-dropdown-item')
+      .or(this.page.getByRole('listbox').getByRole('option'))
+      .or(this.page.locator('[role="option"]'))
+      .or(this.page.locator('div'))
+      .filter({ hasText: nombreOQuery })
+      .first();
+    await dropdownItem.waitFor({ state: 'visible', timeout: 5000 });
+    await dropdownItem.click();
+  }
+
+  async buscarYSeleccionarCliente(nombreOQuery: string): Promise<void> {
+    await this.seleccionarClientePropietario(nombreOQuery);
   }
 
   /**
-   * Completa los campos básicos de un vehículo.
+   * Completa los campos del formulario de vehículo.
    */
-  async completarDatos(datos: { patente: string; marca: string; modelo: string; anio?: string }): Promise<void> {
-    await this.patenteInput.fill(datos.patente);
+  async completarFormularioVehiculo(datos: {
+    patente: string;
+    marca: string;
+    modelo: string;
+    anio: number | string;
+    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    tipoMotor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    kilometraje?: number | string;
+    nro_chasis?: string;
+    chasis?: string;
+    color?: string;
+  }): Promise<void> {
     await this.marcaInput.fill(datos.marca);
     await this.modeloInput.fill(datos.modelo);
-    if (datos.anio && await this.anioInput.isVisible()) {
-      await this.anioInput.fill(datos.anio);
+    await this.anioInput.fill(String(datos.anio));
+
+    let motor = datos.tipo_motor || datos.tipoMotor;
+    if (motor === 'DIESEL') {
+      motor = 'GASOLERO';
+    }
+    if (motor && await this.tipoMotorSelect.isVisible()) {
+      await this.tipoMotorSelect.selectOption(motor);
+    }
+    await this.patenteInput.fill(datos.patente);
+
+    const chasisVal = datos.nro_chasis || datos.chasis;
+    if (chasisVal && await this.chasisInput.isVisible()) {
+      await this.chasisInput.fill(chasisVal);
+    }
+    if (datos.kilometraje !== undefined && await this.kilometrajeInput.isVisible()) {
+      await this.kilometrajeInput.fill(String(datos.kilometraje));
+    }
+    if (datos.color) {
+      const colorInput = this.page.getByTestId('vehiculo-color-input').or(this.page.locator('input[formcontrolname="color"]'));
+      if (await colorInput.isVisible()) {
+        await colorInput.fill(datos.color);
+      }
     }
   }
 
+  async completarVehiculoForm(datos: {
+    patente: string;
+    marca: string;
+    modelo: string;
+    anio: number | string;
+    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    tipoMotor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    kilometraje?: number | string;
+    nro_chasis?: string;
+    chasis?: string;
+    color?: string;
+  }): Promise<void> {
+    await this.completarFormularioVehiculo(datos);
+  }
+
   /**
-   * Guarda los cambios del vehículo.
+   * Guarda los cambios del vehículo enviando el formulario.
    */
   async guardar(): Promise<void> {
     await this.guardarButton.click();
   }
 
+  async guardarVehiculo(): Promise<void> {
+    await this.guardar();
+  }
+
   /**
-   * Flujo de negocio integrado: Alta completa de vehículo.
+   * Flujo de negocio integrado: Alta completa de vehículo con cliente.
    */
-  async crearVehiculo(datos: { patente: string; marca: string; modelo: string; anio?: string }): Promise<void> {
-    await this.abrirNuevoVehiculo();
-    await this.completarDatos(datos);
+  async crearVehiculo(clienteQuery: string, datos: {
+    patente: string;
+    marca: string;
+    modelo: string;
+    anio: number | string;
+    tipo_motor?: 'NAFTERO' | 'GASOLERO' | 'DIESEL' | 'GNC' | 'HIBRIDO_ELECTRICO';
+    kilometraje?: number | string;
+    nro_chasis?: string;
+  }): Promise<void> {
+    await this.navegarANuevo();
+    await this.seleccionarClientePropietario(clienteQuery);
+    await this.completarFormularioVehiculo(datos);
     await this.guardar();
   }
 }
