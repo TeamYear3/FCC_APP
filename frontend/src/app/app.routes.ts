@@ -114,6 +114,16 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'reportes',
+        title: 'FCC APP | Reportes de Rentabilidad',
+        canActivate: [roleGuardFn],
+        data: { roles: ['admin'] },
+        loadComponent: () =>
+          import('./features/admin/reportes-rentabilidad/reportes-rentabilidad.component').then(
+            (m) => m.ReportesRentabilidadComponent
+          )
+      },
+      {
         path: 'configuracion',
         title: 'FCC APP | Configuración de Perfil',
         loadComponent: () =>
