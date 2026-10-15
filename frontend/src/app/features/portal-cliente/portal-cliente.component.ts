@@ -7,6 +7,8 @@ import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenHistorialResponse, AdjuntoDiagnostico } from '../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, MantenimientoProgramadoResponse } from '../../core/services/vehiculo.service';
 import { TurnoService, TurnoResponse, TurnoPayload } from '../../core/services/turno.service';
+import { FacturacionService } from '../../core/services/facturacion.service';
+import { Factura } from '../../core/models/facturacion.model';
 import { WebSocketService } from '../../core/services/websocket.service';
 import { ConfiguracionPerfilModalComponent } from '../configuracion/configuracion-perfil-modal.component';
 
@@ -22,6 +24,7 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly ordenService = inject(OrdenService);
   readonly vehiculoService = inject(VehiculoService);
   readonly turnoService = inject(TurnoService);
+  readonly facturacionService = inject(FacturacionService);
   readonly webSocketService = inject(WebSocketService);
   private readonly router = inject(Router);
 
@@ -32,10 +35,14 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
   readonly listaVehiculos = signal<VehiculoResponse[]>([]);
   readonly listaTurnos = signal<TurnoResponse[]>([]);
-  readonly tabActivo = signal<'ordenes' | 'vehiculos' | 'turnos'>('ordenes');
+  readonly listaFacturas = signal<Factura[]>([]);
+  readonly tabActivo = signal<'ordenes' | 'vehiculos' | 'turnos' | 'facturas'>('ordenes');
   readonly cargando = signal<boolean>(true);
   readonly cargandoVehiculos = signal<boolean>(false);
   readonly cargandoTurnos = signal<boolean>(false);
+  readonly cargandoFacturas = signal<boolean>(false);
+  readonly descargandoPdfId = signal<string | null>(null);
+  readonly errorFacturas = signal<string | null>(null);
   readonly errorMessage = signal<string | null>(null);
 
   // Modal para reservar nuevo turno (TK207)
@@ -78,13 +85,17 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     this.cargarOrdenesCliente();
     this.cargarVehiculosCliente();
     this.cargarTurnosCliente();
+    this.cargarFacturasCliente();
     this.iniciarWebSocket();
   }
 
-  cambiarTab(tab: 'ordenes' | 'vehiculos' | 'turnos'): void {
+  cambiarTab(tab: 'ordenes' | 'vehiculos' | 'turnos' | 'facturas'): void {
     this.tabActivo.set(tab);
     if (tab === 'turnos') {
       this.cargarTurnosCliente();
+    }
+    if (tab === 'facturas') {
+      this.cargarFacturasCliente();
     }
     this.iniciarWebSocket();
   }
@@ -474,6 +485,53 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     return (orden.items_presupuesto || [])
       .filter(i => i.tipo === 'repuesto')
       .reduce((sum, i) => sum + (Number(i.subtotal) || (Number(i.cantidad) * Number(i.precio_unitario)) || 0), 0);
+  }
+
+  /**
+   * TK206: Consulta el listado de comprobantes fiscales emitidos para el cliente autenticado.
+   */
+  cargarFacturasCliente(): void {
+    this.cargandoFacturas.set(true);
+    this.errorFacturas.set(null);
+    this.facturacionService.getFacturasCliente().subscribe({
+      next: (facturas) => {
+        this.listaFacturas.set(facturas || []);
+        this.cargandoFacturas.set(false);
+      },
+      error: (err) => {
+        console.error('Error al recuperar facturas del cliente:', err);
+        this.errorFacturas.set('No se pudieron recuperar las facturas emitidas.');
+        this.cargandoFacturas.set(false);
+      }
+    });
+  }
+
+  /**
+   * TK208: Descarga directa vía Blob de la representación oficial en PDF de la factura electrónica.
+   */
+  descargarPdfFactura(factura: Factura): void {
+    if (!factura || !factura.id) return;
+    this.descargandoPdfId.set(factura.id);
+
+    this.facturacionService.descargarPdf(factura.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const nombreArchivo = `factura_${factura.numero_comprobante || factura.cae || factura.id}.pdf`;
+        link.download = nombreArchivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.descargandoPdfId.set(null);
+      },
+      error: (err) => {
+        console.error('Error al descargar PDF de factura:', err);
+        this.errorFacturas.set('No se pudo generar la descarga del PDF del comprobante.');
+        this.descargandoPdfId.set(null);
+      }
+    });
   }
 
   logout(): void {
