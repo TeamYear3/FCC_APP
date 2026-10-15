@@ -305,8 +305,9 @@ class TurnoAPITests(APITestCase):
 
         # Assert
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], str(turno_a.id))
+        results = response.data.get("results", response.data)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], str(turno_a.id))
 
         # Act
         response = self.client.get(reverse('turno-detail', kwargs={'pk': turno_b.id}))
@@ -379,7 +380,8 @@ class TurnosCasosFelicesAPITest(APITestCase):
 
         # Assert
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 1)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 1)
 
     def test_consulta_detalle_turno_exitoso(self):
         """HU-08 / TEST-P-005: Verificar que un usuario admin obtiene HTTP 200 OK al consultar el detalle de un turno."""

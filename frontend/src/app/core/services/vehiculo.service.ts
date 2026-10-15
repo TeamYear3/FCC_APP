@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface VehiculoCreatePayload {
@@ -46,6 +46,16 @@ export interface HistorialVehiculoResponse {
   results: any[];
 }
 
+export interface VehiculosPaginadosResponse {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  total_items?: number;
+  total_pages?: number;
+  current_page?: number;
+  results: VehiculoResponse[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -76,10 +86,22 @@ export class VehiculoService {
 
   /**
    * Obtiene la lista de vehículos del backend (GET /api/vehiculos/ o GET /api/vehiculos/?cliente=<id>)
+   * Consume la propiedad .results de la respuesta paginada estandarizada de la API.
    */
   getVehiculos(clienteId?: string): Observable<VehiculoResponse[]> {
     const url = clienteId ? `${this.apiUrl}?cliente=${clienteId}` : this.apiUrl;
-    return this.http.get<VehiculoResponse[]>(url);
+    return this.http.get<VehiculosPaginadosResponse | VehiculoResponse[]>(url).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.results || []))
+    );
+  }
+
+  /**
+   * Obtiene la respuesta paginada completa de vehículos (TK170)
+   */
+  getVehiculosPaginados(clienteId?: string, page: number = 1, limit: number = 10): Observable<VehiculosPaginadosResponse> {
+    const baseUrl = clienteId ? `${this.apiUrl}?cliente=${clienteId}` : this.apiUrl;
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return this.http.get<VehiculosPaginadosResponse>(`${baseUrl}${separator}page=${page}&limit=${limit}`);
   }
 
   /**
