@@ -43,30 +43,30 @@ export class LoginPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    // Jerarquía de selectores resilientes (getByTestId con fallback semántico)
-    this.emailInput = page.getByTestId('login-email-input').or(page.locator('#login-email, [data-testid="input-email"], input[type="email"]'));
-    this.passwordInput = page.getByTestId('login-password-input').or(page.locator('#login-password, [data-testid="input-password"], input[formcontrolname="password"], input[name="password"], input[type="password"]'));
-    this.submitButton = page.getByTestId('login-submit-button').or(page.locator('button[type="submit"], [data-testid="btn-login-submit"]'));
-    this.errorMessage = page.getByTestId('login-error-message').or(page.locator('[role="alert"], .alert-danger, .error-message, .text-red-500'));
-    this.successMessage = page.getByTestId('auth-success-message').or(page.locator('.alert-success, .text-emerald-400'));
+    // Jerarquía de selectores resilientes (getByTestId y roles ARIA unívocos)
+    this.emailInput = page.getByTestId('login-email-input').or(page.locator('#login-email'));
+    this.passwordInput = page.getByTestId('login-password-input').or(page.locator('#login-password'));
+    this.submitButton = page.getByTestId('login-submit-button').or(page.getByRole('button', { name: /^iniciar sesión$/i }));
+    this.errorMessage = page.getByTestId('login-error-message').or(page.getByRole('alert'));
+    this.successMessage = page.getByTestId('auth-success-message').or(page.getByRole('status'));
     this.registerLink = page.getByTestId('register-link').or(page.getByRole('button', { name: /regístrate|registrate|crear cuenta/i }));
-    this.togglePasswordButton = page.locator('button[aria-label*="contraseña"]').or(page.getByRole('button', { name: /mostrar|ocultar/i }));
+    this.togglePasswordButton = page.getByTestId('toggle-password-btn').or(page.locator('button[aria-label*="contraseña"]'));
     this.forgotPasswordButton = page.getByRole('button', { name: /¿Olvidaste tu contraseña\?/i }).or(page.getByText(/olvidaste tu contraseña/i));
-    this.googleLoginButton = page.locator('app-google-login-button button, [data-testid="btn-google-login"]');
-    this.authCard = page.locator('.rounded-card, [data-testid="auth-card"], form');
+    this.googleLoginButton = page.getByTestId('btn-google-login').or(page.getByRole('button', { name: /google/i }));
+    this.authCard = page.getByTestId('auth-card').or(page.getByRole('form')).or(page.locator('form'));
 
-    // Mensajes de error reactivos de login
-    this.emailFieldError = page.locator('form[data-testid="login-form"] app-field-error').first();
-    this.passwordFieldError = page.locator('form[data-testid="login-form"] app-field-error').nth(1);
+    // Mensajes de error reactivos de login (sin dependencia de clases CSS de diseño)
+    this.emailFieldError = page.getByTestId('login-email-error').or(page.locator('form[data-testid="login-form"] app-field-error').first());
+    this.passwordFieldError = page.getByTestId('login-password-error').or(page.locator('form[data-testid="login-form"] app-field-error').nth(1));
 
-    // Inicialización de selectores de Registro
-    this.registerForm = page.getByTestId('register-form').or(page.locator('form[data-testid="register-form"]'));
-    this.registerNombreInput = page.getByTestId('register-nombre-input').or(page.locator('input[formcontrolname="nombre"]'));
-    this.registerApellidoInput = page.getByTestId('register-apellido-input').or(page.locator('input[formcontrolname="apellido"]'));
-    this.registerEmailInput = page.getByTestId('register-email-input').or(page.locator('form[data-testid="register-form"] input[type="email"]'));
-    this.registerPasswordInput = page.getByTestId('register-password-input').or(page.locator('input[formcontrolname="password"]'));
-    this.registerConfirmPasswordInput = page.getByTestId('register-confirm-password-input').or(page.locator('input[formcontrolname="confirmPassword"]'));
-    this.registerSubmitButton = page.getByTestId('register-submit-button').or(page.locator('button[data-testid="register-submit-button"]'));
+    // Inicialización de selectores de Registro estandarizados con testId unívocos
+    this.registerForm = page.getByTestId('register-form');
+    this.registerNombreInput = page.getByTestId('register-nombre-input');
+    this.registerApellidoInput = page.getByTestId('register-apellido-input');
+    this.registerEmailInput = page.getByTestId('register-email-input');
+    this.registerPasswordInput = page.getByTestId('register-password-input');
+    this.registerConfirmPasswordInput = page.getByTestId('register-confirm-password-input');
+    this.registerSubmitButton = page.getByTestId('register-submit-button');
     this.registerMismatchError = page.getByTestId('register-mismatch-error');
   }
 
