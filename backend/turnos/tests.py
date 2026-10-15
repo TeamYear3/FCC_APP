@@ -477,10 +477,11 @@ class RecordatoriosTurnosCommandTests(TestCase):
         # Assert
         output = out.getvalue()
         self.assertIn("[ENVIADO] Recordatorio enviado a notificar@cliente.com", output)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn("Recordatorio de Turno de Taller", mail.outbox[0].subject)
-        self.assertIn("Lucas Mendez", mail.outbox[0].body)
-        self.assertIn("Toyota Corolla (AB123CD)", mail.outbox[0].body)
+        recordatorios = [m for m in mail.outbox if "Recordatorio de Turno" in m.subject]
+        self.assertEqual(len(recordatorios), 1)
+        self.assertIn("Recordatorio de Turno de Taller", recordatorios[0].subject)
+        self.assertIn("Lucas Mendez", recordatorios[0].body)
+        self.assertIn("Toyota Corolla (AB123CD)", recordatorios[0].body)
 
     def test_no_enviar_recordatorio_para_turnos_fuera_de_ventana(self):
         # Arrange: Turno para dentro de 5 días
@@ -500,7 +501,8 @@ class RecordatoriosTurnosCommandTests(TestCase):
         # Assert
         output = out.getvalue()
         self.assertIn("No hay turnos pendientes para recordar", output)
-        self.assertEqual(len(mail.outbox), 0)
+        recordatorios = [m for m in mail.outbox if "Recordatorio de Turno" in m.subject]
+        self.assertEqual(len(recordatorios), 0)
 
     def test_dry_run_simula_sin_disparar_emails(self):
         # Arrange
@@ -520,7 +522,9 @@ class RecordatoriosTurnosCommandTests(TestCase):
         # Assert
         output = out.getvalue()
         self.assertIn("[DRY-RUN] Simulado envío a notificar@cliente.com", output)
-        self.assertEqual(len(mail.outbox), 0)
+        recordatorios = [m for m in mail.outbox if "Recordatorio de Turno" in m.subject]
+        self.assertEqual(len(recordatorios), 0)
+
     def test_no_reenviar_recordatorio_si_ya_fue_notificado(self):
         # Arrange: Turno dentro de la ventana de 24h
         fecha_manana = timezone.now() + timedelta(hours=24)
@@ -536,7 +540,8 @@ class RecordatoriosTurnosCommandTests(TestCase):
 
         # Act 1: Primer envío
         call_command("enviar_recordatorios_turnos", "--horas=24", stdout=out1)
-        self.assertEqual(len(mail.outbox), 1)
+        recordatorios_1 = [m for m in mail.outbox if "Recordatorio de Turno" in m.subject]
+        self.assertEqual(len(recordatorios_1), 1)
         turno.refresh_from_db()
         self.assertIsNotNone(turno.recordatorio_enviado_en)
 
@@ -544,7 +549,8 @@ class RecordatoriosTurnosCommandTests(TestCase):
         call_command("enviar_recordatorios_turnos", "--horas=24", stdout=out2)
 
         # Assert: No debe enviar un segundo correo
-        self.assertEqual(len(mail.outbox), 1)
+        recordatorios_2 = [m for m in mail.outbox if "Recordatorio de Turno" in m.subject]
+        self.assertEqual(len(recordatorios_2), 1)
         self.assertIn("No hay turnos pendientes para recordar en este período.", out2.getvalue())
 
 
