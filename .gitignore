@@ -40,6 +40,8 @@ docker-compose.override.yml
 # Documentación local (se ignoran binarios/temporales, se versionan .md y evidencias E2E)
 docs/*
 !docs/*.md
+!docs/evidencias_accesibilidad/
+!docs/evidencias_accesibilidad/*
 !docs/evidencias_e2e/
 !docs/evidencias_e2e/*
 
