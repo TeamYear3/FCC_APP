@@ -650,3 +650,131 @@ class MetodosNoPermitidosFacturacionAPITests(APITestCase):
         self.assertIn("Allow", response.headers)
         self.assertNotIn("POST", response.headers["Allow"])
 
+
+class FacturaClienteAPITest(APITestCase):
+    """Pruebas para el acceso de clientes a comprobantes fiscales (TK206 / US-20)."""
+
+    def setUp(self):
+        # Arrange
+        self.user_cliente1 = User.objects.create_user(
+            email="cliente1@taller.com",
+            nombre="Juan",
+            apellido="Pérez",
+            rol="cliente",
+            password="Password123!"
+        )
+        self.cliente1 = Cliente.objects.create(
+            usuario=self.user_cliente1,
+            nombre="Juan",
+            apellido="Pérez",
+            tipo_documento="DNI",
+            dni_cuit="30111222",
+            condicion_iva="CF"
+        )
+        self.vehiculo1 = Vehiculo.objects.create(
+            cliente=self.cliente1,
+            patente="AB123CD",
+            marca="Renault",
+            modelo="Clio",
+            anio=2019
+        )
+        self.orden1 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo1,
+            descripcion_problema="Revisión tren delantero"
+        )
+        self.factura1 = Factura.objects.create(
+            orden_trabajo=self.orden1,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            punto_venta=1,
+            numero_factura=101,
+            cae="26101506010011",
+            fecha_vencimiento_cae=timezone.localdate() + timedelta(days=10),
+            total=Decimal("45000.00"),
+            estado=EstadoFactura.EMITIDA,
+            estado_pago=EstadoPago.SIN_INTERACCION,
+            cuit_emisor="30-71829384-9"
+        )
+
+        # Segundo cliente ajeno
+        self.user_cliente2 = User.objects.create_user(
+            email="cliente2@taller.com",
+            nombre="María",
+            apellido="Gómez",
+            rol="cliente",
+            password="Password123!"
+        )
+        self.cliente2 = Cliente.objects.create(
+            usuario=self.user_cliente2,
+            nombre="María",
+            apellido="Gómez",
+            tipo_documento="DNI",
+            dni_cuit="32333444",
+            condicion_iva="CF"
+        )
+        self.vehiculo2 = Vehiculo.objects.create(
+            cliente=self.cliente2,
+            patente="AC456EF",
+            marca="Peugeot",
+            modelo="208",
+            anio=2021
+        )
+        self.orden2 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo2,
+            descripcion_problema="Cambio de batería"
+        )
+        self.factura2 = Factura.objects.create(
+            orden_trabajo=self.orden2,
+            tipo_comprobante=TipoComprobante.FACTURA_B,
+            punto_venta=1,
+            numero_factura=102,
+            cae="26101506010022",
+            fecha_vencimiento_cae=timezone.localdate() + timedelta(days=10),
+            total=Decimal("60000.00"),
+            estado=EstadoFactura.EMITIDA,
+            estado_pago=EstadoPago.SIN_INTERACCION,
+            cuit_emisor="30-71829384-9"
+        )
+
+    def test_facturas_cliente_solo_retorna_sus_comprobantes(self):
+        """TK206 / US-20: Un cliente solo obtiene las facturas vinculadas a sus vehículos."""
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente1)
+        url = reverse("factura-cliente-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        datos = response.json()
+        self.assertEqual(len(datos), 1)
+        self.assertEqual(datos[0]["id"], str(self.factura1.id))
+        self.assertEqual(datos[0]["cae"], "26101506010011")
+
+    def test_facturas_list_aisla_por_cliente_autenticado(self):
+        """TK206: GET /api/facturas/ filtra automáticamente por el cliente en sesión."""
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente1)
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        datos = response.json()
+        self.assertEqual(len(datos), 1)
+        self.assertEqual(datos[0]["id"], str(self.factura1.id))
+
+    def test_facturas_cliente_anonimo_retorna_401(self):
+        """TK206: La consulta sin autenticación debe retornar 401 Unauthorized."""
+        # Arrange
+        url = reverse("factura-cliente-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+

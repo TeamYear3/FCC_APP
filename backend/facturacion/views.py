@@ -150,7 +150,7 @@ class FacturaListView(APIView):
     - busqueda (patente, CAE, cliente)
     - paginación con mantenimiento de filtros
     """
-    permission_classes = [IsAuthenticated, EsAdministrador]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         queryset = (
@@ -158,6 +158,16 @@ class FacturaListView(APIView):
             .prefetch_related("orden_trabajo__items_presupuesto")
             .all()
         )
+
+        # Si el usuario es cliente, aislar estrictamente a sus comprobantes
+        if getattr(request.user, "rol", None) == "cliente":
+            cliente = getattr(request.user, "cliente", None)
+            if not cliente:
+                from clientes.models import Cliente
+                cliente = Cliente.objects.filter(usuario=request.user).first()
+            if not cliente:
+                return Response([], status=status.HTTP_200_OK)
+            queryset = queryset.filter(orden_trabajo__vehiculo__cliente=cliente)
 
         estado_pago = request.query_params.get("estado_pago")
         if estado_pago:
@@ -210,6 +220,31 @@ class FacturaListView(APIView):
                 serializer = FacturaSerializer(page_obj, many=True)
                 return paginator.get_paginated_response(serializer.data)
 
+        serializer = FacturaSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FacturaClienteListView(APIView):
+    """
+    TK206: Endpoint dedicado para que los clientes consulten sus facturas emitidas en el Portal Cliente.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        cliente = getattr(request.user, "cliente", None)
+        if not cliente:
+            from clientes.models import Cliente
+            cliente = Cliente.objects.filter(usuario=request.user).first()
+
+        if not cliente:
+            return Response([], status=status.HTTP_200_OK)
+
+        queryset = (
+            Factura.objects.select_related("orden_trabajo__vehiculo__cliente")
+            .prefetch_related("orden_trabajo__items_presupuesto")
+            .filter(orden_trabajo__vehiculo__cliente=cliente)
+            .order_by("-fecha_emision")
+        )
         serializer = FacturaSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
