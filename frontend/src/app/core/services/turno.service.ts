@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { httpResource } from '../utils/http-resource.util';
 
 export interface TurnoPayload {
-  cliente: string;
+  cliente?: string;
   vehiculo: string;
   fecha_hora: string;
   motivo: string;

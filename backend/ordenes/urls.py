@@ -15,10 +15,12 @@ from .views import (
     RegistrarPagoOrdenView,
     OrdenTrabajoAuditoriaView,
     OrdenEventosWebSocketView,
-    OrdenDiagnosticoOBD2View
+    OrdenDiagnosticoOBD2View,
+    ReporteRentabilidadView
 )
 
 urlpatterns = [
+    path('reportes/rentabilidad/', ReporteRentabilidadView.as_view(), name='reporte-rentabilidad'),
     path('ordenes/', CrearOrdenTrabajoView.as_view(), name='crear-orden-trabajo'),
     path('ordenes/<uuid:id>/', DetalleOrdenTrabajoView.as_view(), name='detalle-orden-trabajo'),
     path('ordenes/<uuid:id>/registrar-pago/', RegistrarPagoOrdenView.as_view(), name='orden-registrar-pago'),

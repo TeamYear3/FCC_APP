@@ -315,6 +315,31 @@ class TurnoAPITests(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_cliente_consulta_reservas_activas_portal_tk202(self):
+        """TK202: El cliente consulta sus turnos para la solapa Mis Turnos y obtiene información completa del vehículo y estado."""
+        # Arrange
+        turno_cliente = Turno.objects.create(
+            cliente=self.cliente_a,
+            vehiculo=self.vehiculo_a,
+            fecha_hora=self.fecha_base,
+            motivo="Revisión integral y cambio de aceite",
+            estado="pendiente"
+        )
+        self.client.force_authenticate(user=self.client_user_a)
+
+        # Act
+        response = self.client.get(reverse('turno-list'))
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], str(turno_cliente.id))
+        self.assertEqual(data[0]["motivo"], "Revisión integral y cambio de aceite")
+        self.assertEqual(data[0]["estado"], "pendiente")
+        self.assertIn("Ford Fiesta", data[0]["vehiculo_info"])
+        self.assertIn("AA123BB", data[0]["vehiculo_info"])
+
     def test_tecnico_puede_crear_turno_rapido(self):
         """Prueba que un usuario con rol 'tecnico' tiene autorización para crear turnos (TK196)."""
         # Arrange
@@ -332,6 +357,98 @@ class TurnoAPITests(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["motivo"], "Turno rápido creado por técnico")
+
+    def test_cliente_reserva_turno_online_exitoso(self):
+        """TK207 / US-22: El cliente agenda un turno online para sus vehículos registrados."""
+        # Arrange
+        self.client.force_authenticate(user=self.client_user_a)
+        url = reverse("turno-list")
+        payload = {
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": self.fecha_base.isoformat(),
+            "motivo": "Reserva online cambio de pastillas"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(str(response.data["cliente"]), str(self.cliente_a.id))
+        self.assertEqual(str(response.data["vehiculo"]), str(self.vehiculo_a.id))
+        self.assertEqual(response.data["motivo"], "Reserva online cambio de pastillas")
+
+    def test_cliente_no_puede_reservar_turno_vehiculo_ajeno(self):
+        """TK207 / US-22: Un cliente no puede agendar turno para un vehículo que no le pertenece."""
+        # Arrange
+        self.client.force_authenticate(user=self.client_user_a)
+        url = reverse("turno-list")
+        payload = {
+            "vehiculo": str(self.vehiculo_b.id),
+            "fecha_hora": self.fecha_base.isoformat(),
+            "motivo": "Intento de reserva vehículo ajeno"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("vehiculo", response.data)
+
+    def test_cliente_reserva_fuerza_estado_pendiente(self):
+        """TK207 / US-22: Una reserva creada por cliente siempre fuerza el estado a 'pendiente'."""
+        # Arrange
+        self.client.force_authenticate(user=self.client_user_a)
+        url = reverse("turno-list")
+        payload = {
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": self.fecha_base.isoformat(),
+            "motivo": "Reserva con intento de completado",
+            "estado": "completado"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["estado"], "pendiente")
+        self.assertEqual(Turno.objects.get(id=response.data["id"]).estado, "pendiente")
+
+    def test_cliente_no_puede_forzar_sobrecupo(self):
+        """TK207 / US-22: El cliente no tiene permisos para realizar bypass de sobrecupo (force_booking=True)."""
+        # Arrange
+        # Crear 2 turnos previos en la fecha base
+        Turno.objects.create(
+            cliente=self.cliente_a,
+            vehiculo=self.vehiculo_a,
+            fecha_hora=self.fecha_base,
+            motivo="Turno existente 1"
+        )
+        Turno.objects.create(
+            cliente=self.cliente_b,
+            vehiculo=self.vehiculo_b,
+            fecha_hora=self.fecha_base.replace(hour=14),
+            motivo="Turno existente 2"
+        )
+
+        self.client.force_authenticate(user=self.client_user_a)
+        url = reverse("turno-list")
+        payload = {
+            "vehiculo": str(self.vehiculo_a.id),
+            "fecha_hora": self.fecha_base.replace(hour=16).isoformat(),
+            "motivo": "Intento de forzar reserva sin cupo",
+            "force_booking": True
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("fecha_hora", response.data)
+        self.assertIn("cupos disponibles", str(response.data["fecha_hora"]))
 
 
 class TurnosCasosFelicesAPITest(APITestCase):
@@ -590,3 +707,100 @@ class MetodosNoPermitidosTurnosAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertIn("Allow", response.headers)
         self.assertNotIn("TRACE", response.headers["Allow"])
+
+
+class NotificacionEmailTurnosAPITests(APITestCase):
+    """Pruebas unitarias de notificación por correo en tiempo real para turnos (TK212 #273)."""
+
+    def setUp(self):
+        mail.outbox.clear()
+        self.admin = Usuario.objects.create_user(
+            email="admin_notif@example.com",
+            password="adminpassword123",
+            nombre="Admin",
+            apellido="Notificaciones",
+            rol="admin",
+        )
+        self.usuario_cliente = Usuario.objects.create_user(
+            email="cliente_notif@example.com",
+            password="clientpassword123",
+            nombre="Carlos",
+            apellido="Gómez",
+            rol="cliente",
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.usuario_cliente,
+            nombre="Carlos",
+            apellido="Gómez",
+            email="cliente_notif@example.com",
+            tipo_documento="DNI",
+            dni_cuit="28475910",
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AF999ZZ",
+            marca="Toyota",
+            modelo="Corolla",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        ahora = timezone.now()
+        dias_hasta_miercoles = (2 - ahora.weekday() + 7) % 7
+        if dias_hasta_miercoles == 0:
+            dias_hasta_miercoles = 7
+        fecha_miercoles = (ahora + timezone.timedelta(days=dias_hasta_miercoles)).date()
+        self.fecha_turno = timezone.make_aware(datetime.combine(fecha_miercoles, time(11, 0)))
+
+    def test_creacion_turno_envia_email_confirmacion(self):
+        """Al crear un turno, se envía correo de confirmación al cliente con datos del turno y vehículo."""
+        # Arrange
+        mail.outbox.clear()
+        url = reverse("turno-list")
+        payload = {
+            "cliente": str(self.cliente.id),
+            "vehiculo": str(self.vehiculo.id),
+            "fecha_hora": self.fecha_turno.isoformat(),
+            "motivo": "Revisión de frenos y fluidos",
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        emails = [m for m in mail.outbox if "Confirmación de Turno" in m.subject]
+        self.assertEqual(len(emails), 1)
+        email = emails[0]
+        self.assertIn("cliente_notif@example.com", email.to)
+        self.assertIn("Toyota Corolla", email.body)
+        self.assertIn("Revisión de frenos y fluidos", email.body)
+
+    def test_modificacion_turno_envia_email_reprogramacion(self):
+        """Al reprogramar un turno, se reenvía la notificación con asunto y datos actualizados."""
+        # Arrange
+        turno = Turno.objects.create(
+            cliente=self.cliente,
+            vehiculo=self.vehiculo,
+            fecha_hora=self.fecha_turno,
+            motivo="Cambio de aceite",
+            estado="pendiente",
+        )
+        mail.outbox.clear()
+        nueva_fecha = self.fecha_turno + timedelta(hours=2)
+        url = reverse("turno-detail", kwargs={"pk": turno.id})
+        payload = {
+            "fecha_hora": nueva_fecha.isoformat(),
+            "motivo": "Cambio de aceite y filtro sintético",
+        }
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [m for m in mail.outbox if "Turno Reprogramado" in m.subject]
+        self.assertEqual(len(emails), 1)
+        email = emails[0]
+        self.assertIn("cliente_notif@example.com", email.to)
+        self.assertIn("Cambio de aceite y filtro sintético", email.body)
+

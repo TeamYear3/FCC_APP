@@ -2214,6 +2214,172 @@ class MetodosNoPermitidosOrdenesAPITests(APITestCase):
         self.assertNotIn("DELETE", response.headers["Allow"])
 
 
+class ReporteRentabilidadAPITests(APITestCase):
+    """Pruebas unitarias para endpoint analítico de rentabilidad y servicios más demandados (TK210 #265)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_rentab@example.com",
+            nombre="Admin",
+            apellido="Rentabilidad",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_rentab@example.com",
+            nombre="Tecnico",
+            apellido="Taller",
+            rol="tecnico",
+            password="tecnicopassword123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_rentab@example.com",
+            nombre="Cliente",
+            apellido="Taller",
+            rol="cliente",
+            password="clientepassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            nombre="Cliente",
+            apellido="Rentabilidad",
+            tipo_documento="DNI",
+            dni_cuit="30112233"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA888BB",
+            marca="Toyota",
+            modelo="Corolla"
+        )
+
+        hoy = timezone.localdate()
+        self.ot1 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.tecnico,
+            descripcion_problema="Service programado 50.000km",
+            fecha_ingreso=hoy,
+            monto_total=Decimal("150000.00"),
+            estado=EstadoOrden.FINALIZADO
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot1,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y Balanceo",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("50000.00")
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot1,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Cambio de Aceite y Filtros",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("30000.00")
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot1,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Aceite Sintético 5W30 4L",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("70000.00")
+        )
+
+        self.ot2 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.tecnico,
+            descripcion_problema="Revisión de frenos delanteros",
+            fecha_ingreso=hoy,
+            monto_total=Decimal("80000.00"),
+            estado=EstadoOrden.FINALIZADO
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot2,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y Balanceo",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("50000.00")
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot2,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Pastillas de Freno",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("30000.00")
+        )
+
+    def test_reporte_rentabilidad_requiere_autenticacion(self):
+        """AUT-BE-03: Solicitud anónima a reporte de rentabilidad devuelve 401."""
+        # Arrange
+        url = reverse("reporte-rentabilidad")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_reporte_rentabilidad_rechaza_roles_no_admin(self):
+        """AUT-BE-03: Usuario técnico o cliente no pueden acceder al reporte de rentabilidad (403)."""
+        # Arrange
+        url = reverse("reporte-rentabilidad")
+
+        # Act & Assert técnico
+        self.client.force_authenticate(user=self.tecnico)
+        response_tecnico = self.client.get(url)
+        self.assertEqual(response_tecnico.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Act & Assert cliente
+        self.client.force_authenticate(user=self.cliente_user)
+        response_cliente = self.client.get(url)
+        self.assertEqual(response_cliente.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_reporte_rentabilidad_admin_calcula_kpis_y_top_servicios(self):
+        """TK210: Administrador obtiene KPIs consolidados, márgenes y ranking de servicios más demandados."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("reporte-rentabilidad")
+
+        # Act
+        response = self.client.get(url, {"periodo": "mes"})
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["periodo"], "mes")
+        self.assertEqual(data["kpis"]["cantidad_ordenes"], 2)
+        self.assertEqual(data["kpis"]["total_facturado"], 230000.00)
+        self.assertEqual(data["kpis"]["total_mano_obra"], 130000.00)
+        self.assertEqual(data["kpis"]["total_repuestos"], 100000.00)
+
+        # Verificar top servicios: Alineación y Balanceo aparece 2 veces
+        top = data["top_servicios"]
+        self.assertTrue(len(top) >= 1)
+        self.assertEqual(top[0]["servicio"], "Alineación y Balanceo")
+        self.assertEqual(top[0]["cantidad"], 2)
+        self.assertEqual(top[0]["total"], 100000.00)
+
+        # Verificar márgenes
+        self.assertIn("mano_de_obra", data["margenes_reparacion"])
+        self.assertIn("repuestos", data["margenes_reparacion"])
+        self.assertGreater(data["margenes_reparacion"]["mano_de_obra"]["porcentaje"], 0)
+
+    def test_reporte_rentabilidad_filtro_periodo_vacio(self):
+        """TK210: Filtrar por un período sin órdenes devuelve KPIs en cero sin fallar."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("reporte-rentabilidad")
+
+        # Act - fecha futura sin datos
+        response = self.client.get(url, {"periodo": "custom", "fecha_desde": "2030-01-01", "fecha_hasta": "2030-01-31"})
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["kpis"]["cantidad_ordenes"], 0)
+        self.assertEqual(response.data["kpis"]["total_facturado"], 0.0)
+        self.assertEqual(response.data["top_servicios"], [])
+
+
+
 
 
 

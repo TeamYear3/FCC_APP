@@ -3,6 +3,8 @@ import { PortalClienteComponent } from './portal-cliente.component';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService } from '../../core/services/orden.service';
 import { VehiculoService } from '../../core/services/vehiculo.service';
+import { TurnoService } from '../../core/services/turno.service';
+import { FacturacionService } from '../../core/services/facturacion.service';
 import { WebSocketService } from '../../core/services/websocket.service';
 import { provideRouter } from '@angular/router';
 import { of, throwError, Subject } from 'rxjs';
@@ -18,6 +20,8 @@ describe('PortalClienteComponent', () => {
     obtenerAdjuntosDiagnostico: ReturnType<typeof vi.fn>;
   };
   let vehiculoServiceSpy: { getVehiculos: ReturnType<typeof vi.fn>; obtenerMisVehiculos: ReturnType<typeof vi.fn>; obtenerMantenimientosProgramados: ReturnType<typeof vi.fn> };
+  let turnoServiceSpy: { obtenerTurnos: ReturnType<typeof vi.fn>; crearTurno: ReturnType<typeof vi.fn> };
+  let facturacionServiceSpy: { getFacturasCliente: ReturnType<typeof vi.fn>; descargarPdf: ReturnType<typeof vi.fn> };
   let authServiceSpy: { userRoleSignal: ReturnType<typeof vi.fn>; getUserFromToken: ReturnType<typeof vi.fn>; logout: ReturnType<typeof vi.fn> };
   let webSocketServiceSpy: { conectar: ReturnType<typeof vi.fn>; desconectar: ReturnType<typeof vi.fn>; escucharEvento: ReturnType<typeof vi.fn>; estadoConexion: any };
   let eventSubject: Subject<any>;
@@ -33,9 +37,35 @@ describe('PortalClienteComponent', () => {
     };
 
     vehiculoServiceSpy = {
-      getVehiculos: vi.fn().mockReturnValue(of([])),
+      getVehiculos: vi.fn().mockReturnValue(of([{ id: 'veh-1', marca: 'Ford', modelo: 'Fiesta', patente: 'AA123BB' }])),
       obtenerMisVehiculos: vi.fn().mockReturnValue(of([])),
       obtenerMantenimientosProgramados: vi.fn().mockReturnValue(of([]))
+    };
+
+    turnoServiceSpy = {
+      obtenerTurnos: vi.fn().mockReturnValue(of([{ id: 'tur-1', vehiculo: 'veh-1', vehiculo_info: 'Ford Fiesta (AA123BB)', fecha_hora: '2026-10-20T10:00:00Z', motivo: 'Service', estado: 'pendiente', warning_overbooking: false }])),
+      crearTurno: vi.fn().mockReturnValue(of({ id: 'tur-2', vehiculo: 'veh-1', fecha_hora: '2026-10-22T10:00:00Z', motivo: 'Frenos', estado: 'pendiente' }))
+    };
+
+    facturacionServiceSpy = {
+      getFacturasCliente: vi.fn().mockReturnValue(of([
+        {
+          id: 'fac-1',
+          numero_comprobante: 'B-0001-00000101',
+          tipo_comprobante: 'B',
+          punto_venta: 1,
+          numero_factura: 101,
+          total: 45000,
+          cae: '26101506010011',
+          fecha_vencimiento_cae: '2026-10-25',
+          fecha_emision: '2026-10-15T10:00:00Z',
+          estado: 'emitida',
+          estado_pago: 'pagada',
+          vehiculo_patente: 'AA123BB',
+          numero_ot: 'OT-001'
+        }
+      ])),
+      descargarPdf: vi.fn().mockReturnValue(of(new Blob(['%PDF-1.4 test'], { type: 'application/pdf' })))
     };
 
     authServiceSpy = {
@@ -57,6 +87,8 @@ describe('PortalClienteComponent', () => {
         provideRouter([]),
         { provide: OrdenService, useValue: ordenServiceSpy },
         { provide: VehiculoService, useValue: vehiculoServiceSpy },
+        { provide: TurnoService, useValue: turnoServiceSpy },
+        { provide: FacturacionService, useValue: facturacionServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
         { provide: WebSocketService, useValue: webSocketServiceSpy }
       ]
@@ -153,7 +185,24 @@ describe('PortalClienteComponent', () => {
     expect(component.ordenRechazoEnCurso()).toBeNull();
   });
 
+  it('debe cargar los turnos del cliente al inicializar (TK207)', () => {
+    expect(turnoServiceSpy.obtenerTurnos).toHaveBeenCalled();
+    expect(component.listaTurnos().length).toBe(1);
+    expect(component.listaTurnos()[0].motivo).toBe('Service');
+  });
 
+  it('debe abrir modal de reserva y enviar solicitud a la API (TK207)', () => {
+    component.abrirModalReserva('veh-1');
+    expect(component.mostrarModalReserva()).toBe(true);
+    expect(component.vehiculoIdReserva()).toBe('veh-1');
+
+    component.fechaHoraReserva.set('2026-10-22T10:00');
+    component.motivoReserva.set('Frenos delanteros y pastillas');
+    component.confirmarReservaTurno();
+
+    expect(turnoServiceSpy.crearTurno).toHaveBeenCalled();
+    expect(component.exitoReserva()).toContain('correctamente');
+  });
   it('debe abrir la galería de fotos de diagnóstico y permitir ampliar y cerrar fotos (TK205)', () => {
     const mockOT = { id: 'ot-1', numero_ot: 'OT-001', estado: 'ingresado' } as any;
     component.verFotosDiagnostico(mockOT);
@@ -171,5 +220,58 @@ describe('PortalClienteComponent', () => {
     component.cerrarModalGaleria();
     expect(component.mostrarModalGaleria()).toBe(false);
   });
+
+  it('debe cambiar a la solapa de Mis Turnos y renderizar las tarjetas de citas activas (TK202)', () => {
+    component.cambiarTab('turnos');
+    expect(component.tabActivo()).toBe('turnos');
+    expect(turnoServiceSpy.obtenerTurnos).toHaveBeenCalled();
+    expect(component.listaTurnos().length).toBe(1);
+    expect(component.listaTurnos()[0].motivo).toBe('Service');
+    expect(component.listaTurnos()[0].vehiculo_info).toBe('Ford Fiesta (AA123BB)');
+    expect(component.getTurnoBadgeClass('pendiente')).toContain('FFCC00');
+    expect(component.getTurnoDisplay('pendiente')).toBe('Pendiente');
+  });
+
+  it('debe recargar los turnos del cliente al cambiar a la solapa de turnos (TK202)', () => {
+    turnoServiceSpy.obtenerTurnos.mockClear();
+    component.cambiarTab('turnos');
+    expect(turnoServiceSpy.obtenerTurnos).toHaveBeenCalledTimes(1);
+  });
+
+  it('debe cargar las facturas del cliente e inicializar la lista en ngOnInit (TK206)', () => {
+    expect(facturacionServiceSpy.getFacturasCliente).toHaveBeenCalled();
+    expect(component.listaFacturas().length).toBe(1);
+    expect(component.listaFacturas()[0].numero_comprobante).toBe('B-0001-00000101');
+    expect(component.listaFacturas()[0].cae).toBe('26101506010011');
+  });
+
+  it('debe cambiar a la solapa de Mis Facturas y refrescar la consulta (TK206)', () => {
+    facturacionServiceSpy.getFacturasCliente.mockClear();
+    component.cambiarTab('facturas');
+    expect(component.tabActivo()).toBe('facturas');
+    expect(facturacionServiceSpy.getFacturasCliente).toHaveBeenCalledTimes(1);
+  });
+
+  it('debe descargar el comprobante en PDF mediante el servicio de facturación (TK208)', () => {
+    const dummyFactura = component.listaFacturas()[0];
+    const createObjectURLSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:http://localhost/test-blob');
+    const revokeObjectURLSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    component.descargarPdfFactura(dummyFactura);
+
+    expect(facturacionServiceSpy.descargarPdf).toHaveBeenCalledWith('fac-1');
+    expect(createObjectURLSpy).toHaveBeenCalled();
+    expect(revokeObjectURLSpy).toHaveBeenCalled();
+    expect(component.descargandoPdfId()).toBeNull();
+  });
+
+  it('debe manejar error al recuperar facturas del cliente mostrando mensaje (TK206)', () => {
+    facturacionServiceSpy.getFacturasCliente.mockReturnValue(throwError(() => new Error('Error al listar')));
+    component.cargarFacturasCliente();
+
+    expect(component.errorFacturas()).toContain('No se pudieron recuperar las facturas emitidas.');
+    expect(component.cargandoFacturas()).toBe(false);
+  });
 });
+
 
