@@ -6,10 +6,15 @@ from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q, Prefetch
+from django.db.models import Q, Prefetch, Count, Sum, Avg
+from datetime import timedelta, date
+from decimal import Decimal
 from rest_framework.exceptions import PermissionDenied
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
-from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico, ItemPresupuesto, EstadoCobro, EstadoOrden
+from .models import (
+    OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico,
+    ItemPresupuesto, EstadoCobro, EstadoOrden, TipoItem
+)
 from .serializers import (
     OrdenTrabajoSerializer,
     DetalleOrdenTrabajoSerializer,
@@ -826,6 +831,152 @@ class OrdenDiagnosticoOBD2View(APIView):
             'message': 'Diagnóstico OBD-II registrado exitosamente en MongoDB.',
             'diagnostico': resultado
         }, status=status.HTTP_201_CREATED)
+
+
+class ReporteRentabilidadView(APIView):
+    """
+    TK210: Endpoint para el cálculo y visualización analítica de métricas de rentabilidad,
+    servicios más demandados y márgenes por tipo de reparación (US-14).
+    Accesible exclusivamente para usuarios con rol administrador.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador]
+
+    def get(self, request, *args, **kwargs):
+        periodo = request.query_params.get("periodo", "mes").lower()
+        hoy = timezone.localdate()
+
+        # Determinar rango de fechas según período
+        if periodo == "mes":
+            inicio = hoy.replace(day=1)
+            fin = hoy
+        elif periodo == "trimestre":
+            mes_actual = hoy.month
+            mes_inicio = ((mes_actual - 1) // 3) * 3 + 1
+            inicio = hoy.replace(month=mes_inicio, day=1)
+            fin = hoy
+        elif periodo == "anio":
+            inicio = hoy.replace(month=1, day=1)
+            fin = hoy
+        elif periodo == "todos":
+            inicio = None
+            fin = None
+        else:
+            fecha_desde = request.query_params.get("fecha_desde")
+            fecha_hasta = request.query_params.get("fecha_hasta")
+            try:
+                inicio = date.fromisoformat(fecha_desde) if fecha_desde else None
+                fin = date.fromisoformat(fecha_hasta) if fecha_hasta else hoy
+            except (ValueError, TypeError):
+                inicio = hoy.replace(day=1)
+                fin = hoy
+
+        ordenes_qs = OrdenTrabajo.objects.all()
+        if inicio:
+            ordenes_qs = ordenes_qs.filter(fecha_ingreso__gte=inicio)
+        if fin:
+            ordenes_qs = ordenes_qs.filter(fecha_ingreso__lte=fin)
+
+        cantidad_ordenes = ordenes_qs.count()
+        total_facturado_aggr = ordenes_qs.aggregate(
+            total=Sum("monto_total"),
+            promedio=Avg("monto_total")
+        )
+        total_facturado = total_facturado_aggr.get("total") or Decimal("0.00")
+        ticket_promedio = total_facturado_aggr.get("promedio") or Decimal("0.00")
+
+        items_qs = ItemPresupuesto.objects.filter(orden_trabajo__in=ordenes_qs)
+
+        mano_obra_aggr = items_qs.filter(tipo=TipoItem.MANO_DE_OBRA).aggregate(total=Sum("subtotal"))
+        total_mano_obra = mano_obra_aggr.get("total") or Decimal("0.00")
+
+        repuestos_aggr = items_qs.filter(tipo=TipoItem.REPUESTO).aggregate(total=Sum("subtotal"))
+        total_repuestos = repuestos_aggr.get("total") or Decimal("0.00")
+
+        suma_items = total_mano_obra + total_repuestos
+        if suma_items > 0:
+            margen_mano_obra_pct = round(float((total_mano_obra / suma_items) * 100), 1)
+            margen_repuestos_pct = round(float((total_repuestos / suma_items) * 100), 1)
+        else:
+            margen_mano_obra_pct = 0.0
+            margen_repuestos_pct = 0.0
+
+        top_servicios_raw = items_qs.filter(
+            tipo=TipoItem.MANO_DE_OBRA
+        ).values("descripcion").annotate(
+            cantidad=Count("id"),
+            total=Sum("subtotal")
+        ).order_by("-cantidad", "-total")[:5]
+
+        top_servicios = [
+            {
+                "servicio": item["descripcion"],
+                "cantidad": item["cantidad"],
+                "total": float(item["total"] or 0)
+            }
+            for item in top_servicios_raw
+        ]
+
+        historico_mensual = []
+        for i in range(5, -1, -1):
+            anio_mes = hoy.year
+            mes_calc = hoy.month - i
+            while mes_calc <= 0:
+                mes_calc += 12
+                anio_mes -= 1
+
+            inicio_m = date(anio_mes, mes_calc, 1)
+            if mes_calc == 12:
+                fin_m = date(anio_mes + 1, 1, 1) - timedelta(days=1)
+            else:
+                fin_m = date(anio_mes, mes_calc + 1, 1) - timedelta(days=1)
+
+            ots_mes = OrdenTrabajo.objects.filter(fecha_ingreso__gte=inicio_m, fecha_ingreso__lte=fin_m)
+            items_mes = ItemPresupuesto.objects.filter(orden_trabajo__in=ots_mes)
+
+            mo_m = items_mes.filter(tipo=TipoItem.MANO_DE_OBRA).aggregate(t=Sum("subtotal"))["t"] or Decimal("0.00")
+            rep_m = items_mes.filter(tipo=TipoItem.REPUESTO).aggregate(t=Sum("subtotal"))["t"] or Decimal("0.00")
+            tot_m = ots_mes.aggregate(t=Sum("monto_total"))["t"] or (mo_m + rep_m)
+
+            mes_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+            nombre_label = f"{mes_nombres[mes_calc - 1]} {str(anio_mes)[2:]}"
+
+            historico_mensual.append({
+                "periodo_label": nombre_label,
+                "mano_de_obra": float(mo_m),
+                "repuestos": float(rep_m),
+                "total": float(tot_m),
+                "cantidad_ordenes": ots_mes.count()
+            })
+
+        data = {
+            "periodo": periodo,
+            "fecha_desde": inicio.isoformat() if inicio else None,
+            "fecha_hasta": fin.isoformat() if fin else None,
+            "kpis": {
+                "total_facturado": float(total_facturado),
+                "total_mano_obra": float(total_mano_obra),
+                "total_repuestos": float(total_repuestos),
+                "margen_mano_obra_pct": margen_mano_obra_pct,
+                "margen_repuestos_pct": margen_repuestos_pct,
+                "cantidad_ordenes": cantidad_ordenes,
+                "ticket_promedio": round(float(ticket_promedio), 2)
+            },
+            "margenes_reparacion": {
+                "mano_de_obra": {
+                    "monto": float(total_mano_obra),
+                    "porcentaje": margen_mano_obra_pct
+                },
+                "repuestos": {
+                    "monto": float(total_repuestos),
+                    "porcentaje": margen_repuestos_pct
+                }
+            },
+            "top_servicios": top_servicios,
+            "historico_mensual": historico_mensual
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
 
 
 
