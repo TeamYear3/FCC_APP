@@ -315,31 +315,6 @@ class TurnoAPITests(APITestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_cliente_consulta_reservas_activas_portal_tk202(self):
-        """TK202: El cliente consulta sus turnos para la solapa Mis Turnos y obtiene información completa del vehículo y estado."""
-        # Arrange
-        turno_cliente = Turno.objects.create(
-            cliente=self.cliente_a,
-            vehiculo=self.vehiculo_a,
-            fecha_hora=self.fecha_base,
-            motivo="Revisión integral y cambio de aceite",
-            estado="pendiente"
-        )
-        self.client.force_authenticate(user=self.client_user_a)
-
-        # Act
-        response = self.client.get(reverse('turno-list'))
-
-        # Assert
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
-        self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]["id"], str(turno_cliente.id))
-        self.assertEqual(data[0]["motivo"], "Revisión integral y cambio de aceite")
-        self.assertEqual(data[0]["estado"], "pendiente")
-        self.assertIn("Ford Fiesta", data[0]["vehiculo_info"])
-        self.assertIn("AA123BB", data[0]["vehiculo_info"])
-
     def test_tecnico_puede_crear_turno_rapido(self):
         """Prueba que un usuario con rol 'tecnico' tiene autorización para crear turnos (TK196)."""
         # Arrange

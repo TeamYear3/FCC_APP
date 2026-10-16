@@ -17,9 +17,7 @@ class TurnoViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if getattr(user, "rol", None) == "cliente":
-            # Un cliente solo puede ver sus propios turnos asociados a su perfil (TK202)
-            if hasattr(user, "cliente_perfil") and user.cliente_perfil:
-                return Turno.objects.filter(cliente=user.cliente_perfil).select_related("cliente", "vehiculo")
+            # Un cliente solo puede ver sus propios turnos
             return Turno.objects.filter(cliente__usuario=user).select_related("cliente", "vehiculo")
         # Administradores y técnicos pueden ver todos los turnos
         return Turno.objects.all().select_related("cliente", "vehiculo")

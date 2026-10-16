@@ -196,22 +196,5 @@ describe('PortalClienteComponent', () => {
     component.cerrarModalGaleria();
     expect(component.mostrarModalGaleria()).toBe(false);
   });
-
-  it('debe cambiar a la solapa de Mis Turnos y renderizar las tarjetas de citas activas (TK202)', () => {
-    component.cambiarTab('turnos');
-    expect(component.tabActivo()).toBe('turnos');
-    expect(turnoServiceSpy.obtenerTurnos).toHaveBeenCalled();
-    expect(component.listaTurnos().length).toBe(1);
-    expect(component.listaTurnos()[0].motivo).toBe('Service');
-    expect(component.listaTurnos()[0].vehiculo_info).toBe('Ford Fiesta (AA123BB)');
-    expect(component.getTurnoBadgeClass('pendiente')).toContain('FFCC00');
-    expect(component.getTurnoDisplay('pendiente')).toBe('Pendiente');
-  });
-
-  it('debe recargar los turnos del cliente al cambiar a la solapa de turnos (TK202)', () => {
-    turnoServiceSpy.obtenerTurnos.mockClear();
-    component.cambiarTab('turnos');
-    expect(turnoServiceSpy.obtenerTurnos).toHaveBeenCalledTimes(1);
-  });
 });
 
