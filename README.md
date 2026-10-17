@@ -1,6 +1,6 @@
 # FCC_APP - Sistema de Gestión Comercial y Operativa para Talleres Mecánicos
 
-> **Versión Estable:** `v0.4.0` (Sprint 4) | **Arquitectura:** Monorepo Modular Fullstack
+> **Versión Estable:** `v1.0.0` (Sprint 4 - Release Oficial) | **Arquitectura:** Monorepo Modular Fullstack
 
 Plataforma web integral de arquitectura modular diseñada para digitalizar de punta a punta la administración operativa, el control de órdenes de trabajo (OT) y la gestión comercial/fiscal de talleres mecánicos automotrices. Desarrollado por estudiantes de la Tecnicatura Superior en Desarrollo de Software (TSDS) - ISPC, 2026.
 
@@ -278,6 +278,41 @@ Dentro de la arquitectura de **FCC_APP**, el modelo de datos utiliza un enfoque 
    - **`arca_error_logs` (Telemetría tributaria de ARCA):** Payload JSON estructurado con las respuestas, excepciones y tokens de autenticación devueltos por la API de ARCA para auditar rechazos o inconsistencias de facturación fiscal.
    - **`websocket_events` (Historial de Eventos en Tiempo Real):** Registro de mensajería y notificaciones push transmitidas mediante Django Channels / Daphne entre Administradores y Técnicos en taller.
    - **`obd2_diagnosticos` (Diagnósticos Técnicos y Telemetría Vehicular):** Registro de lecturas electrónicas y códigos de falla OBD-II relevados durante el diagnóstico del vehículo.
+
+---
+
+## 🚀 Despliegue Continuo (CI/CD en Windows Server VPS con PM2)
+
+El backend de **FCC_APP** cuenta con un pipeline de integración y despliegue continuo automatizado con **GitHub Actions** que se ejecuta directamente sobre un VPS con **Windows Server** utilizando un *Self-Hosted Runner* y el gestor de procesos **PM2**.
+
+### 1. Inicialización del servicio en el VPS (única vez)
+Desde la carpeta del backend en el servidor (ej. `C:\bot-EVV\FCC_APP\backend`):
+```powershell
+# Registrar y arrancar el servidor Daphne ASGI bajo PM2
+pm2 start ".\.venv\Scripts\daphne.exe -b 0.0.0.0 -p 8000 config.asgi:application" --name "fcc-backend"
+
+# Persistir la configuración para autoarranque con el sistema operativo
+pm2-startup install
+pm2 save
+```
+
+### 2. Flujo Automatizado de Despliegue
+Al realizar un `push` o fusionar un Pull Request hacia la rama **`main`**:
+1. El **Runner de GitHub en Windows Server** intercepta el evento automáticamente.
+2. Descarga los últimos cambios del repositorio con `git pull origin main`.
+3. Actualiza las dependencias en el entorno virtual (`pip install -r requirements.txt`).
+4. Aplica las migraciones pendientes en PostgreSQL (`python manage.py migrate --noinput`).
+5. **Recolecta los activos estáticos** (`python manage.py collectstatic --noinput`) servidos de forma optimizada mediante **WhiteNoise**.
+6. Reinicia el proceso del backend en PM2 (`pm2 restart fcc-backend`).
+
+### 3. Monitoreo del backend en el VPS
+```powershell
+# Ver estado de ejecución:
+pm2 status
+
+# Ver logs en tiempo real:
+pm2 logs fcc-backend
+```
 
 ---
 

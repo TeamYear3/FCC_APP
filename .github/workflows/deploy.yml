@@ -1,0 +1,82 @@
+name: Deploy Backend to Windows Server VPS
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    name: Despliegue Automatizado en VPS
+    runs-on: self-hosted
+
+    steps:
+      - name: Actualizar backend, migrar base de datos, recolectar estaticos y reiniciar PM2
+        shell: powershell
+        run: |
+          # 1. Configurar safe directory y PATH de Node/npm/Python
+          git config --global --add safe.directory *
+          $env:PATH = "C:\Program Files\nodejs;C:\Users\Administrador\AppData\Roaming\npm;$env:PATH"
+
+          # 2. Localizar dinamicamente el directorio del backend en el VPS Windows Server
+          $candidatePaths = @(
+            "C:\bot-EVV\FCC_APP\backend",
+            "C:\bot-EVV\Integrador-fullstack\FCC_APP\backend",
+            "C:\Users\Administrador\Desktop\bot-EVV\FCC_APP\backend",
+            "C:\Users\Administrador\Desktop\bot-EVV\Integrador-fullstack\FCC_APP\backend",
+            "$env:USERPROFILE\Desktop\bot-EVV\FCC_APP\backend",
+            "$env:USERPROFILE\Desktop\bot-EVV\Integrador-fullstack\FCC_APP\backend",
+            "C:\FCC_APP\backend",
+            "C:\Integrador-fullstack\FCC_APP\backend",
+            "$env:USERPROFILE\Desktop\FCC_APP\backend",
+            "$env:USERPROFILE\Desktop\Integrador-fullstack\FCC_APP\backend"
+          )
+
+          $target = $null
+          foreach ($p in $candidatePaths) {
+            if (Test-Path "$p\manage.py") {
+              $target = $p
+              break
+            }
+          }
+
+          if (-not $target) {
+            Write-Error "No se encontro la carpeta del backend con manage.py en las rutas habituales del VPS."
+            exit 1
+          }
+
+          Write-Host "=== Directorio del backend encontrado: $target ==="
+          Set-Location $target
+
+          # 3. Descargar ultimos cambios de la rama main
+          Write-Host "Descargando ultimos cambios de main..."
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+          # 4. Instalar dependencias de Python en el entorno virtual
+          $venvPython = ".\.venv\Scripts\python.exe"
+          if (-not (Test-Path $venvPython)) {
+            $venvPython = "python.exe"
+          }
+
+          Write-Host "Instalando dependencias de Python..."
+          & $venvPython -m pip install -r requirements.txt
+
+          # 5. Aplicar migraciones en PostgreSQL
+          Write-Host "Aplicando migraciones en base de datos..."
+          & $venvPython manage.py migrate --noinput
+
+          # 6. Recolectar archivos estaticos para servir con WhiteNoise
+          Write-Host "Recolectando archivos estaticos con WhiteNoise..."
+          & $venvPython manage.py collectstatic --noinput
+
+          # 7. Reiniciar o recargar el servicio en PM2
+          Write-Host "Reiniciando servicio del backend en PM2..."
+          try {
+            pm2 restart fcc-backend
+            Write-Host "Servicio fcc-backend reiniciado exitosamente en PM2."
+          } catch {
+            Write-Warning "No se pudo reiniciar fcc-backend en PM2. Verifique si el proceso esta registrado con 'pm2 status'."
+          }
+
+          Write-Host "=== Despliegue automatico completado con exito! ==="

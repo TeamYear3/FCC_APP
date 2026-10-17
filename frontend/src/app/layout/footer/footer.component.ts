@@ -9,5 +9,5 @@ import { environment } from '../../../environments/environment';
 })
 export class FooterComponent {
   readonly currentYear = new Date().getFullYear();
-  readonly appVersion = (environment as { appVersion?: string }).appVersion || '0.4.0';
+  readonly appVersion = (environment as { appVersion?: string }).appVersion || '1.0.0';
 }

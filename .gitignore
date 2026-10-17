@@ -45,9 +45,11 @@ docs/*
 !docs/evidencias_e2e/
 !docs/evidencias_e2e/*
 
-# Archivos multimedia temporales
+# Archivos multimedia temporales y estáticos generados
 media/
 diagnosticos/
+staticfiles/
+backend/staticfiles/
 
 # Carpeta temporal del asistente AI
 scratch/
