@@ -9,11 +9,12 @@ import { VehiculoService, VehiculoResponse, MantenimientoProgramadoResponse } fr
 import { TurnoService, TurnoResponse, TurnoPayload } from '../../core/services/turno.service';
 import { WebSocketService } from '../../core/services/websocket.service';
 import { ConfiguracionPerfilModalComponent } from '../configuracion/configuracion-perfil-modal.component';
+import { FooterComponent } from '../../layout/footer/footer.component';
 
 @Component({
   selector: 'app-portal-cliente',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConfiguracionPerfilModalComponent],
+  imports: [CommonModule, FormsModule, ConfiguracionPerfilModalComponent, FooterComponent],
   templateUrl: './portal-cliente.component.html',
   styleUrl: './portal-cliente.component.css'
 })
