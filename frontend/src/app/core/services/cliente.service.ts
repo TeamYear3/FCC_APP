@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, ResourceRef, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { httpResource } from '../utils/http-resource.util';
 
 export interface ClientePayload {
   nombre: string;
@@ -9,8 +10,8 @@ export interface ClientePayload {
   tipo_documento: 'DNI' | 'CUIT';
   dni_cuit: string;
   condicion_iva: 'CF' | 'RI' | 'MT' | 'EX';
-  telefono?: string;
-  domicilio?: string;
+  telefono?: string | null;
+  domicilio?: string | null;
 }
 
 export interface ClienteResponse extends ClientePayload {
@@ -20,25 +21,71 @@ export interface ClienteResponse extends ClientePayload {
   actualizado_en: string;
 }
 
+export interface ClientesPaginadosResponse {
+  count: number;
+  next?: string | null;
+  previous?: string | null;
+  total_items?: number;
+  total_pages?: number;
+  current_page?: number;
+  results: ClienteResponse[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ClienteService {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly apiUrl = `${environment.apiUrl}/clientes/`;
+
+  private normalizarPayload(payload: Partial<ClientePayload>): Partial<ClientePayload> {
+    return {
+      ...payload,
+      ...(payload.telefono !== undefined && {
+        telefono: payload.telefono && payload.telefono.trim() ? payload.telefono.trim() : null,
+      }),
+      ...(payload.domicilio !== undefined && {
+        domicilio: payload.domicilio && payload.domicilio.trim() ? payload.domicilio.trim() : null,
+      }),
+    };
+  }
 
   /**
    * Envía la solicitud de registro del nuevo cliente hacia el endpoint POST /api/clientes/
    */
   crearCliente(payload: ClientePayload): Observable<ClienteResponse> {
-    return this.http.post<ClienteResponse>(this.apiUrl, payload);
+    const sanitized = this.normalizarPayload(payload) as ClientePayload;
+    return this.http.post<ClienteResponse>(this.apiUrl, sanitized);
   }
 
   /**
-   * Obtiene el listado de todos los clientes registrados desde GET /api/clientes/
+   * Obtiene el listado de clientes registrados desde GET /api/clientes/ (con soporte opcional de búsqueda ?search=)
+   * Consume la propiedad .results de la respuesta paginada estandarizada de la API.
    */
-  obtenerClientes(): Observable<ClienteResponse[]> {
-    return this.http.get<ClienteResponse[]>(this.apiUrl);
+  obtenerClientes(search?: string): Observable<ClienteResponse[]> {
+    const options = search ? { params: { search } } : {};
+    return this.http.get<ClientesPaginadosResponse | ClienteResponse[]>(this.apiUrl, options).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.results || []))
+    );
+  }
+
+  /**
+   * Obtiene la respuesta paginada completa de clientes (TK170)
+   */
+  obtenerClientesPaginados(search?: string, page: number = 1, limit: number = 10): Observable<ClientesPaginadosResponse> {
+    let params: any = { page: page.toString(), limit: limit.toString() };
+    if (search) params.search = search;
+    return this.http.get<ClientesPaginadosResponse>(this.apiUrl, { params });
+  }
+
+  /**
+   * Busca clientes dinámicamente mediante el parámetro ?search= (TK155)
+   */
+  buscarClientes(termino: string): Observable<ClienteResponse[]> {
+    return this.http.get<ClientesPaginadosResponse | ClienteResponse[]>(this.apiUrl, { params: { search: termino } }).pipe(
+      map((res: any) => Array.isArray(res) ? res : (res?.results || []))
+    );
   }
 
   /**
@@ -59,6 +106,30 @@ export class ClienteService {
    * Actualiza los datos de un cliente (PATCH /api/clientes/<id>/)
    */
   actualizarCliente(id: string, payload: Partial<ClientePayload>): Observable<ClienteResponse> {
-    return this.http.patch<ClienteResponse>(`${this.apiUrl}${id}/`, payload);
+    const sanitized = this.normalizarPayload(payload);
+    return this.http.patch<ClienteResponse>(`${this.apiUrl}${id}/`, sanitized);
+  }
+
+  /**
+   * Recurso reactivo para listado de clientes que responde a cambios en un signal de búsqueda (TK178)
+   */
+  getClientesResource(searchSignal?: () => string | undefined): ResourceRef<ClienteResponse[] | undefined> {
+    return httpResource<ClienteResponse[], string | undefined>({
+      params: searchSignal,
+      loader: (termino) => this.obtenerClientes(termino),
+      defaultValue: [],
+      injector: this.injector
+    });
+  }
+
+  /**
+   * Recurso reactivo para detalle de cliente por id reactivo (TK178)
+   */
+  getClienteDetalleResource(idSignal: () => string | null | undefined): ResourceRef<ClienteResponse | undefined> {
+    return httpResource<ClienteResponse, string | null | undefined>({
+      params: idSignal,
+      loader: (id) => (id ? this.obtenerClientePorId(id) : new Observable<ClienteResponse>((s) => s.complete())),
+      injector: this.injector
+    });
   }
 }

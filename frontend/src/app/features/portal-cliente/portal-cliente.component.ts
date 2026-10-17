@@ -1,16 +1,20 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
-import { OrdenService, OrdenResponse, OrdenHistorialResponse } from '../../core/services/orden.service';
+import { OrdenService, OrdenResponse, OrdenHistorialResponse, AdjuntoDiagnostico } from '../../core/services/orden.service';
 import { VehiculoService, VehiculoResponse, MantenimientoProgramadoResponse } from '../../core/services/vehiculo.service';
+import { TurnoService, TurnoResponse, TurnoPayload } from '../../core/services/turno.service';
 import { WebSocketService } from '../../core/services/websocket.service';
+import { ConfiguracionPerfilModalComponent } from '../configuracion/configuracion-perfil-modal.component';
+import { FooterComponent } from '../../layout/footer/footer.component';
 
 @Component({
   selector: 'app-portal-cliente',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, ConfiguracionPerfilModalComponent, FooterComponent],
   templateUrl: './portal-cliente.component.html',
   styleUrl: './portal-cliente.component.css'
 })
@@ -18,6 +22,7 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   readonly ordenService = inject(OrdenService);
   readonly vehiculoService = inject(VehiculoService);
+  readonly turnoService = inject(TurnoService);
   readonly webSocketService = inject(WebSocketService);
   private readonly router = inject(Router);
 
@@ -27,16 +32,41 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
 
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
   readonly listaVehiculos = signal<VehiculoResponse[]>([]);
-  readonly tabActivo = signal<'ordenes' | 'vehiculos'>('ordenes');
+  readonly listaTurnos = signal<TurnoResponse[]>([]);
+  readonly tabActivo = signal<'ordenes' | 'vehiculos' | 'turnos'>('ordenes');
   readonly cargando = signal<boolean>(true);
   readonly cargandoVehiculos = signal<boolean>(false);
+  readonly cargandoTurnos = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
+
+  // Modal para reservar nuevo turno (TK207)
+  readonly mostrarModalReserva = signal<boolean>(false);
+  readonly vehiculoIdReserva = signal<string>('');
+  readonly fechaHoraReserva = signal<string>('');
+  readonly motivoReserva = signal<string>('');
+  readonly cargandoReserva = signal<boolean>(false);
+  readonly errorReserva = signal<string | null>(null);
+  readonly exitoReserva = signal<string | null>(null);
+  readonly warningOverbooking = signal<boolean>(false);
 
   // Modal para consultar historial de la OT seleccionada
   readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
   readonly historialDatos = signal<OrdenHistorialResponse | null>(null);
   readonly cargandoHistorial = signal<boolean>(false);
   readonly mostrarModalHistorial = signal<boolean>(false);
+
+  // Modal para galería y fotos de diagnóstico (TK205)
+  readonly adjuntosOT = signal<AdjuntoDiagnostico[]>([]);
+  readonly cargandoAdjuntos = signal<boolean>(false);
+  readonly mostrarModalGaleria = signal<boolean>(false);
+  readonly fotoSeleccionada = signal<string | null>(null);
+
+  // Modal para perfil del cliente (TK201)
+  readonly mostrarModalPerfil = signal<boolean>(false);
+
+  // Acciones de presupuesto (TK204)
+  readonly accionPresupuestoEnProgreso = signal<boolean>(false);
+  readonly mensajeAccion = signal<string | null>(null);
 
   private socketSub: Subscription | null = null;
 
@@ -48,11 +78,15 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     }
     this.cargarOrdenesCliente();
     this.cargarVehiculosCliente();
+    this.cargarTurnosCliente();
     this.iniciarWebSocket();
   }
 
-  cambiarTab(tab: 'ordenes' | 'vehiculos'): void {
+  cambiarTab(tab: 'ordenes' | 'vehiculos' | 'turnos'): void {
     this.tabActivo.set(tab);
+    if (tab === 'turnos') {
+      this.cargarTurnosCliente();
+    }
     this.iniciarWebSocket();
   }
 
@@ -181,6 +215,38 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
     this.historialDatos.set(null);
   }
 
+  verFotosDiagnostico(orden: OrdenResponse): void {
+    this.ordenSeleccionada.set(orden);
+    this.mostrarModalGaleria.set(true);
+    this.cargandoAdjuntos.set(true);
+    this.adjuntosOT.set([]);
+
+    this.ordenService.obtenerAdjuntosDiagnostico(orden.id).subscribe({
+      next: (res) => {
+        this.adjuntosOT.set(res || []);
+        this.cargandoAdjuntos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar fotos de diagnóstico:', err);
+        this.adjuntosOT.set([]);
+        this.cargandoAdjuntos.set(false);
+      }
+    });
+  }
+
+  cerrarModalGaleria(): void {
+    this.mostrarModalGaleria.set(false);
+    this.fotoSeleccionada.set(null);
+  }
+
+  ampliarFoto(url: string): void {
+    this.fotoSeleccionada.set(url);
+  }
+
+  cerrarVisorAmpliado(): void {
+    this.fotoSeleccionada.set(null);
+  }
+
   getEstadoBadgeClass(estado: string): string {
     switch (estado?.toLowerCase()) {
       case 'ingresado':
@@ -210,6 +276,205 @@ export class PortalClienteComponent implements OnInit, OnDestroy {
       case 'rechazado': return 'Rechazado';
       default: return estado || 'N/A';
     }
+  }
+
+  cargarTurnosCliente(): void {
+    this.cargandoTurnos.set(true);
+    this.turnoService.obtenerTurnos().subscribe({
+      next: (res) => {
+        this.listaTurnos.set(res || []);
+        this.cargandoTurnos.set(false);
+      },
+      error: (err) => {
+        console.error('Error al cargar turnos del cliente:', err);
+        this.cargandoTurnos.set(false);
+      }
+    });
+  }
+
+  abrirModalReserva(vehiculoIdDefault?: string): void {
+    const vehiculos = this.listaVehiculos();
+    const defaultId = vehiculoIdDefault || (vehiculos.length > 0 ? vehiculos[0].id : '');
+    this.vehiculoIdReserva.set(defaultId);
+    this.fechaHoraReserva.set('');
+    this.motivoReserva.set('');
+    this.errorReserva.set(null);
+    this.exitoReserva.set(null);
+    this.warningOverbooking.set(false);
+    this.mostrarModalReserva.set(true);
+  }
+
+  cerrarModalReserva(): void {
+    this.mostrarModalReserva.set(false);
+    this.errorReserva.set(null);
+    this.exitoReserva.set(null);
+    this.warningOverbooking.set(false);
+  }
+
+  confirmarReservaTurno(): void {
+    const vehiculo = this.vehiculoIdReserva();
+    const fechaHora = this.fechaHoraReserva();
+    const motivo = this.motivoReserva().trim();
+
+    if (!vehiculo) {
+      this.errorReserva.set('Debes seleccionar un vehículo para el turno.');
+      return;
+    }
+    if (!fechaHora) {
+      this.errorReserva.set('Debes seleccionar la fecha y hora del turno.');
+      return;
+    }
+    if (!motivo) {
+      this.errorReserva.set('Debes describir el motivo o servicio requerido.');
+      return;
+    }
+
+    this.cargandoReserva.set(true);
+    this.errorReserva.set(null);
+
+    const payload: TurnoPayload = {
+      vehiculo,
+      fecha_hora: new Date(fechaHora).toISOString(),
+      motivo
+    };
+
+    this.turnoService.crearTurno(payload).subscribe({
+      next: (res) => {
+        this.cargandoReserva.set(false);
+        this.exitoReserva.set('¡Tu turno ha sido reservado correctamente!');
+        this.cargarTurnosCliente();
+        setTimeout(() => {
+          this.cerrarModalReserva();
+        }, 1500);
+      },
+      error: (err) => {
+        this.cargandoReserva.set(false);
+        if (err.error?.warning_overbooking) {
+          this.warningOverbooking.set(true);
+          this.errorReserva.set(err.error?.detail || 'Capacidad completa para esta fecha. Por favor, selecciona otro horario o día.');
+        } else if (err.error?.fecha_hora) {
+          this.errorReserva.set(Array.isArray(err.error.fecha_hora) ? err.error.fecha_hora[0] : err.error.fecha_hora);
+        } else if (err.error?.vehiculo) {
+          this.errorReserva.set(Array.isArray(err.error.vehiculo) ? err.error.vehiculo[0] : err.error.vehiculo);
+        } else {
+          this.errorReserva.set(err.error?.detail || 'No se pudo reservar el turno. Por favor, reintenta.');
+        }
+      }
+    });
+  }
+
+  getTurnoBadgeClass(estado: string): string {
+    switch (estado?.toLowerCase()) {
+      case 'pendiente':
+        return 'bg-[#FFCC00]/20 text-[#FFCC00] border border-[#FFCC00]/40';
+      case 'completado':
+        return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+      case 'cancelado':
+        return 'bg-rose-500/20 text-rose-400 border border-rose-500/40';
+      default:
+        return 'bg-zinc-800 text-zinc-400 border border-zinc-700';
+    }
+  }
+
+  getTurnoDisplay(estado: string): string {
+    switch (estado?.toLowerCase()) {
+      case 'pendiente': return 'Pendiente';
+      case 'completado': return 'Completado';
+      case 'cancelado': return 'Cancelado';
+      default: return estado || 'N/A';
+    }
+  }
+
+  abrirModalPerfil(): void {
+    this.mostrarModalPerfil.set(true);
+  }
+
+  cerrarModalPerfil(): void {
+    this.mostrarModalPerfil.set(false);
+    const user = this.authService.getUserFromToken();
+    if (user) {
+      const full = `${user.nombre || ''} ${user.apellido || ''}`.trim();
+      this.userName.set(full || user.email || 'Cliente');
+    }
+  }
+
+  readonly ordenRechazoEnCurso = signal<string | null>(null);
+  readonly motivoRechazo = signal<string>('');
+
+  aprobarPresupuesto(orden: OrdenResponse): void {
+    if (this.accionPresupuestoEnProgreso()) return;
+    this.accionPresupuestoEnProgreso.set(true);
+    this.mensajeAccion.set(null);
+
+    this.ordenService.actualizarEstado(orden.id, 'aprobado', 'Presupuesto aprobado por el cliente desde el portal').subscribe({
+      next: () => {
+        this.accionPresupuestoEnProgreso.set(false);
+        this.listaOrdenes.update(ordenes =>
+          ordenes.map(o => o.id === orden.id ? { ...o, estado: 'aprobado' } : o)
+        );
+        this.mensajeAccion.set(`¡Presupuesto para la orden ${orden.numero_ot || ''} aprobado con éxito!`);
+      },
+      error: (err) => {
+        console.error('Error al aprobar presupuesto:', err);
+        this.accionPresupuestoEnProgreso.set(false);
+        this.errorMessage.set(err.error?.error || 'No se pudo aprobar el presupuesto.');
+      }
+    });
+  }
+
+  iniciarRechazo(orden: OrdenResponse): void {
+    if (this.ordenRechazoEnCurso() === orden.id) {
+      this.ordenRechazoEnCurso.set(null);
+    } else {
+      this.ordenRechazoEnCurso.set(orden.id);
+      this.motivoRechazo.set('');
+    }
+  }
+
+  cancelarRechazo(): void {
+    this.ordenRechazoEnCurso.set(null);
+    this.motivoRechazo.set('');
+  }
+
+  confirmarRechazoPresupuesto(orden: OrdenResponse): void {
+    const motivo = this.motivoRechazo().trim() || 'Presupuesto rechazado por el cliente desde el portal';
+    this.rechazarPresupuesto(orden, motivo);
+    this.cancelarRechazo();
+  }
+
+  rechazarPresupuesto(orden: OrdenResponse, motivo?: string): void {
+    if (this.accionPresupuestoEnProgreso()) return;
+    this.accionPresupuestoEnProgreso.set(true);
+    this.mensajeAccion.set(null);
+
+    const motivoFinal = motivo || 'Presupuesto rechazado por el cliente desde el portal';
+
+    this.ordenService.actualizarEstado(orden.id, 'rechazado', motivoFinal).subscribe({
+      next: () => {
+        this.accionPresupuestoEnProgreso.set(false);
+        this.listaOrdenes.update(ordenes =>
+          ordenes.map(o => o.id === orden.id ? { ...o, estado: 'rechazado' } : o)
+        );
+        this.mensajeAccion.set(`Presupuesto para la orden ${orden.numero_ot || ''} marcado como rechazado.`);
+      },
+      error: (err) => {
+        console.error('Error al rechazar presupuesto:', err);
+        this.accionPresupuestoEnProgreso.set(false);
+        this.errorMessage.set(err.error?.error || 'No se pudo rechazar el presupuesto.');
+      }
+    });
+  }
+
+  getTotalManoDeObra(orden: OrdenResponse): number {
+    return (orden.items_presupuesto || [])
+      .filter(i => i.tipo === 'mano_de_obra')
+      .reduce((sum, i) => sum + (Number(i.subtotal) || (Number(i.cantidad) * Number(i.precio_unitario)) || 0), 0);
+  }
+
+  getTotalRepuestos(orden: OrdenResponse): number {
+    return (orden.items_presupuesto || [])
+      .filter(i => i.tipo === 'repuesto')
+      .reduce((sum, i) => sum + (Number(i.subtotal) || (Number(i.cantidad) * Number(i.precio_unitario)) || 0), 0);
   }
 
   logout(): void {

@@ -45,6 +45,7 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             'estado_cobro',
             'metodo_pago',
             'fecha_cobro',
+            'aprobado_por_cliente',
             'creado_en',
             'actualizado_en'
         ]
@@ -85,22 +86,28 @@ class OrdenTrabajoSerializer(serializers.ModelSerializer):
             rep['vehiculo_marca_modelo'] = f"{instance.vehiculo.marca} {instance.vehiculo.modelo}".strip()
             if instance.vehiculo.cliente:
                 cli = instance.vehiculo.cliente
+                rep['cliente_id'] = str(cli.id)
                 rep['cliente_nombre'] = f"{cli.nombre} {cli.apellido}".strip()
                 rep['cliente_telefono'] = cli.telefono or ''
                 rep['cliente_documento'] = f"{cli.tipo_documento}: {cli.dni_cuit}" if getattr(cli, 'dni_cuit', None) else ""
                 rep['cliente_dni_cuit'] = cli.dni_cuit or ''
+                rep['cliente_condicion_iva'] = getattr(cli, 'condicion_iva', 'CF') or 'CF'
             else:
+                rep['cliente_id'] = None
                 rep['cliente_nombre'] = 'Sin Cliente'
                 rep['cliente_telefono'] = ''
                 rep['cliente_documento'] = ''
                 rep['cliente_dni_cuit'] = ''
+                rep['cliente_condicion_iva'] = 'CF'
         else:
             rep['vehiculo_patente'] = ''
             rep['vehiculo_marca_modelo'] = ''
+            rep['cliente_id'] = None
             rep['cliente_nombre'] = ''
             rep['cliente_telefono'] = ''
             rep['cliente_documento'] = ''
             rep['cliente_dni_cuit'] = ''
+            rep['cliente_condicion_iva'] = 'CF'
         return rep
 
 
@@ -293,6 +300,26 @@ class RegistrarPagoSerializer(serializers.Serializer):
     monto = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
     comentario = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     entregar_orden = serializers.BooleanField(required=False, default=False)
+    condicion_iva = serializers.CharField(max_length=10, required=False, allow_blank=True)
+
+
+class DetalleOrdenTrabajoSerializer(OrdenTrabajoSerializer):
+    """
+    TK183: Serializer para el detalle individual de la Orden de Trabajo.
+    Consolida las relaciones precargadas por el ORM (items_presupuesto,
+    adjuntos_diagnostico e historial_estados) evitando consultas y llamadas HTTP adicionales.
+    """
+    items_presupuesto = ItemPresupuestoSerializer(many=True, read_only=True)
+    adjuntos_diagnostico = AdjuntoDiagnosticoSerializer(many=True, read_only=True)
+    historial_estados = HistorialEstadoOrdenSerializer(many=True, read_only=True)
+
+    class Meta(OrdenTrabajoSerializer.Meta):
+        fields = OrdenTrabajoSerializer.Meta.fields + [
+            'items_presupuesto',
+            'adjuntos_diagnostico',
+            'historial_estados',
+        ]
+
 
 
 

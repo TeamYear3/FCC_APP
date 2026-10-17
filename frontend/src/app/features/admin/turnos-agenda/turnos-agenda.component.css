@@ -173,3 +173,54 @@
   transform: scale(1.03) !important;
 }
 
+/* Adaptabilidad y responsividad para dispositivos móviles (TK186) */
+.calendar-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  :host ::ng-deep .fc {
+    min-width: 650px;
+    font-size: 0.8rem;
+  }
+
+  :host ::ng-deep .fc .fc-toolbar {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  :host ::ng-deep .fc .fc-toolbar-chunk {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  :host ::ng-deep .fc .fc-toolbar-title {
+    font-size: 1.1rem;
+    text-align: center;
+  }
+
+  :host ::ng-deep .fc-col-header-cell-cushion {
+    font-size: 0.75rem;
+    padding: 4px 0;
+  }
+
+  :host ::ng-deep .fc-daygrid-day-number {
+    font-size: 0.75rem;
+    padding: 2px 4px;
+  }
+
+  :host ::ng-deep .fc-event {
+    font-size: 0.68rem;
+    padding: 1px 3px;
+    margin-bottom: 2px;
+  }
+
+  :host ::ng-deep .fc-daygrid-day-frame {
+    min-height: 80px;
+  }
+}
+

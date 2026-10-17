@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ConfiguracionPerfilModalComponent } from './configuracion-perfil-modal.component';
 import { AuthService } from '../../core/auth/auth.service';
@@ -12,6 +13,7 @@ describe('ConfiguracionPerfilModalComponent', () => {
 
   beforeEach(async () => {
     authServiceMock = {
+      userRoleSignal: signal('admin'),
       obtenerPerfil: vi.fn().mockReturnValue(of({
         id: 'user-admin-1',
         email: 'admin@taller.com',
@@ -111,5 +113,36 @@ describe('ConfiguracionPerfilModalComponent', () => {
     expect(component.fortalezaPassword.nivel).toBe('fuerte');
     expect(component.fortalezaPassword.etiqueta).toBe('Fuerte');
   });
+
+  it('debe registrar estado de googleVinculado si el perfil lo tiene activo (TK137)', () => {
+    authServiceMock.obtenerPerfil.mockReturnValue(of({
+      id: 'user-admin-1',
+      email: 'admin@taller.com',
+      nombre: 'Laura',
+      apellido: 'Zárate',
+      rol: 'admin',
+      google_vinculado: true
+    }));
+
+    component.ngOnInit();
+    expect(component.googleVinculado()).toBe(true);
+  });
+
+  it('debe enviar null en el campo telefono cuando se encuentra vacío o solo con espacios (TK163)', () => {
+    component.perfilForm.patchValue({
+      nombre: 'Laura',
+      apellido: 'Zárate',
+      email: 'admin@taller.com',
+      telefono: '   ',
+    });
+    component.guardarCambios();
+
+    expect(authServiceMock.actualizarPerfil).toHaveBeenCalledWith(
+      expect.objectContaining({
+        telefono: null,
+      })
+    );
+  });
 });
+
 

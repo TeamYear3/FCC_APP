@@ -12,6 +12,8 @@ class ConflictException(APIException):
     default_code = 'conflict'
 
 class MantenimientoProgramadoSerializer(serializers.ModelSerializer):
+    porcentaje_desgaste = serializers.SerializerMethodField()
+
     class Meta:
         model = MantenimientoProgramado
         fields = [
@@ -19,12 +21,25 @@ class MantenimientoProgramadoSerializer(serializers.ModelSerializer):
             'vehiculo',
             'tipo_servicio',
             'kilometraje_objetivo',
+            'porcentaje_desgaste',
             'completado',
             'fecha_limite',
             'completado_en',
             'creado_en'
         ]
-        read_only_fields = ['id', 'vehiculo', 'completado_en', 'creado_en']
+        read_only_fields = ['id', 'vehiculo', 'porcentaje_desgaste', 'completado_en', 'creado_en']
+
+    def get_porcentaje_desgaste(self, obj):
+        km_actual = getattr(obj.vehiculo, 'kilometraje_actual', None) or getattr(obj.vehiculo, 'kilometraje', 0) or 0
+        if not obj.kilometraje_objetivo or obj.kilometraje_objetivo <= 0:
+            return 0.0
+        pct = round((km_actual / obj.kilometraje_objetivo) * 100, 1)
+        return min(max(pct, 0.0), 100.0)
+
+    def validate_kilometraje_objetivo(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError("El kilometraje objetivo debe ser un valor positivo mayor a 0.")
+        return value
 
 
 class VehiculoSerializer(serializers.ModelSerializer):
@@ -84,9 +99,9 @@ class VehiculoSerializer(serializers.ModelSerializer):
         return patente_limpia
 
     def validate_numero_chasis(self, value):
-        if not value:
-            return value
-        chasis_limpio = value.upper().strip()
+        if not value or not str(value).strip():
+            return None
+        chasis_limpio = str(value).upper().strip()
         
         queryset = Vehiculo.objects.filter(numero_chasis=chasis_limpio)
         if self.instance is not None:

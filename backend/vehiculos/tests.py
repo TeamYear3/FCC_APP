@@ -1,3 +1,5 @@
+import uuid
+
 from django.test import TestCase
 from django.db import IntegrityError
 from clientes.models import Cliente
@@ -418,8 +420,9 @@ class VehiculoAPITestCase(APITestCase):
         # Listar filtrando por cliente_actual (que tiene self.vehiculo)
         response = self.client.get(f"{self.url}?cliente={self.cliente_actual.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], str(self.vehiculo.id))
 
     def test_eliminar_vehiculo_sin_ordenes_hace_hard_delete(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -468,6 +471,54 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(response.data["numero_chasis"])
+
+    def test_crear_multiples_vehiculos_sin_chasis_consecutivos_tk161(self):
+        """TK161: Verificar que se pueden registrar múltiples vehículos con chasis vacío o None sin violar restricción UNIQUE."""
+        self.client.force_authenticate(user=self.admin_user)
+        data1 = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA111AA",
+            "marca": "Fiat",
+            "modelo": "Cronos",
+            "anio": 2022,
+            "kilometraje": 15000,
+            "numero_chasis": ""
+        }
+        res1 = self.client.post(self.url, data1, format='json')
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res1.data["numero_chasis"])
+
+        data2 = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA222BB",
+            "marca": "Peugeot",
+            "modelo": "208",
+            "anio": 2023,
+            "kilometraje": 10000,
+            "numero_chasis": "   "
+        }
+        res2 = self.client.post(self.url, data2, format='json')
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res2.data["numero_chasis"])
+
+        data3 = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AA333CC",
+            "marca": "Chevrolet",
+            "modelo": "Cruze",
+            "anio": 2021,
+            "kilometraje": 30000
+        }
+        res3 = self.client.post(self.url, data3, format='json')
+        self.assertEqual(res3.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res3.data["numero_chasis"])
+
+        v1 = Vehiculo.objects.get(patente="AA111AA")
+        v2 = Vehiculo.objects.get(patente="AA222BB")
+        v3 = Vehiculo.objects.get(patente="AA333CC")
+        self.assertIsNone(v1.numero_chasis)
+        self.assertIsNone(v2.numero_chasis)
+        self.assertIsNone(v3.numero_chasis)
 
     def test_crear_vehiculo_sin_kilometraje_falla(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -543,8 +594,9 @@ class VehiculoAPITestCase(APITestCase):
         url_maint = reverse('mantenimiento-vehiculo', kwargs={'pk': self.vehiculo.id})
         response = self.client.get(url_maint)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["tipo_servicio"], "Frenos")
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["tipo_servicio"], "Frenos")
 
     def test_listar_mantenimientos_ajeno_prohibido(self):
         from .models import MantenimientoProgramado
@@ -579,8 +631,9 @@ class VehiculoAPITestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Solo debe ver su vehículo (self.vehiculo), no el de cliente_nuevo
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["id"], str(self.vehiculo.id))
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], str(self.vehiculo.id))
 
     def test_actualizar_vehiculo_exito_admin_y_tecnico(self):
         # Probar con Admin
@@ -614,6 +667,32 @@ class VehiculoAPITestCase(APITestCase):
             "marca": "Toyota Cambiado"
         }
         response = self.client.patch(detail_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_detalle_vehiculo_acceso_permitido_cliente_titular_tk197(self):
+        """TK197: Verificar que un cliente puede consultar el detalle de su propio vehículo (GET)."""
+        self.cliente_actual.usuario = self.cliente_user
+        self.cliente_actual.save()
+
+        self.client.force_authenticate(user=self.cliente_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["patente"], self.vehiculo.patente)
+        self.assertEqual(response.data["marca"], self.vehiculo.marca)
+
+    def test_detalle_vehiculo_acceso_denegado_cliente_ajeno_tk197(self):
+        """TK197: Verificar que un cliente recibe 403 Forbidden al consultar un vehículo perteneciente a otro cliente."""
+        otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_tk197@example.com",
+            nombre="Otro",
+            apellido="Cliente",
+            rol="cliente",
+            password="password123"
+        )
+        self.client.force_authenticate(user=otro_cliente_user)
+        detail_url = reverse('detalle-vehiculo', kwargs={'pk': self.vehiculo.id})
+        response = self.client.get(detail_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_actualizar_vehiculo_patente_bloqueada(self):
@@ -728,5 +807,597 @@ class HistorialVehiculoAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
+class VehiculosCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-07 (Gestión de Vehículos) ↔ TEST-D-005.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_vehiculo_aut@example.com",
+            nombre="Admin",
+            apellido="Vehiculos",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Fabian",
+            apellido="Cubero",
+            tipo_documento="DNI",
+            dni_cuit="22776655",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AE456RT",
+            marca="Ford",
+            modelo="Ranger",
+            anio=2021
+        )
 
+    def test_consulta_listado_vehiculos_exitoso(self):
+        """HU-07 / TEST-D-005: Verificar que un usuario admin obtiene HTTP 200 OK al listar vehículos."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_vehiculo_exitoso(self):
+        """HU-07 / TEST-D-005: Verificar que un usuario admin obtiene HTTP 200 OK al consultar un vehículo por ID."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculo.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["patente"], "AE456RT")
+        self.assertEqual(response.data["marca"], "Ford")
+
+    def test_crear_vehiculo_payload_valido_exitoso(self):
+        """HU-07 / TEST-D-002: Creación de vehículo asociado a cliente retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AC999ZZ",
+            "marca": "Volkswagen",
+            "modelo": "Golf",
+            "anio": 2020,
+            "kilometraje": 45000,
+            "color": "Negro"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["patente"], "AC999ZZ")
+        self.assertEqual(response.data["marca"], "Volkswagen")
+
+    def test_actualizar_vehiculo_payload_valido_exitoso(self):
+        """HU-07 / TEST-D-005: Actualización de kilometraje de vehículo retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {"kilometraje": 50000}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["kilometraje"], 50000)
+
+
+class VehiculosOptimizacionORMTests(APITestCase):
+    """
+    TK168 / US-14: Pruebas automatizadas de consultas ORM sin N+1 con assertNumQueries.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_vehiculo_orm@example.com",
+            nombre="Admin",
+            apellido="Vehiculos",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Optimizacion",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF"
+        )
+        # Crear 5 vehículos, cada uno con un mantenimiento programado
+        from .models import MantenimientoProgramado
+        for i in range(5):
+            v = Vehiculo.objects.create(
+                cliente=self.cliente,
+                patente=f"ORM{i:03d}X",
+                marca="Ford",
+                modelo=f"Focus {i}",
+                anio=2021
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=v,
+                tipo_servicio=f"Service {i}0k",
+                kilometraje_objetivo=10000 * (i + 1)
+            )
+
+    def test_listar_vehiculos_con_consultas_orm_constantes_sin_n_plus_one(self):
+        """Verifica que el listado de vehículos ejecute exactamente 2 queries constantes (Vehiculo + MantenimientoProgramado)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+
+        # Act & Assert (1 query COUNT de paginación + 1 query de Vehiculos + 1 query prefetch mantenimientos)
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+        self.assertGreaterEqual(len(results), 5)
+
+    def test_listar_vehiculos_estructura_paginada_estandar_tk170(self):
+        """TK170: Verifica que el listado de vehículos responde con la estructura paginada estándar."""
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("count", response.data)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
+        self.assertIn("results", response.data)
+        self.assertIsInstance(response.data["results"], list)
+
+
+class MetodosNoPermitidosVehiculosAPITests(APITestCase):
+    """AUT-BE-02: los endpoints de vehículos rechazan verbos no admitidos."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_405_vehiculos@example.com",
+            nombre="Admin",
+            apellido="Métodos HTTP",
+            rol="admin",
+            password="adminpassword123",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_coleccion_vehiculos_rechaza_put(self):
+        # Arrange
+        url = reverse("crear-vehiculo")
+
+        # Act
+        response = self.client.put(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_detalle_vehiculo_rechaza_post(self):
+        # Arrange
+        url = reverse("detalle-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_historial_vehiculo_rechaza_post(self):
+        # Arrange
+        url = reverse("historial-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_exportacion_historial_rechaza_post(self):
+        # Arrange
+        url = reverse("exportar-historial-pdf", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_reasignacion_vehiculo_rechaza_get(self):
+        # Arrange
+        url = reverse("reasignar-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("GET", response.headers["Allow"])
+
+    def test_mantenimiento_vehiculo_rechaza_put(self):
+        # Arrange
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.put(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+
+class SerializerErroresPorCampoVehiculosAPITests(APITestCase):
+    """
+    AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo en vehículos.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_400_veh@test.com",
+            nombre="Admin",
+            apellido="Vehicular",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Lucas",
+            apellido="Prueba",
+            tipo_documento="DNI",
+            dni_cuit="29887766",
+            condicion_iva="CF"
+        )
+
+    def test_crear_vehiculo_patente_formato_invalido_retorna_400(self):
+        """AUT-BE-04 / HU-07: Patente con formato incorrecto retorna 400 Bad Request con error en patente."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "PATENTE-INVALIDA-999",
+            "marca": "Ford",
+            "modelo": "Fiesta",
+            "kilometraje": 20000
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("patente", response.data)
+
+    def test_crear_vehiculo_kilometraje_negativo_retorna_400(self):
+        """AUT-BE-04 / HU-07: Kilometraje negativo retorna 400 Bad Request con error en kilometraje."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-vehiculo")
+        payload = {
+            "cliente_id": str(self.cliente.id),
+            "patente": "AB123CD",
+            "marca": "Ford",
+            "modelo": "Fiesta",
+            "kilometraje": -100
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje", response.data)
+
+
+from .models import MantenimientoProgramado
+
+class VehiculoOptimizacionORMTests(APITestCase):
+    """
+    TK182 / US-05: Validación de optimización ORM con select_related('cliente__usuario')
+    y prefetch_related('mantenimientos_programados') para eliminar consultas N+1.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_veh_orm@example.com",
+            nombre="Admin",
+            apellido="VehORM",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        # Crear clientes con usuarios vinculados
+        self.clientes = []
+        for i in range(1, 3):
+            usr = User.objects.create_user(
+                email=f"cliente_veh_usr_{i}@example.com",
+                nombre=f"CliNom{i}",
+                apellido=f"CliApe{i}",
+                rol="cliente",
+                password="password123"
+            )
+            cli = Cliente.objects.create(
+                usuario=usr,
+                nombre=f"ClienteAuto{i}",
+                apellido=f"ApeAuto{i}",
+                tipo_documento="DNI",
+                dni_cuit=f"3100000{i}",
+                condicion_iva="CF",
+                telefono=f"35111111{i}",
+                domicilio=f"Calle Vehiculo {i}"
+            )
+            self.clientes.append(cli)
+
+        # Crear 4 vehículos con mantenimientos asociados
+        self.vehiculos = []
+        patentes = ["AA100AA", "AA100AB", "AA100AC", "AA100AD"]
+        for idx, pat in enumerate(patentes):
+            veh = Vehiculo.objects.create(
+                cliente=self.clientes[idx % 2],
+                patente=pat,
+                marca="Toyota",
+                modelo=f"Corolla {idx}",
+                anio=2020 + idx,
+                kilometraje=15000 * (idx + 1),
+                kilometraje_actual=15000 * (idx + 1),
+                activo=True
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=veh,
+                tipo_servicio="Cambio de Aceite",
+                kilometraje_objetivo=20000 * (idx + 1)
+            )
+            MantenimientoProgramado.objects.create(
+                vehiculo=veh,
+                tipo_servicio="Alineación y Balanceo",
+                kilometraje_objetivo=25000 * (idx + 1)
+            )
+            self.vehiculos.append(veh)
+
+    def test_listado_vehiculos_precarga_cliente_usuario_y_mantenimientos_sin_n_mas_1(self):
+        """
+        Valida que CrearVehiculoView utiliza select_related('cliente__usuario') y
+        prefetch_related('mantenimientos_programados') ejecutando un número determinista de queries.
+        """
+        # Arrange
+        url = reverse("crear-vehiculo")
+
+        # Act & Assert
+        # 3 queries: 1 count de paginación + 1 select de vehículos con JOIN a clientes y auth_user + 1 prefetch de mantenimientos
+        with self.assertNumQueries(3):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 4)
+
+        # Validar que los mantenimientos vienen embebidos sin queries extra
+        primer_item = results[0]
+        self.assertIn("mantenimientos_programados", primer_item)
+        self.assertGreaterEqual(len(primer_item["mantenimientos_programados"]), 1)
+
+    def test_detalle_vehiculo_precarga_cliente_usuario_y_mantenimientos(self):
+        """
+        Valida que DetalleVehiculoView precarga relaciones en una sola consulta
+        con JOIN y un prefetch de mantenimientos (2 queries en total).
+        """
+        # Arrange
+        url = reverse("detalle-vehiculo", kwargs={"pk": self.vehiculos[0].id})
+
+        # Act & Assert
+        with self.assertNumQueries(2):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["patente"], self.vehiculos[0].patente)
+        self.assertIn("mantenimientos_programados", response.data)
+
+
+class MantenimientoProgramadoAPITests(APITestCase):
+    """
+    TK211 / US-21: Pruebas de integración del formulario y endpoints de mantenimientos programados.
+    """
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_maint@example.com",
+            nombre="Admin",
+            apellido="Maint",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_maint@example.com",
+            nombre="Cliente",
+            apellido="Maint",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            nombre="Titular",
+            apellido="Maint",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA200BB",
+            marca="Ford",
+            modelo="Ranger",
+            kilometraje=30000,
+            kilometraje_actual=30000,
+            activo=True
+        )
+
+    def test_admin_puede_crear_mantenimiento_programado_exito(self):
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {
+            "tipo_servicio": "Cambio de Distribución",
+            "kilometraje_objetivo": 60000,
+            "fecha_limite": "2027-01-01"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo_servicio"], "Cambio de Distribución")
+        self.assertEqual(response.data["kilometraje_objetivo"], 60000)
+        # 30.000 / 60.000 = 50.0%
+        self.assertEqual(response.data["porcentaje_desgaste"], 50.0)
+        self.assertFalse(response.data["completado"])
+
+    def test_cliente_puede_consultar_mantenimientos_de_su_vehiculo(self):
+        # Arrange
+        MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Filtro de Aire",
+            kilometraje_objetivo=40000
+        )
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 1)
+        self.assertEqual(results[0]["tipo_servicio"], "Filtro de Aire")
+        # 30000 / 40000 = 75.0%
+        self.assertEqual(results[0]["porcentaje_desgaste"], 75.0)
+
+    def test_cliente_prohibido_crear_mantenimiento_programado(self):
+        # Arrange
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {
+            "tipo_servicio": "Intento Cliente",
+            "kilometraje_objetivo": 50000
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_crear_mantenimiento_kilometraje_invalido_retorna_400(self):
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {
+            "tipo_servicio": "Pastillas",
+            "kilometraje_objetivo": 0
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje_objetivo", response.data)
+
+    def test_detalle_mantenimiento_programado_admin_exito(self):
+        # Arrange
+        maint = MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Cambio de Correa",
+            kilometraje_objetivo=60000
+        )
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id, "mantenimiento_pk": maint.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(maint.id))
+        self.assertEqual(response.data["tipo_servicio"], "Cambio de Correa")
+        self.assertEqual(response.data["porcentaje_desgaste"], 50.0)
+
+    def test_detalle_mantenimiento_programado_cliente_titular_exito(self):
+        # Arrange
+        maint = MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Revisión de Frenos",
+            kilometraje_objetivo=40000
+        )
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id, "mantenimiento_pk": maint.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(maint.id))
+        self.assertEqual(response.data["porcentaje_desgaste"], 75.0)
+
+    def test_detalle_mantenimiento_programado_cliente_ajeno_retorna_403(self):
+        # Arrange
+        otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_maint@example.com",
+            nombre="Otro",
+            apellido="Cliente",
+            rol="cliente",
+            password="password123"
+        )
+        maint = MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Revisión de Frenos",
+            kilometraje_objetivo=40000
+        )
+        self.client.force_authenticate(user=otro_cliente_user)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id, "mantenimiento_pk": maint.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_detalle_mantenimiento_vehiculo_inexistente_retorna_404(self):
+        # Arrange
+        import uuid
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": uuid.uuid4(), "mantenimiento_pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 

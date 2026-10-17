@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { Router, ActivatedRoute, RouterLink } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink, Params } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrdenService, OrdenResponse, OrdenFiltros, ItemPresupuesto } from '../../core/services/orden.service';
@@ -32,6 +33,9 @@ export class OrdenesComponent implements OnInit {
   readonly ordenService = inject(OrdenService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  // Sincronización reactiva de parámetros de URL con Signals (TK177)
+  readonly routeQueryParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
 
   readonly userRole = this.authService.userRoleSignal;
   readonly isAdminView = signal<boolean>(false);
@@ -80,17 +84,17 @@ export class OrdenesComponent implements OnInit {
       window.history.replaceState({}, '', isAdmin ? '/admin/ordenes' : '/ordenes');
     }
 
-    this.route.queryParams.subscribe(params => {
-      const targetOt = params['ot'] || params['id'];
-      if (targetOt) {
-        this.otQueryParam.set(targetOt);
-      }
-      const targetBusqueda = params['busqueda'];
-      if (targetBusqueda) {
-        this.busqueda.set(targetBusqueda);
-      }
-      this.cargarOrdenes(1, targetOt, targetBusqueda);
-    });
+    // Sincronización reactiva desde Signal (TK177)
+    const params = this.routeQueryParams() || {};
+    const targetOt = params['ot'] || params['id'];
+    if (targetOt) {
+      this.otQueryParam.set(targetOt);
+    }
+    const targetBusqueda = params['busqueda'];
+    if (targetBusqueda) {
+      this.busqueda.set(targetBusqueda);
+    }
+    this.cargarOrdenes(1, targetOt, targetBusqueda);
   }
 
   cargarOrdenes(page: number = 1, targetId?: string, targetBusqueda?: string): void {
@@ -330,9 +334,7 @@ export class OrdenesComponent implements OnInit {
     if (servicios.length === 0) {
       const est = this.ordenActiva()?.estado;
       if (est === 'finalizado' || est === 'entregado') return 100;
-      if (est === 'en_proceso') return 50;
-      if (est === 'aprobado') return 25;
-      return 10;
+      return 0;
     }
     const completados = servicios.filter(s => s.completado).length;
     return Math.round((completados / servicios.length) * 100);

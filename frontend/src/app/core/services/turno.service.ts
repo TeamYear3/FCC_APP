@@ -1,10 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, ResourceRef, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { httpResource } from '../utils/http-resource.util';
 
 export interface TurnoPayload {
-  cliente: string;
+  cliente?: string;
   vehiculo: string;
   fecha_hora: string;
   motivo: string;
@@ -31,6 +32,7 @@ export interface TurnoResponse {
 })
 export class TurnoService {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly apiUrl = `${environment.apiUrl}/turnos/`;
 
   /**
@@ -67,5 +69,16 @@ export class TurnoService {
    */
   eliminarTurno(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}${id}/`);
+  }
+
+  /**
+   * Recurso reactivo para la lista de turnos que sustituye suscripciones manuales (TK178)
+   */
+  getTurnosResource(): ResourceRef<TurnoResponse[] | undefined> {
+    return httpResource<TurnoResponse[]>({
+      loader: () => this.obtenerTurnos(),
+      defaultValue: [],
+      injector: this.injector
+    });
   }
 }

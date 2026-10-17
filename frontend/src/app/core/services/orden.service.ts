@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface OrdenPayload {
@@ -10,6 +10,7 @@ export interface OrdenPayload {
   estado?: string;
   complejidad?: 'baja' | 'media' | 'alta';
   motivo_pausa?: string;
+  aprobado_por_cliente?: boolean;
 }
 
 export interface OrdenResponse {
@@ -28,14 +29,20 @@ export interface OrdenResponse {
   actualizado_en: string;
   vehiculo_patente?: string;
   vehiculo_marca_modelo?: string;
+  cliente_id?: string;
   cliente_nombre?: string;
   cliente_telefono?: string;
   cliente_documento?: string;
   cliente_dni_cuit?: string;
+  cliente_condicion_iva?: string;
   monto_total?: number | string;
   estado_cobro?: 'pendiente' | 'cobrado' | string;
   metodo_pago?: string | null;
   fecha_cobro?: string | null;
+  aprobado_por_cliente?: boolean;
+  items_presupuesto?: ItemPresupuesto[];
+  adjuntos_diagnostico?: AdjuntoDiagnostico[];
+  historial_estados?: HistorialEstadoItem[];
 }
 
 export interface OrdenFiltros {
@@ -52,6 +59,9 @@ export interface OrdenFiltros {
 }
 
 export interface OrdenesPaginadasResponse {
+  count?: number;
+  next?: string | null;
+  previous?: string | null;
   total_items: number;
   total_pages: number;
   current_page: number;
@@ -145,7 +155,20 @@ export class OrdenService {
     if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
     if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
 
-    return this.http.get<OrdenesPaginadasResponse>(this.apiUrl, { params });
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
+      map((res: any) => {
+        const results = Array.isArray(res) ? res : (res?.results || []);
+        return {
+          count: res?.count ?? res?.total_items ?? results.length,
+          total_items: res?.total_items ?? res?.count ?? results.length,
+          total_pages: res?.total_pages ?? Math.ceil((res?.count || results.length) / limit),
+          current_page: res?.current_page ?? page,
+          next: res?.next ?? null,
+          previous: res?.previous ?? null,
+          results
+        } as OrdenesPaginadasResponse;
+      })
+    );
   }
 
   /**
@@ -158,8 +181,12 @@ export class OrdenService {
   /**
    * Actualizar el estado de la OT (PATCH /api/ordenes/<id>/estado/) (TK033 & TK035)
    */
-  actualizarEstado(ordenId: string, estado: string, comentario: string = ''): Observable<OrdenHistorialResponse> {
-    return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, { estado, comentario });
+  actualizarEstado(ordenId: string, estado: string, comentario?: string | null): Observable<OrdenHistorialResponse> {
+    const comentarioNormalizado = comentario && comentario.trim() ? comentario.trim() : null;
+    return this.http.patch<OrdenHistorialResponse>(`${this.apiUrl}${ordenId}/estado/`, {
+      estado,
+      comentario: comentarioNormalizado,
+    });
   }
 
   /**
@@ -239,11 +266,17 @@ export class OrdenService {
    */
   registrarPago(
     ordenId: string,
-    payload: { metodo_pago: string; comentario?: string; entregar_orden?: boolean }
+    payload: { metodo_pago: string; comentario?: string | null; entregar_orden?: boolean; condicion_iva?: string }
   ): Observable<{ message: string; orden: OrdenResponse }> {
+    const payloadSanitizado = {
+      ...payload,
+      ...(payload.comentario !== undefined && {
+        comentario: payload.comentario && payload.comentario.trim() ? payload.comentario.trim() : null,
+      }),
+    };
     return this.http.post<{ message: string; orden: OrdenResponse }>(
       `${this.apiUrl}${ordenId}/registrar-pago/`,
-      payload
+      payloadSanitizado
     );
   }
 }

@@ -13,10 +13,14 @@ from .views import (
     EliminarItemPresupuestoView,
     ExportarOrdenPDFView,
     RegistrarPagoOrdenView,
-    OrdenTrabajoAuditoriaView
+    OrdenTrabajoAuditoriaView,
+    OrdenEventosWebSocketView,
+    OrdenDiagnosticoOBD2View,
+    ReporteRentabilidadView
 )
 
 urlpatterns = [
+    path('reportes/rentabilidad/', ReporteRentabilidadView.as_view(), name='reporte-rentabilidad'),
     path('ordenes/', CrearOrdenTrabajoView.as_view(), name='crear-orden-trabajo'),
     path('ordenes/<uuid:id>/', DetalleOrdenTrabajoView.as_view(), name='detalle-orden-trabajo'),
     path('ordenes/<uuid:id>/registrar-pago/', RegistrarPagoOrdenView.as_view(), name='orden-registrar-pago'),
@@ -28,6 +32,8 @@ urlpatterns = [
     path('ordenes/<uuid:orden_id>/items/<uuid:item_id>/', EliminarItemPresupuestoView.as_view(), name='eliminar-item-presupuesto'),
     path('ordenes/<uuid:orden_id>/historial/', ConsultarHistorialOrdenView.as_view(), name='consultar-historial-orden'),
     path('ordenes/<uuid:orden_id>/auditoria/', OrdenTrabajoAuditoriaView.as_view(), name='orden-auditoria-nosql'),
+    path('ordenes/<uuid:orden_id>/eventos-websocket/', OrdenEventosWebSocketView.as_view(), name='orden-eventos-websocket'),
+    path('ordenes/<uuid:orden_id>/diagnostico-obd2/', OrdenDiagnosticoOBD2View.as_view(), name='orden-diagnostico-obd2'),
     path('ordenes/<uuid:orden_id>/estado/', ActualizarEstadoOrdenView.as_view(), name='actualizar-estado-orden'),
     path('ordenes/<uuid:orden_id>/adjuntos/', AdjuntoDiagnosticoListCreateView.as_view(), name='listar-crear-adjuntos-orden'),
     path('diagnosticos/adjuntos/', AdjuntoDiagnosticoListCreateView.as_view(), name='crear-adjunto-diagnostico'),

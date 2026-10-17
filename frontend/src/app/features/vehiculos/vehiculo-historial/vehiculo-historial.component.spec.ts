@@ -38,6 +38,7 @@ describe('VehiculoHistorialComponent', () => {
   };
 
   beforeEach(async () => {
+    TestBed.resetTestingModule();
     mockVehiculoService = {
       obtenerVehiculoPorId: vi.fn().mockReturnValue(of(mockVehiculo)),
       obtenerHistorialVehiculo: vi.fn().mockReturnValue(of(mockHistorialResponse)),
@@ -88,5 +89,35 @@ describe('VehiculoHistorialComponent', () => {
   it('debe calcular correctamente si una etapa de la línea de tiempo ha sido alcanzada', () => {
     expect(component.isEtapaAlcanzada('ingresado')).toBe(true);
     expect(component.isEtapaAlcanzada('finalizado')).toBe(true);
+  });
+
+  it('debe abrir y cerrar el modal de mantenimientos programados', () => {
+    expect(component.mostrarModalMantenimiento()).toBe(false);
+    component.abrirModalMantenimiento();
+    expect(component.mostrarModalMantenimiento()).toBe(true);
+    component.cerrarModalMantenimiento();
+    expect(component.mostrarModalMantenimiento()).toBe(false);
+  });
+
+  it('debe guardar un mantenimiento programado y refrescar la lista', () => {
+    mockVehiculoService.crearMantenimientoProgramado = vi.fn().mockReturnValue(of({
+      id: 'maint-1',
+      tipo_servicio: 'Cambio de Correa',
+      kilometraje_objetivo: 60000,
+      porcentaje_desgaste: 75.0,
+      completado: false
+    }));
+
+    component.abrirModalMantenimiento();
+    component.tipoServicioNuevo = 'Cambio de Correa';
+    component.kilometrajeObjetivoNuevo = 60000;
+    component.guardarMantenimiento();
+
+    expect(mockVehiculoService.crearMantenimientoProgramado).toHaveBeenCalledWith('123-uuid', {
+      tipo_servicio: 'Cambio de Correa',
+      kilometraje_objetivo: 60000,
+      fecha_limite: null
+    });
+    expect(component.mostrarModalMantenimiento()).toBe(false);
   });
 });

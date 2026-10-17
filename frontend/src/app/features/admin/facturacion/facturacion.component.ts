@@ -12,6 +12,7 @@ export interface OrdenPendienteFacturar {
   numero_ot: string;
   cliente: string;
   dni_cuit: string;
+  condicion_iva?: string;
   vehiculo: string;
   patente: string;
   monto: number;
@@ -41,14 +42,18 @@ export class FacturacionComponent implements OnInit {
   readonly modalImpresionAbierto = signal<boolean>(false);
   readonly facturaAImprimir = signal<Factura | null>(null);
 
-  // Filtro
+  // Filtros avanzados (TK209)
   filtroEstadoPago: string = '';
   filtroTipo: string = '';
+  filtroFechaDesde: string = '';
+  filtroFechaHasta: string = '';
+  filtroCliente: string = '';
   busqueda: string = '';
 
-  // Formulario de emisión
+  // Formulario de emisión (TK098 / TK156)
   ordenSeleccionadaId: string = '';
   tipoComprobanteSeleccionado: TipoComprobante = 'B';
+  condicionIvaSeleccionada: string = 'CF';
   puntoVentaSeleccionado: number = 1;
   diasVencimientoSeleccionado: number = 15;
   observacionesEmision: string = '';
@@ -72,6 +77,7 @@ export class FacturacionComponent implements OnInit {
           numero_ot: o.numero_ot || `OT-${o.id.slice(0, 4)}`,
           cliente: o.cliente_nombre || 'Cliente General',
           dni_cuit: o.cliente_dni_cuit || o.cliente_documento || 'Consumidor Final',
+          condicion_iva: o.cliente_condicion_iva || 'CF',
           vehiculo: o.vehiculo_marca_modelo || 'Vehículo Registrado',
           patente: o.vehiculo_patente || 'S/D',
           monto: typeof o.monto_total === 'number' ? o.monto_total : parseFloat(String(o.monto_total || '0'))
@@ -91,7 +97,11 @@ export class FacturacionComponent implements OnInit {
     this.error.set(null);
     this.facturacionService.getFacturas({
       estado_pago: this.filtroEstadoPago || undefined,
-      tipo: this.filtroTipo || undefined
+      tipo: this.filtroTipo || undefined,
+      fecha_desde: this.filtroFechaDesde || undefined,
+      fecha_hasta: this.filtroFechaHasta || undefined,
+      cliente: this.filtroCliente || undefined,
+      busqueda: this.busqueda || undefined
     }).subscribe({
       next: (data) => {
         this.facturas.set(data || []);
@@ -106,16 +116,29 @@ export class FacturacionComponent implements OnInit {
     });
   }
 
+  limpiarFiltros(): void {
+    this.filtroEstadoPago = '';
+    this.filtroTipo = '';
+    this.filtroFechaDesde = '';
+    this.filtroFechaHasta = '';
+    this.filtroCliente = '';
+    this.busqueda = '';
+    this.cargarFacturas();
+  }
+
   abrirModalEmision(orden?: OrdenPendienteFacturar): void {
     const lista = this.ordenesParaFacturar();
-    if (orden) {
-      this.ordenSeleccionadaId = orden.id;
+    let ord = orden;
+    if (ord) {
+      this.ordenSeleccionadaId = ord.id;
     } else if (lista.length > 0) {
-      this.ordenSeleccionadaId = lista[0].id;
+      ord = lista[0];
+      this.ordenSeleccionadaId = ord.id;
     } else {
       this.ordenSeleccionadaId = '';
     }
-    this.tipoComprobanteSeleccionado = 'B';
+    this.condicionIvaSeleccionada = ord?.condicion_iva || 'CF';
+    this.tipoComprobanteSeleccionado = this.condicionIvaSeleccionada === 'RI' ? 'A' : 'B';
     this.puntoVentaSeleccionado = 1;
     this.diasVencimientoSeleccionado = 15;
     this.observacionesEmision = '';
@@ -123,11 +146,32 @@ export class FacturacionComponent implements OnInit {
     this.modalEmisionAbierto.set(true);
   }
 
+  onOrdenSeleccionadaChange(id: string): void {
+    this.ordenSeleccionadaId = id;
+    const ord = this.ordenesParaFacturar().find(o => o.id === id);
+    if (ord?.condicion_iva) {
+      this.condicionIvaSeleccionada = ord.condicion_iva;
+      this.tipoComprobanteSeleccionado = this.condicionIvaSeleccionada === 'RI' ? 'A' : 'B';
+    }
+  }
+
+  onCondicionIvaChange(condicion: string): void {
+    this.condicionIvaSeleccionada = condicion;
+    if (condicion === 'RI') {
+      this.tipoComprobanteSeleccionado = 'A';
+    } else {
+      this.tipoComprobanteSeleccionado = 'B';
+    }
+  }
+
   cerrarModalEmision(): void {
     this.modalEmisionAbierto.set(false);
   }
 
   confirmarEmision(): void {
+    if (this.emitirEnProgreso()) {
+      return;
+    }
     if (!this.ordenSeleccionadaId) {
       this.error.set('Seleccione una Orden de Trabajo para facturar.');
       return;
@@ -141,7 +185,8 @@ export class FacturacionComponent implements OnInit {
       tipo_comprobante: this.tipoComprobanteSeleccionado,
       punto_venta: this.puntoVentaSeleccionado,
       dias_vencimiento_pago: this.diasVencimientoSeleccionado,
-      observaciones: this.observacionesEmision
+      observaciones: this.observacionesEmision,
+      condicion_iva: this.condicionIvaSeleccionada
     }).subscribe({
       next: (nuevaFactura) => {
         this.emitirEnProgreso.set(false);
@@ -199,6 +244,24 @@ export class FacturacionComponent implements OnInit {
     return this.facturas().filter((f) => {
       const cumpleFiltroEstado = !this.filtroEstadoPago || f.estado_pago === this.filtroEstadoPago;
       const cumpleFiltroTipo = !this.filtroTipo || f.tipo_comprobante === this.filtroTipo;
+
+      let cumpleFecha = true;
+      if (this.filtroFechaDesde && f.fecha_emision) {
+        const fechaF = f.fecha_emision.slice(0, 10);
+        cumpleFecha = cumpleFecha && fechaF >= this.filtroFechaDesde;
+      }
+      if (this.filtroFechaHasta && f.fecha_emision) {
+        const fechaF = f.fecha_emision.slice(0, 10);
+        cumpleFecha = cumpleFecha && fechaF <= this.filtroFechaHasta;
+      }
+
+      let cumpleCliente = true;
+      if (this.filtroCliente) {
+        const termCli = this.filtroCliente.toLowerCase();
+        cumpleCliente =
+          !!(f.cliente_nombre && f.cliente_nombre.toLowerCase().includes(termCli));
+      }
+
       const term = this.busqueda.toLowerCase();
       const cumpleBusqueda =
         !term ||
@@ -207,7 +270,7 @@ export class FacturacionComponent implements OnInit {
         (f.vehiculo_patente && f.vehiculo_patente.toLowerCase().includes(term)) ||
         (f.cae && f.cae.includes(term));
 
-      return cumpleFiltroEstado && cumpleFiltroTipo && cumpleBusqueda;
+      return cumpleFiltroEstado && cumpleFiltroTipo && cumpleFecha && cumpleCliente && cumpleBusqueda;
     });
   }
 }

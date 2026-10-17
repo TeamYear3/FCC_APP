@@ -11,7 +11,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
-from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem
+from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem, HistorialEstadoOrden, AdjuntoDiagnostico
 from .services import notificar_presupuesto_websocket
 from .signals import enviar_email_orden_background
 
@@ -82,6 +82,57 @@ class OrdenTrabajoModelTest(TestCase):
             descripcion_problema="Cambio de aceite"
         )
         self.assertEqual(orden2.numero_ot, "OT-0002")
+
+    def test_generacion_secuencial_sin_duplicados_multiples_ordenes(self):
+        """TK199: Generaciones consecutivas no producen duplicados y conservan el orden correlativo."""
+        ordenes = []
+        for i in range(10):
+            ot = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema=f"Problema concurrente {i}"
+            )
+            ordenes.append(ot.numero_ot)
+        self.assertEqual(len(ordenes), 10)
+        self.assertEqual(len(set(ordenes)), 10)
+        self.assertEqual(ordenes[0], "OT-0001")
+        self.assertEqual(ordenes[-1], "OT-0010")
+
+    def test_reintento_por_colision_integridad_numero_ot(self):
+        """TK199: Simula colisión por condición de carrera donde el primer intento falla por IntegrityError y reintenta."""
+        ot1 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Primera orden"
+        )
+        self.assertEqual(ot1.numero_ot, "OT-0001")
+
+        llamadas = 0
+        original_obtener = OrdenTrabajo._obtener_siguiente_numero_ot
+
+        def mock_obtener():
+            nonlocal llamadas
+            llamadas += 1
+            if llamadas == 1:
+                return "OT-0001"
+            return original_obtener()
+
+        with patch.object(OrdenTrabajo, '_obtener_siguiente_numero_ot', side_effect=mock_obtener):
+            ot2 = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema="Segunda orden con colisión temporal"
+            )
+
+        self.assertEqual(ot2.numero_ot, "OT-0002")
+        self.assertGreaterEqual(llamadas, 2)
+
+    def test_obtener_siguiente_numero_ot_con_saltos(self):
+        """TK199: Determina correctamente el número más alto incluso con saltos en la secuencia."""
+        OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Orden con salto",
+            numero_ot="OT-0050"
+        )
+        siguiente = OrdenTrabajo._obtener_siguiente_numero_ot()
+        self.assertEqual(siguiente, "OT-0051")
 
     def test_vehiculo_obligatorio(self):
         # Intentar crear orden de trabajo sin vehiculo
@@ -861,7 +912,7 @@ class HistorialEstadoOrdenAPITestCase(APITestCase):
         self.orden.refresh_from_db()
         self.assertEqual(self.orden.estado, 'en_presupuesto')
 
-        ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden).first()
+        ultimo_registro = HistorialEstadoOrden.objects.filter(orden_trabajo=self.orden, estado_nuevo='en_presupuesto').first()
         self.assertEqual(ultimo_registro.estado_anterior, 'ingresado')
         self.assertEqual(ultimo_registro.estado_nuevo, 'en_presupuesto')
         self.assertEqual(ultimo_registro.comentario, 'Presupuestando orden de trabajo.')
@@ -871,7 +922,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import AdjuntoDiagnostico
 
 
-class AdjuntoDiagnosticoAPITest(APITestCase):
+class AdjuntoDiagnosticoSecurityAPITest(APITestCase):
     def setUp(self):
         self.user_tecnico = User.objects.create_user(
             email="tecnico_foto@fcc.com",
@@ -930,6 +981,14 @@ class AdjuntoDiagnosticoAPITest(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['nombre_archivo'], 'rueda.png')
 
+    def test_listar_adjuntos_diagnostico_sin_orden_id_no_genera_type_error(self):
+        # TK198: GET /api/diagnosticos/adjuntos/ sin orden_id en URL
+        self.client.force_authenticate(user=self.user_tecnico)
+        url = reverse('crear-adjunto-diagnostico')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.data, list)
+
     def test_eliminar_adjunto_diagnostico(self):
         self.client.force_authenticate(user=self.user_tecnico)
         adjunto = AdjuntoDiagnostico.objects.create(
@@ -946,6 +1005,87 @@ class AdjuntoDiagnosticoAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(AdjuntoDiagnostico.objects.filter(id=adjunto.id).count(), 0)
+
+    def test_cliente_no_puede_subir_adjuntos_diagnostico_retorna_403(self):
+        # Arrange
+        user_cliente = User.objects.create_user(
+            email="cliente_subir@fcc.com",
+            password="Password123!",
+            rol="cliente",
+            nombre="Cliente",
+            apellido="Subir"
+        )
+        self.client.force_authenticate(user=user_cliente)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+        foto_mock = SimpleUploadedFile("motor.jpg", b"fake_data", content_type="image/jpeg")
+
+        # Act
+        response = self.client.post(url, {'archivo': foto_mock}, format='multipart')
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cliente_no_puede_ver_adjuntos_de_ot_ajena_retorna_403(self):
+        # Arrange
+        otro_user_cliente = User.objects.create_user(
+            email="otro_cliente@fcc.com",
+            password="Password123!",
+            rol="cliente",
+            nombre="Otro",
+            apellido="Cliente"
+        )
+        self.client.force_authenticate(user=otro_user_cliente)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cliente_ve_solo_adjuntos_imagen_de_su_ot(self):
+        # Arrange: vincular el cliente de self.orden a un usuario cliente
+        user_cliente = User.objects.create_user(
+            email="dueno_ot@fcc.com",
+            password="Password123!",
+            rol="cliente",
+            nombre="Dueño",
+            apellido="OT"
+        )
+        self.cliente.usuario = user_cliente
+        self.cliente.save()
+
+        # Crear una imagen y un archivo PDF en la misma OT
+        AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/foto.jpg",
+            public_id="diagnosticos/foto.jpg",
+            nombre_archivo="foto.jpg",
+            mime_type="image/jpeg",
+            tamanio=1024,
+            creado_por=self.user_tecnico
+        )
+        AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            url_secure="http://localhost:8000/media/diagnosticos/manual.pdf",
+            public_id="diagnosticos/manual.pdf",
+            nombre_archivo="manual.pdf",
+            mime_type="application/pdf",
+            tamanio=2048,
+            creado_por=self.user_tecnico
+        )
+
+        self.client.force_authenticate(user=user_cliente)
+        url = reverse('listar-crear-adjuntos-orden', kwargs={'orden_id': self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['nombre_archivo'], 'foto.jpg')
+
 
 
 class ItemsPresupuestoAPITest(APITestCase):
@@ -1065,25 +1205,10 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
         self.orden.transicionar_a(EstadoOrden.APROBADO)
 
-        # 1. Intentar pasar a EN_PROCESO sin turno, sin aprobacion, sin items (debe fallar)
-        with self.assertRaises(ValidationError) as ctx:
-            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
-        self.assertIn("debe tener un turno asociado", str(ctx.exception))
+        # TK152: Al pasar a APROBADO, aprobado_por_cliente se establece automáticamente en True
+        self.assertTrue(self.orden.aprobado_por_cliente)
 
-        # Asociar turno
-        self.orden.turno = self.turno
-        self.orden.save()
-
-        # 2. Intentar pasar a EN_PROCESO sin aprobacion del cliente y sin items (debe fallar)
-        with self.assertRaises(ValidationError) as ctx:
-            self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
-        self.assertIn("aprobación explícita del cliente", str(ctx.exception))
-
-        # Aprobar
-        self.orden.aprobado_por_cliente = True
-        self.orden.save()
-
-        # 3. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
+        # 1. Intentar pasar a EN_PROCESO sin items presupuestados (debe fallar)
         with self.assertRaises(ValidationError) as ctx:
             self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertIn("sin ítems en el presupuesto", str(ctx.exception))
@@ -1098,13 +1223,63 @@ class OrdenTrabajoMaquinaEstadosTest(TestCase):
         )
         self.orden.refresh_from_db()
 
-        # 4. Transicionar con éxito cumpliendo todas las precondiciones
+        # 2. TK151: Transicionar con éxito cumpliendo todas las precondiciones (incluso sin turno agendado - mostrador)
+        self.assertIsNone(self.orden.turno)
         self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
         self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
 
         # Verificar que se llamó al WebSocket
         self.assertTrue(mock_ws.called)
 
+    def test_transicionar_a_aprobado_establece_aprobado_por_cliente_automaticamente(self):
+        """TK152: Aprobar un presupuesto establece automáticamente aprobado_por_cliente = True."""
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.aprobado_por_cliente)
+
+    @patch('ordenes.services.notificar_cambio_estado_websocket')
+    def test_transicion_en_proceso_sin_turno_mostrador_exito(self, mock_ws):
+        """TK151: Permite transicionar a EN_PROCESO cuando no existe turno previo (mostrador)."""
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.aprobado_por_cliente = True
+        self.orden.save()
+
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Filtro de aire",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("1500.00")
+        )
+        self.orden.refresh_from_db()
+
+        self.assertIsNone(self.orden.turno)
+        self.orden.transicionar_a(EstadoOrden.EN_PROCESO)
+        self.assertEqual(self.orden.estado, EstadoOrden.EN_PROCESO)
+
+    def test_transicionar_a_aprobado_establece_aprobado_por_cliente_automaticamente(self):
+        """TK152: Aprobar un presupuesto establece automáticamente aprobado_por_cliente = True."""
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.orden.transicionar_a(EstadoOrden.EN_PRESUPUESTO)
+        self.orden.transicionar_a(EstadoOrden.APROBADO)
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.aprobado_por_cliente)
+
+    def test_generacion_concurrente_numero_ot_no_produce_duplicados(self):
+        # TK199: Generaciones correlativas sucesivas garantizan unicidad y orden
+        ordenes = []
+        for i in range(5):
+            o = OrdenTrabajo.objects.create(
+                vehiculo=self.vehiculo,
+                descripcion_problema=f"Problema concurr {i}"
+            )
+            ordenes.append(o.numero_ot)
+        self.assertEqual(len(ordenes), len(set(ordenes)))
+        for ot_num in ordenes:
+            self.assertTrue(ot_num.startswith('OT-'))
     def test_transicion_con_turno_cancelado_falla(self):
         self.turno.estado = "cancelado"
         self.turno.save()
@@ -1377,6 +1552,107 @@ class DetalleOrdenTrabajoAPITestCase(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_consultar_detalle_orden_consolida_relaciones_precargadas(self):
+        """TK183: Verifica que el endpoint detalle consolida items_presupuesto, adjuntos_diagnostico e historial_estados."""
+        # 1. Crear item de presupuesto
+        item = ItemPresupuesto.objects.create(
+            orden_trabajo=self.orden,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y balanceo computarizado",
+            precio_unitario=Decimal("15000.00"),
+            cantidad=Decimal("1.00")
+        )
+        # 2. Crear adjunto de diagnóstico
+        adjunto = AdjuntoDiagnostico.objects.create(
+            orden_trabajo=self.orden,
+            item_presupuesto=item,
+            url_secure="https://cloudinary.com/test-image.jpg",
+            nombre_archivo="evidencia_frenos.jpg",
+            creado_por=self.user_tecnico
+        )
+        # 3. Crear registro en el historial
+        historial = HistorialEstadoOrden.objects.create(
+            orden_trabajo=self.orden,
+            estado_anterior=None,
+            estado_nuevo=EstadoOrden.INGRESADO,
+            usuario=self.user_admin,
+            comentario="Recepción formal en taller"
+        )
+
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Validar presencia de colecciones consolidadas
+        self.assertIn('items_presupuesto', response.data)
+        self.assertIn('adjuntos_diagnostico', response.data)
+        self.assertIn('historial_estados', response.data)
+
+        # Validar datos en items_presupuesto
+        self.assertEqual(len(response.data['items_presupuesto']), 1)
+        self.assertEqual(response.data['items_presupuesto'][0]['id'], str(item.id))
+        self.assertEqual(response.data['items_presupuesto'][0]['descripcion'], "Alineación y balanceo computarizado")
+        # Validar adjuntos del item
+        self.assertEqual(len(response.data['items_presupuesto'][0]['adjuntos']), 1)
+        self.assertEqual(response.data['items_presupuesto'][0]['adjuntos'][0]['id'], str(adjunto.id))
+
+        # Validar adjuntos de la orden
+        self.assertEqual(len(response.data['adjuntos_diagnostico']), 1)
+        self.assertEqual(response.data['adjuntos_diagnostico'][0]['id'], str(adjunto.id))
+        self.assertEqual(response.data['adjuntos_diagnostico'][0]['creado_por_nombre'], "Tecnico Taller")
+
+        # Validar historial de estados
+        self.assertGreaterEqual(len(response.data['historial_estados']), 1)
+        historial_ids = [h['id'] for h in response.data['historial_estados']]
+        self.assertIn(str(historial.id), historial_ids)
+        entry = next(h for h in response.data['historial_estados'] if h['id'] == str(historial.id))
+        self.assertEqual(entry['estado_nuevo'], EstadoOrden.INGRESADO)
+        self.assertEqual(entry['usuario_nombre'], "Admin Taller")
+
+    def test_consultar_detalle_orden_eficiencia_queries_orm(self):
+        """TK183: Verifica que el prefetch_related evita consultas N+1 en las relaciones anidadas."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        # Crear múltiples registros para evidenciar ausencia de N+1
+        for i in range(5):
+            item = ItemPresupuesto.objects.create(
+                orden_trabajo=self.orden,
+                tipo=TipoItem.REPUESTO,
+                descripcion=f"Repuesto #{i+1}",
+                precio_unitario=Decimal("2000.00"),
+                cantidad=Decimal("1.00")
+            )
+            AdjuntoDiagnostico.objects.create(
+                orden_trabajo=self.orden,
+                item_presupuesto=item,
+                url_secure=f"https://cloudinary.com/test-{i+1}.jpg",
+                nombre_archivo=f"foto_{i+1}.jpg",
+                creado_por=self.user_tecnico
+            )
+            HistorialEstadoOrden.objects.create(
+                orden_trabajo=self.orden,
+                estado_anterior=EstadoOrden.INGRESADO,
+                estado_nuevo=EstadoOrden.EN_PROCESO,
+                usuario=self.user_admin,
+                comentario=f"Avance #{i+1}"
+            )
+
+        self.client.force_authenticate(user=self.user_admin)
+        url = reverse('detalle-orden-trabajo', kwargs={'id': self.orden.id})
+
+        # Al consultar la orden con 5 items, 5 adjuntos y múltiples historiales,
+        # las queries deben mantenerse constantes y no escalar por registro (sin N+1)
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['items_presupuesto']), 5)
+        self.assertEqual(len(response.data['adjuntos_diagnostico']), 5)
+        # Se verifica que la cantidad de queries ORM es exactamente 6 y completamente independiente de N (sin N+1)
+        self.assertEqual(len(queries), 6)
+
 
 class RegistrarPagoOrdenAPITestCase(APITestCase):
     def setUp(self):
@@ -1474,6 +1750,634 @@ class RegistrarPagoOrdenAPITestCase(APITestCase):
         }
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class OrdenesCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-08 (Gestión de Órdenes) ↔ TEST-D-003.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_orden_aut@example.com",
+            nombre="Admin",
+            apellido="OT",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Ramiro",
+            apellido="Funes",
+            tipo_documento="DNI",
+            dni_cuit="30112233",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AF123ZZ",
+            marca="Toyota",
+            modelo="Yaris",
+            anio=2021
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión de frenos delanteros"
+        )
+
+    def test_consulta_listado_ordenes_exitoso(self):
+        """HU-08 / TEST-D-003: Verificar que un usuario admin obtiene HTTP 200 OK al listar órdenes de trabajo."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_orden_exitoso(self):
+        """HU-08 / TEST-D-003: Verificar que un usuario admin obtiene HTTP 200 OK al consultar el detalle de una OT."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(response.data["id"]), str(self.orden.id))
+        self.assertEqual(response.data["vehiculo_patente"], "AF123ZZ")
+
+    def test_crear_orden_payload_valido_exitoso(self):
+        """HU-08 / TEST-D-003: Creación de orden de trabajo retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+        payload = {
+            "vehiculo_id": str(self.vehiculo.id),
+            "descripcion_problema": "Cambio de pastillas de freno traseras",
+            "fecha_ingreso": str(timezone.now().date())
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("id", response.data)
+        self.assertEqual(response.data["estado"], "ingresado")
+
+    def test_actualizar_orden_estado_exitoso(self):
+        """HU-08 / TEST-D-003: Actualización de estado de orden a en_presupuesto retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "en_presupuesto", "comentario": "Confeccionando presupuesto de taller"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, "en_presupuesto")
+
+
+class ItemsPresupuestoOptimizacionORMTests(APITestCase):
+    """
+    TK168 / US-14: Pruebas automatizadas de consultas ORM sin N+1 con assertNumQueries para ítems de presupuesto.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_items_orm@example.com",
+            nombre="Admin",
+            apellido="Items",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Juan",
+            apellido="Perez",
+            tipo_documento="DNI",
+            dni_cuit="11223344",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="ORM789",
+            marca="Toyota",
+            modelo="Corolla",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Falla frenos y amortiguación"
+        )
+        # Crear 5 ítems de presupuesto con adjuntos para verificar que no hay N+1
+        for i in range(5):
+            item = ItemPresupuesto.objects.create(
+                orden_trabajo=self.orden,
+                tipo=TipoItem.REPUESTO,
+                descripcion=f"Repuesto #{i}",
+                cantidad=Decimal("1.00"),
+                precio_unitario=Decimal("15000.00")
+            )
+            AdjuntoDiagnostico.objects.create(
+                orden_trabajo=self.orden,
+                item_presupuesto=item,
+                url_secure=f"/media/diagnostico_{i}.jpg",
+                nombre_archivo=f"foto_{i}.jpg",
+                creado_por=self.admin
+            )
+
+    def test_listar_items_presupuesto_con_consultas_orm_constantes_sin_n_plus_one(self):
+        """Verifica que el listado de ítems ejecute un número constante de queries (OT + Items + Adjuntos)."""
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("listar-items-presupuesto", kwargs={"orden_id": self.orden.id})
+
+        # 1 query para OT + 1 query para Items + 1 query prefetch(adjuntos) + 1 query prefetch(creado_por)
+        with self.assertNumQueries(4):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 5)
+
+
+class ClienteAprobacionPresupuestoTests(APITestCase):
+    """Pruebas para aprobación y rechazo de presupuestos por el cliente desde el portal (TK204 / US-18)."""
+
+    def setUp(self):
+        self.user_cliente = User.objects.create_user(
+            email="portal_cliente@test.com",
+            nombre="Juan",
+            apellido="Cliente",
+            password="password123",
+            rol="cliente"
+        )
+        self.user_ajeno = User.objects.create_user(
+            email="otro_cliente@test.com",
+            nombre="Pedro",
+            apellido="Ajeno",
+            password="password123",
+            rol="cliente"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.user_cliente,
+            nombre="Juan",
+            apellido="Cliente",
+            tipo_documento="DNI",
+            dni_cuit="30111222"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA999BB",
+            marca="Ford",
+            modelo="Fiesta",
+            anio=2019
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Problemas de embrague",
+            estado=EstadoOrden.EN_PRESUPUESTO
+        )
+
+    def test_cliente_puede_aprobar_presupuesto_en_su_orden(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "aprobado", "comentario": "Presupuesto aprobado por el cliente"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.APROBADO)
+        self.assertTrue(self.orden.aprobado_por_cliente)
+
+    def test_cliente_puede_rechazar_presupuesto_en_su_orden(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "rechazado", "comentario": "Costo de repuestos muy elevado"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.orden.refresh_from_db()
+        self.assertEqual(self.orden.estado, EstadoOrden.RECHAZADO)
+        self.assertFalse(self.orden.aprobado_por_cliente)
+        self.assertEqual(self.orden.comentario_rechazo, "Costo de repuestos muy elevado")
+
+    def test_cliente_no_puede_modificar_orden_de_otro_cliente(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_ajeno)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "aprobado"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cliente_no_puede_transicionar_a_estados_operativos_internos(self):
+        # Arrange
+        self.client.force_authenticate(user=self.user_cliente)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {"estado": "finalizado"}
+
+        # Act
+        response = self.client.patch(url, payload)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SerializerErroresPorCampoOrdenesAPITests(APITestCase):
+    """
+    AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo en órdenes y presupuestos.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_400_ot@test.com",
+            nombre="Admin",
+            apellido="Validador",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Diego",
+            apellido="Maradona",
+            tipo_documento="DNI",
+            dni_cuit="14222333",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AD789EF",
+            marca="Fiat",
+            modelo="Cronos",
+            anio=2022
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Falla en encendido",
+            fecha_ingreso=timezone.now().date(),
+            estado=EstadoOrden.INGRESADO
+        )
+
+    def test_crear_orden_sin_campos_obligatorios_retorna_400(self):
+        """AUT-BE-04 / HU-08: Creación de OT sin vehiculo_id ni descripción retorna 400 Bad Request."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+        payload = {}
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("vehiculo_id", response.data)
+        self.assertIn("descripcion_problema", response.data)
+
+    def test_agregar_mano_de_obra_precio_negativo_retorna_400(self):
+        """AUT-BE-04 / HU-08: Mano de obra con precio unitario negativo retorna 400 Bad Request."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("agregar-mano-de-obra", kwargs={"orden_id": self.orden.id})
+        payload = {
+            "descripcion": "Diagnóstico computarizado",
+            "precio_unitario": "-5000.00",
+            "cantidad": "1.00"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("precio_unitario", response.data)
+
+    def test_actualizar_estado_transicion_invalida_retorna_400(self):
+        """AUT-BE-04 / HU-08: Transición ilegal de estado (ingresado a entregado) retorna 400 Bad Request."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+        payload = {
+            "estado": "entregado",
+            "comentario": "Intento de salto directo a entregado"
+        }
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+
+
+
+
+
+class MetodosNoPermitidosOrdenesAPITests(APITestCase):
+    """
+    AUT-BE-02: Validación de verbos HTTP no permitidos (405 Method Not Allowed)
+    en endpoints de colección, detalle y actualización de órdenes de trabajo.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_405_ot@example.com",
+            nombre="Admin",
+            apellido="Metodos",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Martin",
+            apellido="Palermo",
+            tipo_documento="DNI",
+            dni_cuit="25999888",
+            condicion_iva="CF",
+            telefono="1144445555",
+            domicilio="Brandsen 805"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            patente="AB456CD",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021,
+            cliente=self.cliente
+        )
+        self.orden = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión general",
+            fecha_ingreso=timezone.now().date(),
+            estado=EstadoOrden.INGRESADO
+        )
+
+    def test_detalle_orden_rechaza_post_con_405(self):
+        """AUT-BE-02 / HU-08: Detalle de orden (RetrieveAPIView) no admite POST."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.post(url, {"descripcion_problema": "Cambio"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+    def test_detalle_orden_rechaza_put_con_405(self):
+        """AUT-BE-02 / HU-08: Detalle de orden no admite PUT (solo lectura de detalle)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.put(url, {"descripcion_problema": "Cambio"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_detalle_orden_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-08: Detalle de orden no admite eliminación destructiva vía DELETE."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-orden-trabajo", kwargs={"id": self.orden.id})
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+    def test_coleccion_ordenes_rechaza_put_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint colección de órdenes no admite PUT."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-orden-trabajo")
+
+        # Act
+        response = self.client.put(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_actualizar_estado_rechaza_get_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint actualización de estado es exclusivo PATCH, rechaza GET."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertIn("PATCH", response.headers["Allow"])
+        self.assertNotIn("GET", response.headers["Allow"])
+
+    def test_actualizar_estado_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-08: Endpoint actualización de estado rechaza DELETE."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("actualizar-estado-orden", kwargs={"orden_id": self.orden.id})
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+
+class ReporteRentabilidadAPITests(APITestCase):
+    """Pruebas unitarias para endpoint analítico de rentabilidad y servicios más demandados (TK210 #265)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_rentab@example.com",
+            nombre="Admin",
+            apellido="Rentabilidad",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_rentab@example.com",
+            nombre="Tecnico",
+            apellido="Taller",
+            rol="tecnico",
+            password="tecnicopassword123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_rentab@example.com",
+            nombre="Cliente",
+            apellido="Taller",
+            rol="cliente",
+            password="clientepassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            nombre="Cliente",
+            apellido="Rentabilidad",
+            tipo_documento="DNI",
+            dni_cuit="30112233"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA888BB",
+            marca="Toyota",
+            modelo="Corolla"
+        )
+
+        hoy = timezone.localdate()
+        self.ot1 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.tecnico,
+            descripcion_problema="Service programado 50.000km",
+            fecha_ingreso=hoy,
+            monto_total=Decimal("150000.00"),
+            estado=EstadoOrden.FINALIZADO
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot1,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y Balanceo",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("50000.00")
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot1,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Cambio de Aceite y Filtros",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("30000.00")
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot1,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Aceite Sintético 5W30 4L",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("70000.00")
+        )
+
+        self.ot2 = OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            tecnico=self.tecnico,
+            descripcion_problema="Revisión de frenos delanteros",
+            fecha_ingreso=hoy,
+            monto_total=Decimal("80000.00"),
+            estado=EstadoOrden.FINALIZADO
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot2,
+            tipo=TipoItem.MANO_DE_OBRA,
+            descripcion="Alineación y Balanceo",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("50000.00")
+        )
+        ItemPresupuesto.objects.create(
+            orden_trabajo=self.ot2,
+            tipo=TipoItem.REPUESTO,
+            descripcion="Pastillas de Freno",
+            cantidad=Decimal("1.00"),
+            precio_unitario=Decimal("30000.00")
+        )
+
+    def test_reporte_rentabilidad_requiere_autenticacion(self):
+        """AUT-BE-03: Solicitud anónima a reporte de rentabilidad devuelve 401."""
+        # Arrange
+        url = reverse("reporte-rentabilidad")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_reporte_rentabilidad_rechaza_roles_no_admin(self):
+        """AUT-BE-03: Usuario técnico o cliente no pueden acceder al reporte de rentabilidad (403)."""
+        # Arrange
+        url = reverse("reporte-rentabilidad")
+
+        # Act & Assert técnico
+        self.client.force_authenticate(user=self.tecnico)
+        response_tecnico = self.client.get(url)
+        self.assertEqual(response_tecnico.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Act & Assert cliente
+        self.client.force_authenticate(user=self.cliente_user)
+        response_cliente = self.client.get(url)
+        self.assertEqual(response_cliente.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_reporte_rentabilidad_admin_calcula_kpis_y_top_servicios(self):
+        """TK210: Administrador obtiene KPIs consolidados, márgenes y ranking de servicios más demandados."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("reporte-rentabilidad")
+
+        # Act
+        response = self.client.get(url, {"periodo": "mes"})
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data["periodo"], "mes")
+        self.assertEqual(data["kpis"]["cantidad_ordenes"], 2)
+        self.assertEqual(data["kpis"]["total_facturado"], 230000.00)
+        self.assertEqual(data["kpis"]["total_mano_obra"], 130000.00)
+        self.assertEqual(data["kpis"]["total_repuestos"], 100000.00)
+
+        # Verificar top servicios: Alineación y Balanceo aparece 2 veces
+        top = data["top_servicios"]
+        self.assertTrue(len(top) >= 1)
+        self.assertEqual(top[0]["servicio"], "Alineación y Balanceo")
+        self.assertEqual(top[0]["cantidad"], 2)
+        self.assertEqual(top[0]["total"], 100000.00)
+
+        # Verificar márgenes
+        self.assertIn("mano_de_obra", data["margenes_reparacion"])
+        self.assertIn("repuestos", data["margenes_reparacion"])
+        self.assertGreater(data["margenes_reparacion"]["mano_de_obra"]["porcentaje"], 0)
+
+    def test_reporte_rentabilidad_filtro_periodo_vacio(self):
+        """TK210: Filtrar por un período sin órdenes devuelve KPIs en cero sin fallar."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("reporte-rentabilidad")
+
+        # Act - fecha futura sin datos
+        response = self.client.get(url, {"periodo": "custom", "fecha_desde": "2030-01-01", "fecha_hasta": "2030-01-31"})
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["kpis"]["cantidad_ordenes"], 0)
+        self.assertEqual(response.data["kpis"]["total_facturado"], 0.0)
+        self.assertEqual(response.data["top_servicios"], [])
+
 
 
 

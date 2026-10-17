@@ -1,11 +1,9 @@
-<div class="p-6 bg-color-surface-container rounded-card border border-white/5 shadow relative">
+<div class="p-3 sm:p-6 bg-color-surface-container rounded-card border border-white/5 shadow relative">
   <!-- Loader indicador de carga -->
   @if (cargando()) {
-    <div class="absolute inset-0 bg-black/50 z-50 flex items-center justify-center rounded-card">
-      <div
-        class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-color-primary-accent"
-      ></div>
-    </div>
+  <div class="absolute inset-0 bg-black/50 z-50 flex items-center justify-center rounded-card">
+    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-color-primary-accent"></div>
+  </div>
   }
 
   <div class="flex items-center justify-between mb-4">
@@ -18,18 +16,21 @@
       </p>
     </div>
     @if (esTecnico()) {
-      <span class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-800 text-amber-400 border border-amber-400/30 rounded-lg flex items-center gap-1.5 shadow">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-        Solo Lectura
-      </span>
+    <span
+      class="px-3 py-1.5 text-xs font-bold uppercase tracking-wider bg-zinc-800 text-amber-400 border border-amber-400/30 rounded-lg flex items-center gap-1.5 shadow">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+      Solo Lectura
+    </span>
     }
   </div>
 
   <!-- Barra de Leyenda de Actividades y OTs (TK122 & TK078) -->
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 bg-black/30 border border-white/5 rounded-xl text-xs">
+  <div
+    class="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 bg-black/30 border border-white/5 rounded-xl text-xs">
     <div class="flex flex-wrap items-center gap-2">
       <span class="text-zinc-400 font-semibold uppercase text-[11px]">Referencias:</span>
       <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
@@ -52,69 +53,121 @@
       </span>
     </div>
     <div class="text-[11px] text-zinc-400 flex items-center gap-1">
-      <span>💡 Haz clic en una <strong class="text-color-primary-accent">OT</strong> para abrir directamente su expediente operativo.</span>
+      <span>💡 Haz clic en una <strong class="text-color-primary-accent">OT</strong> para abrir directamente su
+        expediente operativo.</span>
     </div>
   </div>
 
-  <div class="calendar-container bg-black/40 rounded-lg p-4 border border-white/5">
-    <full-calendar [options]="calendarOptions()"></full-calendar>
+  <div class="calendar-container overflow-x-auto w-full bg-black/40 rounded-lg p-2 sm:p-4 border border-white/5">
+    <div class="min-w-[650px] sm:min-w-full">
+      @defer (on idle) {
+        <full-calendar [options]="calendarOptions()"></full-calendar>
+      } @placeholder {
+        <div class="h-[600px] flex flex-col items-center justify-center text-zinc-400 gap-3">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-color-primary-accent"></div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-color-text-secondary">Cargando calendario interactivo de agenda...</span>
+        </div>
+      } @loading {
+        <div class="h-[600px] flex flex-col items-center justify-center text-zinc-400 gap-3">
+          <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-color-primary-accent"></div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-color-text-secondary">Cargando módulos de agenda...</span>
+        </div>
+      }
+    </div>
   </div>
 
   <!-- MODAL DE ALTA DE TURNO -->
   @if (mostrarModalCrear()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
-    >
-      <div
-        class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden transition-all duration-300 transform scale-100"
-      >
-        <div class="p-6 border-b border-white/5">
-          <h3 class="text-lg font-bold text-color-primary-accent uppercase">Agendar Nuevo Turno</h3>
-          <p class="text-xs text-color-text-secondary">
-            Completá los datos para asignar un turno de revisión.
-          </p>
+      class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden transition-all duration-300 transform scale-100">
+      <div class="p-6 border-b border-white/5">
+        <h3 class="text-lg font-bold text-color-primary-accent uppercase">Agendar Nuevo Turno</h3>
+        <p class="text-xs text-color-text-secondary">
+          Completá los datos para asignar un turno de revisión.
+        </p>
+      </div>
+      <div class="p-6 pb-0">
+        <!-- Contenedor para mensajes de error del Backend -->
+        @if (mensajeError()) {
+        <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3 mb-2">
+          {{ mensajeError() }}
         </div>
-        <div class="p-6 pb-0">
-          <!-- Contenedor para mensajes de error del Backend -->
-          @if (mensajeError()) {
-            <div
-              class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3 mb-2"
-            >
-              {{ mensajeError() }}
-            </div>
-          }
-        </div>
+        }
+      </div>
+
         <form [formGroup]="turnoForm" class="p-6 space-y-4" (ngSubmit)="guardarTurno()">
-          <!-- Cliente -->
-          <div>
-            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1"
-              >Cliente</label
-            >
-            <select
-              formControlName="cliente"
-              (change)="onClienteChange(turnoForm.get('cliente')?.value)"
-              class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent"
-            >
-              <option value="">Seleccione un cliente...</option>
-              @for (cliente of clientes(); track cliente) {
-                <option [value]="cliente.id">
-                  {{ cliente.nombre }} {{ cliente.apellido }} ({{ cliente.dni_cuit }})
-                </option>
+          <!-- Cliente con Búsqueda Reactiva y Debounce 300ms (TK155) -->
+          <div class="relative">
+            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">
+              Cliente <span class="text-color-primary-accent">*</span>
+            </label>
+            @if (clienteSeleccionado()) {
+              <div class="flex items-center justify-between p-2.5 rounded bg-white/5 border border-color-primary-accent/40">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-color-primary-accent"></span>
+                  <span class="text-xs font-bold text-white">
+                    {{ clienteSeleccionado()?.nombre }} {{ clienteSeleccionado()?.apellido }}
+                  </span>
+                  <span class="text-[10px] text-zinc-400">
+                    ({{ clienteSeleccionado()?.tipo_documento }}: {{ clienteSeleccionado()?.dni_cuit }})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  (click)="limpiarCliente()"
+                  class="text-zinc-400 hover:text-white text-xs px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+                >
+                  Cambiar
+                </button>
+              </div>
+            } @else {
+              <div class="relative">
+                <input
+                  type="text"
+                  [formControl]="clienteSearchControl"
+                  placeholder="Buscar por apellido, nombre o DNI (mín. 2 letras)..."
+                  class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent pr-8"
+                />
+                @if (buscandoClientes()) {
+                  <span class="absolute right-2.5 top-2.5 text-xs text-color-primary-accent animate-pulse font-bold">
+                    ...
+                  </span>
+                }
+              </div>
+              @if (clientesSugeridos().length > 0) {
+                <div class="absolute left-0 right-0 top-full mt-1 bg-zinc-900 border border-white/15 rounded-xl shadow-2xl z-50 max-h-48 overflow-y-auto divide-y divide-white/5">
+                  @for (c of clientesSugeridos(); track c.id) {
+                    <div
+                      (click)="seleccionarCliente(c)"
+                      class="p-2.5 hover:bg-white/10 cursor-pointer transition-colors text-xs flex items-center justify-between"
+                    >
+                      <span class="font-bold text-white">{{ c.nombre }} {{ c.apellido }}</span>
+                      <span class="text-zinc-400 text-[10px]">{{ c.tipo_documento }}: {{ c.dni_cuit }}</span>
+                    </div>
+                  }
+                </div>
               }
-            </select>
+            }
+            <input type="hidden" formControlName="cliente" />
+            @if (turnoForm.get('cliente')?.invalid && turnoForm.get('cliente')?.touched) {
+              <p class="text-red-400 text-[10px] mt-1">Debe buscar y seleccionar un cliente para el turno.</p>
+            }
           </div>
           <!-- Vehículo -->
           <div>
-            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1"
-              >Vehículo</label
-            >
+            <label class="block text-xs font-semibold text-color-text-secondary uppercase mb-1">
+              Vehículo <span class="text-color-primary-accent">*</span>
+            </label>
             <select
               formControlName="vehiculo"
               [disabled]="!turnoForm.get('cliente')?.value"
               class="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-sm text-color-text-primary focus:outline-none focus:border-color-primary-accent disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">Seleccione un vehículo...</option>
-              @for (vehiculo of vehiculosFiltrados(); track vehiculo) {
+              <option value="">
+                {{ !turnoForm.get('cliente')?.value ? '-- Seleccione un cliente primero --' : (vehiculosFiltrados().length === 0 ? '-- Sin vehículos registrados --' : '-- Seleccione un vehículo --') }}
+              </option>
+              @for (vehiculo of vehiculosFiltrados(); track vehiculo.id) {
                 <option [value]="vehiculo.id">
                   {{ vehiculo.marca }} {{ vehiculo.modelo }} ({{ vehiculo.patente }})
                 </option>
@@ -122,7 +175,7 @@
             </select>
             @if (!turnoForm.get('cliente')?.value) {
               <p class="text-[10px] text-yellow-500/80 mt-1">
-                * Debe seleccionar un cliente primero para cargar sus vehículos.
+                * Debe buscar y seleccionar un cliente primero para cargar sus vehículos.
               </p>
             }
           </div>
@@ -174,31 +227,27 @@
 
   <!-- MODAL DE DETALLE DEL TURNO SELECCIONADO -->
   @if (mostrarModalDetalle()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
-    >
-      <div
-        class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden"
-      >
-        <div class="p-6 border-b border-white/5 flex items-center justify-between">
-          <div>
-            <h3 class="text-lg font-bold text-color-primary-accent uppercase">Detalle del Turno</h3>
-            <p class="text-xs text-color-text-secondary">Información del turno agendado.</p>
-          </div>
-          <span
-            class="px-2.5 py-1 text-[10px] font-bold rounded uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20"
-          >
-            {{ turnoSeleccionado()?.estado }}
-          </span>
+      class="bg-color-surface-container border border-white/10 rounded-card shadow-2xl max-w-md w-full overflow-hidden">
+      <div class="p-6 border-b border-white/5 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-bold text-color-primary-accent uppercase">Detalle del Turno</h3>
+          <p class="text-xs text-color-text-secondary">Información del turno agendado.</p>
         </div>
-        @if (mensajeError()) {
-          <div class="p-6 pb-0">
-            <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3">
-              {{ mensajeError() }}
-            </div>
+        <span
+          class="px-2.5 py-1 text-[10px] font-bold rounded uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+          {{ turnoSeleccionado()?.estado }}
+        </span>
+      </div>
+      @if (mensajeError()) {
+        <div class="p-6 pb-0">
+          <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded p-3">
+            {{ mensajeError() }}
           </div>
-        }
-        @if (!modoEdicion()) {
+        </div>
+      }
+      @if (!modoEdicion()) {
           <div class="p-6 space-y-4">
             <!-- Cliente -->
             <div>
@@ -245,8 +294,19 @@
           </div>
           <!-- Botones de Acción Vista Lectura (Táctiles >= 44px) -->
           <div class="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-t border-white/5 gap-3">
-            @if (!esTecnico()) {
-              <div class="grid grid-cols-1 sm:flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                (click)="iniciarOTDesdeTurno()"
+                [disabled]="turnoSeleccionado()?.estado === 'cancelado'"
+                class="min-h-[44px] px-4 py-2.5 text-xs font-bold bg-green-500 hover:bg-green-400 text-black rounded-xl uppercase tracking-wider transition-all duration-200 cursor-pointer border-0 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+                <span>Iniciar OT</span>
+              </button>
+              @if (!esTecnico()) {
                 <button
                   type="button"
                   (click)="habilitarEdicion()"
@@ -268,14 +328,8 @@
                 >
                   Eliminar
                 </button>
-              </div>
-            } @else {
-              <div class="flex items-center gap-2">
-                <span class="px-3 py-2 text-xs font-bold uppercase tracking-wider bg-zinc-800 text-zinc-400 border border-zinc-700 rounded-xl">
-                  Modo Solo Lectura (Técnico)
-                </span>
-              </div>
-            }
+              }
+            </div>
             <button
               type="button"
               (click)="cerrarModalDetalle()"
@@ -349,112 +403,75 @@
 
   <!-- MODAL DE ADVERTENCIA DE SOBRE-CUPO (BYPASS) -->
   @if (mostrarAlertaSobrecupo()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-    >
-      <div
-        class="bg-color-surface-container border border-yellow-500/30 rounded-card shadow-2xl max-w-sm w-full overflow-hidden"
-      >
-        <div class="p-6 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center space-x-3">
-          <svg
-            class="h-6 w-6 text-yellow-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <h3 class="text-base font-bold text-yellow-500 uppercase tracking-wider">
-            Límite de Cupo Diario
-          </h3>
-        </div>
-        <div class="p-6 space-y-4">
-          <p class="text-sm text-color-text-primary leading-relaxed">
-            El día seleccionado ya cuenta con <strong>2 o más turnos activos</strong> reservados en
-            el taller.
-          </p>
-          <p class="text-xs text-color-text-secondary leading-relaxed">
-            ¿Desea forzar y confirmar el agendamiento de este turno excediendo el límite
-            establecido?
-          </p>
-        </div>
-        <div class="flex items-center justify-end space-x-3 p-6 pt-0">
-          <button
-            type="button"
-            (click)="cerrarAlertaSobrecupo()"
-            class="px-4 py-2 text-xs font-semibold text-color-text-secondary hover:text-color-text-primary uppercase tracking-wider transition-colors duration-200"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            (click)="guardarTurnoForzado()"
-            class="px-5 py-2 text-xs font-bold bg-yellow-500 text-black rounded uppercase tracking-wider hover:bg-opacity-80 transition-all duration-200"
-          >
-            Forzar Reserva
-          </button>
-        </div>
+      class="bg-color-surface-container border border-yellow-500/30 rounded-card shadow-2xl max-w-sm w-full overflow-hidden">
+      <div class="p-6 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center space-x-3">
+        <svg class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h3 class="text-base font-bold text-yellow-500 uppercase tracking-wider">
+          Límite de Cupo Diario
+        </h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <p class="text-sm text-color-text-primary leading-relaxed">
+          El día seleccionado ya cuenta con <strong>2 o más turnos activos</strong> reservados en
+          el taller.
+        </p>
+        <p class="text-xs text-color-text-secondary leading-relaxed">
+          ¿Desea forzar y confirmar el agendamiento de este turno excediendo el límite
+          establecido?
+        </p>
+      </div>
+      <div class="flex items-center justify-end space-x-3 p-6 pt-0">
+        <button type="button" (click)="cerrarAlertaSobrecupo()"
+          class="px-4 py-2 text-xs font-semibold text-color-text-secondary hover:text-color-text-primary uppercase tracking-wider transition-colors duration-200">
+          Cancelar
+        </button>
+        <button type="button" (click)="guardarTurnoForzado()"
+          class="px-5 py-2 text-xs font-bold bg-yellow-500 text-black rounded uppercase tracking-wider hover:bg-opacity-80 transition-all duration-200">
+          Forzar Reserva
+        </button>
       </div>
     </div>
+  </div>
   }
 
   <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN FÍSICA (TK081) -->
   @if (mostrarModalConfirmarEliminar()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-    >
-      <div
-        class="bg-color-surface-container border border-red-500/30 rounded-card shadow-2xl max-w-sm w-full overflow-hidden"
-      >
-        <div class="p-6 bg-red-500/10 border-b border-red-500/20 flex items-center space-x-3">
-          <svg
-            class="h-6 w-6 text-red-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-          <h3 class="text-base font-bold text-red-400 uppercase tracking-wider">
-            Confirmar Eliminación
-          </h3>
-        </div>
-        <div class="p-6 space-y-3">
-          <p class="text-sm text-color-text-primary leading-relaxed">
-            ¿Estás seguro de que deseas eliminar permanentemente este turno?
-          </p>
-          <p class="text-xs text-color-text-secondary leading-relaxed">
-            Esta acción no se puede deshacer y liberará el cupo asignado en la agenda.
-          </p>
-        </div>
-        <div class="flex items-center justify-end space-x-3 p-6 pt-0">
-          <button
-            type="button"
-            (click)="cerrarModalEliminar()"
-            class="px-4 py-2 text-xs font-semibold text-color-text-secondary hover:text-color-text-primary uppercase tracking-wider transition-colors duration-200"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            (click)="ejecutarEliminarTurno()"
-            [disabled]="cargando()"
-            class="px-5 py-2 text-xs font-bold bg-red-500 text-white rounded uppercase tracking-wider hover:bg-red-600 transition-all duration-200 disabled:opacity-50"
-          >
-            Eliminar Turno
-          </button>
-        </div>
+      class="bg-color-surface-container border border-red-500/30 rounded-card shadow-2xl max-w-sm w-full overflow-hidden">
+      <div class="p-6 bg-red-500/10 border-b border-red-500/20 flex items-center space-x-3">
+        <svg class="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        <h3 class="text-base font-bold text-red-400 uppercase tracking-wider">
+          Confirmar Eliminación
+        </h3>
+      </div>
+      <div class="p-6 space-y-3">
+        <p class="text-sm text-color-text-primary leading-relaxed">
+          ¿Estás seguro de que deseas eliminar permanentemente este turno?
+        </p>
+        <p class="text-xs text-color-text-secondary leading-relaxed">
+          Esta acción no se puede deshacer y liberará el cupo asignado en la agenda.
+        </p>
+      </div>
+      <div class="flex items-center justify-end space-x-3 p-6 pt-0">
+        <button type="button" (click)="cerrarModalEliminar()"
+          class="px-4 py-2 text-xs font-semibold text-color-text-secondary hover:text-color-text-primary uppercase tracking-wider transition-colors duration-200">
+          Cancelar
+        </button>
+        <button type="button" (click)="ejecutarEliminarTurno()" [disabled]="cargando()"
+          class="px-5 py-2 text-xs font-bold bg-red-500 text-white rounded uppercase tracking-wider hover:bg-red-600 transition-all duration-200 disabled:opacity-50">
+          Eliminar Turno
+        </button>
       </div>
     </div>
+  </div>
   }
 </div>

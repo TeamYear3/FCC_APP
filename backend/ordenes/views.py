@@ -6,12 +6,18 @@ from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q
+from django.db.models import Q, Prefetch, Count, Sum, Avg
+from datetime import timedelta, date
+from decimal import Decimal
 from rest_framework.exceptions import PermissionDenied
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
-from .models import OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico, ItemPresupuesto, EstadoCobro, EstadoOrden
+from .models import (
+    OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico,
+    ItemPresupuesto, EstadoCobro, EstadoOrden, TipoItem
+)
 from .serializers import (
     OrdenTrabajoSerializer,
+    DetalleOrdenTrabajoSerializer,
     ItemManoDeObraSerializer,
     ItemRepuestoSerializer,
     ItemPresupuestoSerializer,
@@ -30,6 +36,9 @@ class OrdenTrabajoPagination(PageNumberPagination):
 
     def get_paginated_response(self, data):
         return Response({
+            'count': self.page.paginator.count,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
             'total_items': self.page.paginator.count,
             'total_pages': self.page.paginator.num_pages,
             'current_page': self.page.number,
@@ -132,11 +141,12 @@ CrearOrdenTrabajoView = ListarCrearOrdenTrabajoView
 
 class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
     """
-    TK095: Endpoint GET /api/ordenes/<uuid:id>/
-    Retorna el detalle completo de una Orden de Trabajo individual.
+    TK095 & TK183: Endpoint GET /api/ordenes/<uuid:id>/
+    Retorna el detalle completo y consolidado de una Orden de Trabajo individual
+    con sus items de presupuesto, adjuntos de diagnóstico e historial de estados precargados.
     Restringe el acceso si el rol es 'cliente' y la OT no pertenece a sus vehículos.
     """
-    serializer_class = OrdenTrabajoSerializer
+    serializer_class = DetalleOrdenTrabajoSerializer
     lookup_field = 'id'
     lookup_url_kwarg = 'id'
 
@@ -144,10 +154,16 @@ class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
         return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get_queryset(self):
+        adjuntos_qs = AdjuntoDiagnostico.objects.select_related('creado_por', 'item_presupuesto')
+        items_qs = ItemPresupuesto.objects.prefetch_related(
+            Prefetch('adjuntos', queryset=adjuntos_qs)
+        )
         return OrdenTrabajo.objects.select_related(
             'vehiculo__cliente__usuario', 'tecnico'
         ).prefetch_related(
-            'items_presupuesto', 'adjuntos_diagnostico', 'historial_estados'
+            Prefetch('items_presupuesto', queryset=items_qs),
+            Prefetch('adjuntos_diagnostico', queryset=adjuntos_qs),
+            'historial_estados__usuario'
         ).all()
 
     def check_object_permissions(self, request, obj):
@@ -224,10 +240,11 @@ class ConsultarHistorialOrdenView(APIView):
 
 class ActualizarEstadoOrdenView(APIView):
     """
-    TK033 & TK035: Endpoint PATCH /api/ordenes/<orden_id>/estado/
-    Permite a Administradores y Técnicos actualizar el estado de la OT y registra el cambio en HistorialEstadoOrden.
+    TK033, TK035 & TK204: Endpoint PATCH /api/ordenes/<orden_id>/estado/
+    Permite a Administradores y Técnicos actualizar el estado de la OT,
+    y a Clientes autorizados aprobar o rechazar presupuestos en estado 'en_presupuesto'.
     """
-    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico]
+    permission_classes = [IsAuthenticated, EsAdministrador | EsTecnico | EsCliente]
 
     def patch(self, request, orden_id, *args, **kwargs):
         orden = get_object_or_404(OrdenTrabajo, id=orden_id)
@@ -238,6 +255,13 @@ class ActualizarEstadoOrdenView(APIView):
         nuevo_estado = serializer.validated_data['estado']
         comentario = serializer.validated_data.get('comentario', '')
         estado_anterior = orden.estado
+
+        # Control de permisos para rol 'cliente' (TK204 / US-18)
+        if getattr(request.user, "rol", None) == "cliente":
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para modificar esta Orden de Trabajo.")
+            if orden.estado != EstadoOrden.EN_PRESUPUESTO or nuevo_estado not in (EstadoOrden.APROBADO, EstadoOrden.RECHAZADO):
+                raise PermissionDenied("El cliente únicamente puede aprobar o rechazar presupuestos en estado 'En Presupuesto'.")
 
         if estado_anterior != nuevo_estado:
             try:
@@ -268,13 +292,32 @@ class AdjuntoDiagnosticoListCreateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, orden_id, *args, **kwargs):
-        orden = get_object_or_404(OrdenTrabajo, id=orden_id)
-        adjuntos = orden.adjuntos_diagnostico.all()
+    def get(self, request, orden_id=None, *args, **kwargs):
+        target_orden_id = orden_id or request.query_params.get('orden_id') or request.query_params.get('orden_trabajo')
+        user = request.user
+
+        if getattr(user, 'rol', '') == 'cliente':
+            if not target_orden_id:
+                return Response({'error': 'Debe especificar el ID de la orden de trabajo.'}, status=status.HTTP_400_BAD_REQUEST)
+            orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente'), id=target_orden_id)
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != user.id:
+                return Response({'error': 'No tiene permisos para ver adjuntos de una orden de trabajo ajena.'}, status=status.HTTP_403_FORBIDDEN)
+            adjuntos = orden.adjuntos_diagnostico.filter(mime_type__startswith='image/')
+        else:
+            if target_orden_id:
+                orden = get_object_or_404(OrdenTrabajo, id=target_orden_id)
+                adjuntos = orden.adjuntos_diagnostico.all()
+            else:
+                adjuntos = AdjuntoDiagnostico.objects.all()
+
         serializer = AdjuntoDiagnosticoSerializer(adjuntos, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, orden_id=None, *args, **kwargs):
+        user = request.user
+        if getattr(user, 'rol', '') == 'cliente':
+            return Response({'error': 'Los clientes no tienen permisos para subir adjuntos de diagnóstico.'}, status=status.HTTP_403_FORBIDDEN)
+
         target_orden_id = orden_id or request.data.get('orden_trabajo') or request.data.get('orden_id')
         if not target_orden_id:
             return Response({'error': 'Debe especificar el ID de la orden de trabajo.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -285,6 +328,8 @@ class AdjuntoDiagnosticoListCreateView(APIView):
             return Response({'error': 'No se adjuntó ningún archivo de imagen.'}, status=status.HTTP_400_BAD_REQUEST)
 
         resultado_upload = subir_imagen_diagnostico(file_obj, orden.id)
+        if resultado_upload.get('mime_type') and not resultado_upload['mime_type'].startswith('image/'):
+            return Response({'error': 'Solo se admiten archivos de imagen (JPEG, PNG, WebP).'}, status=status.HTTP_400_BAD_REQUEST)
 
         item_id = request.data.get('item_presupuesto_id') or request.data.get('item_presupuesto')
         item_obj = None
@@ -347,8 +392,13 @@ class ListarItemsPresupuestoView(APIView):
 
     def get(self, request, orden_id, *args, **kwargs):
         orden = get_object_or_404(OrdenTrabajo, id=orden_id)
-        items = orden.items_presupuesto.all()
-        serializer = ItemPresupuestoSerializer(items, many=True)
+        items = (
+            orden.items_presupuesto
+            .select_related('orden_trabajo')
+            .prefetch_related('adjuntos__creado_por')
+            .all()
+        )
+        serializer = ItemPresupuestoSerializer(items, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -626,6 +676,11 @@ class RegistrarPagoOrdenView(APIView):
         metodo_pago = serializer.validated_data['metodo_pago']
         comentario = serializer.validated_data.get('comentario', '')
         entregar_orden = serializer.validated_data.get('entregar_orden', False)
+        condicion_iva = serializer.validated_data.get('condicion_iva')
+
+        if condicion_iva and orden.vehiculo and orden.vehiculo.cliente:
+            orden.vehiculo.cliente.condicion_iva = condicion_iva
+            orden.vehiculo.cliente.save(update_fields=['condicion_iva', 'actualizado_en'])
 
         orden.estado_cobro = EstadoCobro.COBRADO
         orden.metodo_pago = metodo_pago
@@ -685,4 +740,243 @@ class OrdenTrabajoAuditoriaView(APIView):
             'total_registros': len(registros_nosql),
             'auditoria': registros_nosql
         }, status=status.HTTP_200_OK)
+
+
+class OrdenEventosWebSocketView(APIView):
+    """
+    TK192 (US-13): Endpoint GET /api/ordenes/<orden_id>/eventos-websocket/
+    Recupera el historial cronológico de eventos WebSocket persistidos en MongoDB.
+    """
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar los eventos WebSocket de esta Orden.")
+
+        from core.mongo import obtener_historial_eventos_websocket
+        eventos = obtener_historial_eventos_websocket(orden_id=orden.id, numero_ot=orden.numero_ot)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'origen_datos': 'MongoDB',
+            'total_eventos': len(eventos),
+            'eventos': eventos
+        }, status=status.HTTP_200_OK)
+
+
+class OrdenDiagnosticoOBD2View(APIView):
+    """
+    TK193 (US-07): Endpoints para registrar y consultar diagnósticos técnicos OBD-II en MongoDB.
+    POST /api/ordenes/<orden_id>/diagnostico-obd2/ -> Registrar informe/lectura OBD-II (Técnicos y Administradores).
+    GET  /api/ordenes/<orden_id>/diagnostico-obd2/ -> Consultar historial de lecturas OBD-II (Admins, Técnicos, Cliente propietario).
+    """
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def get(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario'), id=orden_id)
+
+        if getattr(request.user, 'rol', None) == 'cliente':
+            if not orden.vehiculo or not orden.vehiculo.cliente or orden.vehiculo.cliente.usuario_id != request.user.id:
+                raise PermissionDenied("No tiene autorización para consultar los diagnósticos técnicos de esta Orden.")
+
+        from core.mongo import obtener_diagnosticos_obd2
+        patente = orden.vehiculo.patente if orden.vehiculo else None
+        diagnosticos = obtener_diagnosticos_obd2(orden_id=orden.id, patente=patente)
+
+        return Response({
+            'orden_id': str(orden.id),
+            'numero_ot': orden.numero_ot,
+            'patente': patente,
+            'origen_datos': 'MongoDB',
+            'total_diagnosticos': len(diagnosticos),
+            'diagnosticos': diagnosticos
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, orden_id, *args, **kwargs):
+        orden = get_object_or_404(OrdenTrabajo.objects.select_related('vehiculo'), id=orden_id)
+
+        codigos_dtc = request.data.get('codigos_dtc', [])
+        parametros_en_vivo = request.data.get('parametros_en_vivo', {})
+        escaner = request.data.get('escaner')
+        notas = request.data.get('notas')
+
+        from core.mongo import registrar_diagnostico_obd2
+        patente = orden.vehiculo.patente if orden.vehiculo else None
+
+        resultado = registrar_diagnostico_obd2(
+            orden_id=orden.id,
+            codigos_dtc=codigos_dtc,
+            parametros_en_vivo=parametros_en_vivo,
+            escaner=escaner,
+            notas=notas,
+            tecnico=request.user,
+            numero_ot=orden.numero_ot,
+            patente=patente
+        )
+
+        if resultado is None:
+            return Response({
+                'error': 'No se pudo persistir el diagnóstico OBD-II en la base de datos NoSQL MongoDB.'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        return Response({
+            'message': 'Diagnóstico OBD-II registrado exitosamente en MongoDB.',
+            'diagnostico': resultado
+        }, status=status.HTTP_201_CREATED)
+
+
+class ReporteRentabilidadView(APIView):
+    """
+    TK210: Endpoint para el cálculo y visualización analítica de métricas de rentabilidad,
+    servicios más demandados y márgenes por tipo de reparación (US-14).
+    Accesible exclusivamente para usuarios con rol administrador.
+    """
+    permission_classes = [IsAuthenticated, EsAdministrador]
+
+    def get(self, request, *args, **kwargs):
+        periodo = request.query_params.get("periodo", "mes").lower()
+        hoy = timezone.localdate()
+
+        # Determinar rango de fechas según período
+        if periodo == "mes":
+            inicio = hoy.replace(day=1)
+            fin = hoy
+        elif periodo == "trimestre":
+            mes_actual = hoy.month
+            mes_inicio = ((mes_actual - 1) // 3) * 3 + 1
+            inicio = hoy.replace(month=mes_inicio, day=1)
+            fin = hoy
+        elif periodo == "anio":
+            inicio = hoy.replace(month=1, day=1)
+            fin = hoy
+        elif periodo == "todos":
+            inicio = None
+            fin = None
+        else:
+            fecha_desde = request.query_params.get("fecha_desde")
+            fecha_hasta = request.query_params.get("fecha_hasta")
+            try:
+                inicio = date.fromisoformat(fecha_desde) if fecha_desde else None
+                fin = date.fromisoformat(fecha_hasta) if fecha_hasta else hoy
+            except (ValueError, TypeError):
+                inicio = hoy.replace(day=1)
+                fin = hoy
+
+        ordenes_qs = OrdenTrabajo.objects.all()
+        if inicio:
+            ordenes_qs = ordenes_qs.filter(fecha_ingreso__gte=inicio)
+        if fin:
+            ordenes_qs = ordenes_qs.filter(fecha_ingreso__lte=fin)
+
+        cantidad_ordenes = ordenes_qs.count()
+        total_facturado_aggr = ordenes_qs.aggregate(
+            total=Sum("monto_total"),
+            promedio=Avg("monto_total")
+        )
+        total_facturado = total_facturado_aggr.get("total") or Decimal("0.00")
+        ticket_promedio = total_facturado_aggr.get("promedio") or Decimal("0.00")
+
+        items_qs = ItemPresupuesto.objects.filter(orden_trabajo__in=ordenes_qs)
+
+        mano_obra_aggr = items_qs.filter(tipo=TipoItem.MANO_DE_OBRA).aggregate(total=Sum("subtotal"))
+        total_mano_obra = mano_obra_aggr.get("total") or Decimal("0.00")
+
+        repuestos_aggr = items_qs.filter(tipo=TipoItem.REPUESTO).aggregate(total=Sum("subtotal"))
+        total_repuestos = repuestos_aggr.get("total") or Decimal("0.00")
+
+        suma_items = total_mano_obra + total_repuestos
+        if suma_items > 0:
+            margen_mano_obra_pct = round(float((total_mano_obra / suma_items) * 100), 1)
+            margen_repuestos_pct = round(float((total_repuestos / suma_items) * 100), 1)
+        else:
+            margen_mano_obra_pct = 0.0
+            margen_repuestos_pct = 0.0
+
+        top_servicios_raw = items_qs.filter(
+            tipo=TipoItem.MANO_DE_OBRA
+        ).values("descripcion").annotate(
+            cantidad=Count("id"),
+            total=Sum("subtotal")
+        ).order_by("-cantidad", "-total")[:5]
+
+        top_servicios = [
+            {
+                "servicio": item["descripcion"],
+                "cantidad": item["cantidad"],
+                "total": float(item["total"] or 0)
+            }
+            for item in top_servicios_raw
+        ]
+
+        historico_mensual = []
+        for i in range(5, -1, -1):
+            anio_mes = hoy.year
+            mes_calc = hoy.month - i
+            while mes_calc <= 0:
+                mes_calc += 12
+                anio_mes -= 1
+
+            inicio_m = date(anio_mes, mes_calc, 1)
+            if mes_calc == 12:
+                fin_m = date(anio_mes + 1, 1, 1) - timedelta(days=1)
+            else:
+                fin_m = date(anio_mes, mes_calc + 1, 1) - timedelta(days=1)
+
+            ots_mes = OrdenTrabajo.objects.filter(fecha_ingreso__gte=inicio_m, fecha_ingreso__lte=fin_m)
+            items_mes = ItemPresupuesto.objects.filter(orden_trabajo__in=ots_mes)
+
+            mo_m = items_mes.filter(tipo=TipoItem.MANO_DE_OBRA).aggregate(t=Sum("subtotal"))["t"] or Decimal("0.00")
+            rep_m = items_mes.filter(tipo=TipoItem.REPUESTO).aggregate(t=Sum("subtotal"))["t"] or Decimal("0.00")
+            tot_m = ots_mes.aggregate(t=Sum("monto_total"))["t"] or (mo_m + rep_m)
+
+            mes_nombres = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+            nombre_label = f"{mes_nombres[mes_calc - 1]} {str(anio_mes)[2:]}"
+
+            historico_mensual.append({
+                "periodo_label": nombre_label,
+                "mano_de_obra": float(mo_m),
+                "repuestos": float(rep_m),
+                "total": float(tot_m),
+                "cantidad_ordenes": ots_mes.count()
+            })
+
+        data = {
+            "periodo": periodo,
+            "fecha_desde": inicio.isoformat() if inicio else None,
+            "fecha_hasta": fin.isoformat() if fin else None,
+            "kpis": {
+                "total_facturado": float(total_facturado),
+                "total_mano_obra": float(total_mano_obra),
+                "total_repuestos": float(total_repuestos),
+                "margen_mano_obra_pct": margen_mano_obra_pct,
+                "margen_repuestos_pct": margen_repuestos_pct,
+                "cantidad_ordenes": cantidad_ordenes,
+                "ticket_promedio": round(float(ticket_promedio), 2)
+            },
+            "margenes_reparacion": {
+                "mano_de_obra": {
+                    "monto": float(total_mano_obra),
+                    "porcentaje": margen_mano_obra_pct
+                },
+                "repuestos": {
+                    "monto": float(total_repuestos),
+                    "porcentaje": margen_repuestos_pct
+                }
+            },
+            "top_servicios": top_servicios,
+            "historico_mensual": historico_mensual
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+
 

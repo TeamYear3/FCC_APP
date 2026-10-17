@@ -37,9 +37,13 @@ yarn-error.log*
 .docker/
 docker-compose.override.yml
 
-# Documentación local (se ignoran binarios/temporales, se versionan .md)
+# Documentación local (se ignoran binarios/temporales, se versionan .md y evidencias E2E)
 docs/*
 !docs/*.md
+!docs/evidencias_accesibilidad/
+!docs/evidencias_accesibilidad/*
+!docs/evidencias_e2e/
+!docs/evidencias_e2e/*
 
 # Archivos multimedia temporales y estáticos generados
 media/
@@ -49,5 +53,24 @@ backend/staticfiles/
 
 # Carpeta temporal del asistente AI
 scratch/
+
+# Archivos de registro y logs
+*.log
+logs/
+backend/logs/
+
+# Reportes de pruebas generados dinámicamente
+tests/api/reports/*.html
+tests/api/reports/*.xml
+frontend/playwright-report/
+frontend/test-results/
+.coverage
+.coverage.*
+htmlcov/
+*.cover
+coverage.xml
+
+
+
 
 

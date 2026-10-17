@@ -30,9 +30,17 @@ class Turno(models.Model):
     )
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    recordatorio_enviado_en = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha y hora de envío de recordatorio"
+    )
 
     class Meta:
         ordering = ["fecha_hora"]
+        indexes = [
+            models.Index(fields=['fecha_hora', 'estado'], name='turno_fecha_estado_idx'),
+        ]
 
     def __str__(self):
         return f"Turno {self.fecha_hora} - {self.cliente} ({self.estado})"

@@ -26,6 +26,7 @@ from .serializers import (
     PasswordResetSerializer,
     PerfilUsuarioSerializer,
     ActualizarPerfilSerializer,
+    VincularGoogleSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ class PasswordResetRequestView(APIView):
         if user:
             token_obj = PasswordResetToken.generar_token(user, duracion_horas=1)
             portal_base_url = getattr(settings, "CLIENT_PORTAL_URL", "https://fccapp.com").rstrip("/")
-            enlace_reset = f"{portal_base_url}/autenticacion?action=reset&token={token_obj.token}"
+            enlace_reset = f"{portal_base_url}/autenticacion?action=reset&uid={user.id}&token={token_obj.token}"
             nombre_usuario = f"{user.nombre} {user.apellido}".strip() or user.email
 
             threading.Thread(
@@ -115,6 +116,7 @@ class PasswordResetConfirmView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         token_str = serializer.validated_data["token"].strip()
+        uid_str = serializer.validated_data.get("uid")
         nueva_password = serializer.validated_data["password"]
 
         token_obj = PasswordResetToken.objects.filter(token=token_str).first()
@@ -123,6 +125,26 @@ class PasswordResetConfirmView(APIView):
                 {"error": "El enlace de recuperación es inválido, ya fue utilizado o ha expirado."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Validación de coherencia si se envía uid
+        if uid_str:
+            uid_str = str(uid_str).strip()
+            user_id_str = str(token_obj.usuario.id)
+            uid_matches = (uid_str == user_id_str)
+            if not uid_matches:
+                try:
+                    from django.utils.http import urlsafe_base64_decode
+                    from django.utils.encoding import force_str
+                    decoded_uid = force_str(urlsafe_base64_decode(uid_str))
+                    uid_matches = (decoded_uid == user_id_str)
+                except Exception:
+                    uid_matches = False
+
+            if not uid_matches:
+                return Response(
+                    {"error": "El identificador de usuario no coincide con el token de recuperación provisto."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         user = token_obj.usuario
         user.set_password(nueva_password)
@@ -154,14 +176,18 @@ class GoogleAuthView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        google_sub = idinfo.get("sub", "")
         nombre = idinfo.get("given_name", "")
         apellido = idinfo.get("family_name", "")
 
         try:
-            user = Usuario.objects.get(email=email)
-            
-            # Si el usuario ya existe y tiene contraseña local establecida (login clásico)
-            if user.has_usable_password():
+            user = Usuario.objects.get(email__iexact=email)
+
+            # 1. Si la cuenta ya tiene este google_id vinculado, permitir acceso directo
+            if user.google_id and user.google_id == google_sub:
+                pass
+            # 2. Si tiene contraseña local y NO tiene google_id vinculado, requerir vinculación
+            elif user.has_usable_password() and not user.google_id:
                 return Response(
                     {
                         "error": "Esta cuenta de correo ya se encuentra registrada con inicio de sesión local.",
@@ -170,16 +196,23 @@ class GoogleAuthView(APIView):
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+            # 3. Si no tenía contraseña local ni google_id, asociar google_id
+            elif not user.google_id and google_sub:
+                user.google_id = google_sub
+                user.save()
+
         except Usuario.DoesNotExist:
-            # Crear nuevo usuario OAuth con rol "cliente" y password inutilizable
+            # Crear nuevo usuario OAuth con rol "cliente", google_id y password inutilizable
             user = Usuario.objects.create_user(
                 email=email,
                 nombre=nombre,
                 apellido=apellido,
                 password=None,
-                rol="cliente"
+                rol="cliente",
+                google_id=google_sub or None
             )
+            from .signals import vincular_o_crear_cliente_usuario
+            vincular_o_crear_cliente_usuario(user, crear_si_no_existe=True)
 
         # Generar JWT locales con claims personalizados para el Frontend
         refresh = RefreshToken.for_user(user)
@@ -192,7 +225,35 @@ class GoogleAuthView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class VincularGoogleView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = VincularGoogleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+        idinfo = serializer.validated_data["idinfo"]
+        google_sub = idinfo.get("sub")
+
+        # Vincular identificador de Google al usuario existente
+        user.google_id = google_sub
+        user.save()
+
+        refresh = RefreshToken.for_user(user)
+        refresh["rol"] = user.rol
+        refresh["email"] = user.email
+
+        return Response({
+            "detail": "Cuenta vinculada exitosamente con Google.",
+            "access": str(refresh.access_token),
+            "refresh": str(refresh)
+        }, status=status.HTTP_200_OK)
+
+
 class LogoutView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -300,7 +361,9 @@ class BusquedaUniversalView(APIView):
         from vehiculos.models import Vehiculo
         from ordenes.models import OrdenTrabajo
 
-        es_admin = getattr(request.user, 'es_administrador', True)
+        rol_usuario = getattr(request.user, 'rol', 'cliente')
+        es_admin = (rol_usuario == 'admin')
+        es_tecnico = (rol_usuario == 'tecnico')
 
         # 1. Búsqueda de Clientes
         clientes_qs = Cliente.objects.filter(
@@ -310,13 +373,20 @@ class BusquedaUniversalView(APIView):
             Q(usuario__email__icontains=query)
         ).distinct()[:5]
 
+        def _url_cliente(c_id):
+            if es_admin:
+                return f"/admin/clientes/editar/{c_id}"
+            elif es_tecnico:
+                return "/admin/clientes"
+            return "/portal-cliente"
+
         clientes = [
             {
                 'id': str(c.id),
                 'titulo': f"{c.nombre} {c.apellido}".strip(),
                 'subtitulo': f"{c.tipo_documento}: {c.dni_cuit}",
                 'tipo': 'cliente',
-                'url': f"/admin/clientes/editar/{c.id}" if es_admin else f"/clientes/editar/{c.id}"
+                'url': _url_cliente(c.id)
             }
             for c in clientes_qs
         ]
@@ -329,13 +399,18 @@ class BusquedaUniversalView(APIView):
             Q(modelo__icontains=query)
         ).distinct()[:5]
 
+        def _url_vehiculo(v_id):
+            if es_admin or es_tecnico:
+                return f"/admin/vehiculos/{v_id}/historial"
+            return "/portal-cliente"
+
         vehiculos = [
             {
                 'id': str(v.id),
                 'titulo': f"{v.marca} {v.modelo} ({v.patente})",
                 'subtitulo': f"Chasis: {v.numero_chasis or 'N/A'}",
                 'tipo': 'vehiculo',
-                'url': f"/vehiculos/historial/{v.id}"
+                'url': _url_vehiculo(v.id)
             }
             for v in vehiculos_qs
         ]
@@ -348,13 +423,18 @@ class BusquedaUniversalView(APIView):
             Q(vehiculo__cliente__apellido__icontains=query)
         ).distinct()[:5]
 
+        def _url_orden():
+            if es_admin or es_tecnico:
+                return "/admin/ordenes"
+            return "/portal-cliente"
+
         ordenes = [
             {
                 'id': str(o.id),
                 'titulo': f"Orden {o.numero_ot}",
                 'subtitulo': f"Estado: {o.get_estado_display()} - Patente: {o.vehiculo.patente if o.vehiculo else 'N/A'}",
                 'tipo': 'orden',
-                'url': f"/ordenes"
+                'url': _url_orden()
             }
             for o in ordenes_qs
         ]
@@ -367,7 +447,7 @@ class BusquedaUniversalView(APIView):
 
 
 class PerfilUsuarioView(APIView):
-    permission_classes = [IsAuthenticated, EsAdministrador]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         serializer = PerfilUsuarioSerializer(request.user)

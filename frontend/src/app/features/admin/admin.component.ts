@@ -4,6 +4,7 @@ import { RouterOutlet } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { NavbarComponent } from '../../layout/navbar/navbar.component';
 import { SidebarComponent } from '../../layout/sidebar/sidebar.component';
+import { FooterComponent } from '../../layout/footer/footer.component';
 import { SidebarService } from '../../core/services/sidebar.service';
 
 @Component({
@@ -13,7 +14,8 @@ import { SidebarService } from '../../core/services/sidebar.service';
     UpperCasePipe,
     RouterOutlet,
     NavbarComponent,
-    SidebarComponent
+    SidebarComponent,
+    FooterComponent
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.css'

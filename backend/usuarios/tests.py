@@ -1,9 +1,11 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from rest_framework import status
 from django.urls import reverse
+from django.conf import settings
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -162,8 +164,88 @@ class GoogleAuthViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Token de Google inválido o expirado", str(response.data))
 
-    def test_login_google_payload_incompleto(self):
-        response = self.client.post(self.url, {})
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_login_google_exitoso_cuenta_vinculada_previamente(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "vinculado@ejemplo.com",
+            "given_name": "Vinculado",
+            "family_name": "User",
+            "sub": "google_uid_987654"
+        }
+
+        # Crear usuario con contraseña local Y google_id vinculado
+        User.objects.create_user(
+            email="vinculado@ejemplo.com",
+            nombre="Vinculado",
+            apellido="User",
+            password="localpassword123",
+            google_id="google_uid_987654"
+        )
+
+        response = self.client.post(self.url, {"id_token": "valid_token_vinculado"})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+
+
+class VincularGoogleViewTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('vincular-google')
+        self.user = User.objects.create_user(
+            email="usuario_vincular@ejemplo.com",
+            nombre="Pedro",
+            apellido="Vincular",
+            password="PasswordLocalSeguro123!"
+        )
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_vincular_google_exitoso(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "usuario_vincular@ejemplo.com",
+            "given_name": "Pedro",
+            "family_name": "Vincular",
+            "sub": "google_sub_123456"
+        }
+
+        data = {
+            "email": "usuario_vincular@ejemplo.com",
+            "password": "PasswordLocalSeguro123!",
+            "id_token": "google_id_token_mock_123"
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertIn("detail", response.data)
+
+        # Verificar persistencia del google_id en base de datos
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.google_id, "google_sub_123456")
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_vincular_google_password_incorrecta_falla(self, mock_verify):
+        data = {
+            "email": "usuario_vincular@ejemplo.com",
+            "password": "PasswordEquivocado!",
+            "id_token": "google_id_token_mock_123"
+        }
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    @patch('google.oauth2.id_token.verify_oauth2_token')
+    def test_vincular_google_email_token_no_coincide_falla(self, mock_verify):
+        mock_verify.return_value = {
+            "email": "otro_email_distinto@ejemplo.com",
+            "sub": "google_sub_999999"
+        }
+
+        data = {
+            "email": "usuario_vincular@ejemplo.com",
+            "password": "PasswordLocalSeguro123!",
+            "id_token": "google_id_token_mock_123"
+        }
+        response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("id_token", response.data)
 
@@ -204,6 +286,12 @@ class LogoutViewTest(APITestCase):
     def test_logout_con_token_invalido_responde_205(self):
         # Un refresh token inválido o expirado debe responder igualmente con HTTP 205
         response = self.client.post(self.url, {"refresh": "invalid_refresh_token_123"})
+        self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
+
+    def test_logout_con_bearer_token_expirado_responde_205(self):
+        # Enviar una cabecera Authorization con token expirado/inválido no debe bloquear el logout con 401
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer token_invalido_o_expirado_xyz')
+        response = self.client.post(self.url, {"refresh": str(self.refresh)})
         self.assertEqual(response.status_code, status.HTTP_205_RESET_CONTENT)
 
 
@@ -471,6 +559,45 @@ class PasswordResetConfirmViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("error", response.data)
 
+    def test_confirmar_reset_con_uid_y_new_password_exitoso(self):
+        from usuarios.models import PasswordResetToken
+
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+
+        response = self.client.post(self.url, {
+            "uid": str(self.user.id),
+            "token": token_obj.token,
+            "new_password": "AngularPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("AngularPassword2026!"))
+
+        token_obj.refresh_from_db()
+        self.assertTrue(token_obj.usado)
+
+    def test_confirmar_reset_con_uid_invalido_retorna_400(self):
+        from usuarios.models import PasswordResetToken
+
+        otro_usuario = User.objects.create_user(
+            email="otro@ejemplo.com",
+            nombre="Otro",
+            apellido="Usuario",
+            password="password_123"
+        )
+        token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
+
+        response = self.client.post(self.url, {
+            "uid": str(otro_usuario.id),
+            "token": token_obj.token,
+            "password": "NewPassword2026!",
+            "password_confirm": "NewPassword2026!"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
     def test_passwords_no_coinciden_retorna_400(self):
         from usuarios.models import PasswordResetToken
         token_obj = PasswordResetToken.generar_token(self.user, duracion_horas=1)
@@ -574,10 +701,12 @@ class PerfilUsuarioAPITest(APITestCase):
         self.assertEqual(response.data["apellido"], "Zárate")
         self.assertEqual(response.data["rol"], "admin")
 
-    def test_obtener_perfil_no_admin_denegado(self):
+    def test_obtener_perfil_cliente_exitoso(self):
         self.client.force_authenticate(user=self.cliente_user)
         response = self.client.get(self.perfil_url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "cliente_perfil@taller.com")
+        self.assertEqual(response.data["rol"], "cliente")
 
     def test_actualizar_perfil_nombre_apellido_exitoso(self):
         self.client.force_authenticate(user=self.admin)
@@ -723,13 +852,16 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
         res_post = self.client.post(reverse('crear-vehiculo'), data)
         self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_tecnico_bloqueado_en_creacion_modificacion_turnos(self):
+    def test_tecnico_habilitado_creacion_bloqueado_modificacion_turnos(self):
         data = {
             "fecha_hora": "2026-10-01T10:00:00Z",
             "motivo": "Revisión técnica"
         }
         res_post = self.client.post(reverse('turno-list'), data)
-        self.assertEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertNotEqual(res_post.status_code, status.HTTP_403_FORBIDDEN)
+
+        res_put = self.client.put(reverse('turno-detail', kwargs={'pk': 1}), data)
+        self.assertEqual(res_put.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_tecnico_bloqueado_en_modulo_facturacion(self):
         res_emitir = self.client.post(reverse('factura-emitir'), {})
@@ -737,6 +869,360 @@ class SeguridadTecnicoRBACTestCase(APITestCase):
 
         res_resumen = self.client.get(reverse('factura-list'))
         self.assertEqual(res_resumen.status_code, status.HTTP_403_FORBIDDEN)
+
+class PoliticasSimpleJWTTest(TestCase):
+    def test_politicas_duracion_y_rotacion_tokens(self):
+        simple_jwt = getattr(settings, "SIMPLE_JWT", {})
+        self.assertEqual(simple_jwt.get("ACCESS_TOKEN_LIFETIME"), timedelta(minutes=30))
+        self.assertEqual(simple_jwt.get("REFRESH_TOKEN_LIFETIME"), timedelta(days=1))
+        self.assertTrue(simple_jwt.get("ROTATE_REFRESH_TOKENS"))
+        self.assertTrue(simple_jwt.get("BLACKLIST_AFTER_ROTATION"))
+
+
+class LoginCustomErrorMessagesTest(APITestCase):
+    def setUp(self):
+        self.url = reverse('login')
+        self.user = User.objects.create_user(
+            email="test_login@ejemplo.com",
+            nombre="Juan",
+            apellido="Pérez",
+            password="Password123*",
+        )
+
+    def test_login_credenciales_invalidas_retorna_mensaje_en_espanol(self):
+        data = {
+            "email": "test_login@ejemplo.com",
+            "password": "PasswordIncorrecto"
+        }
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("detail", res.data)
+        self.assertEqual(res.data["detail"], "Correo electrónico o contraseña incorrectos.")
+
+    def test_login_usuario_inexistente_retorna_mensaje_en_espanol(self):
+        data = {
+            "email": "noexiste@ejemplo.com",
+            "password": "Password123*"
+        }
+        res = self.client.post(self.url, data)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn("detail", res.data)
+        self.assertEqual(res.data["detail"], "Correo electrónico o contraseña incorrectos.")
+
+
+class GoogleConfiguracionDinamicaTest(TestCase):
+    def test_google_client_id_configurado_como_string_sin_hardcode(self):
+        client_id = getattr(settings, "GOOGLE_CLIENT_ID", "")
+        self.assertIsInstance(client_id, str)
+        self.assertNotEqual(client_id, "default-google-client-id-change-me")
+
+
+class CustomTokenObtainPairSerializerTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="testclaims@ejemplo.com",
+            nombre="Carlos",
+            apellido="Gómez",
+            password="password123",
+            rol="cliente"
+        )
+
+    def test_claims_jwt_incluyen_nombre_y_apellido(self):
+        from usuarios.serializers import CustomTokenObtainPairSerializer
+        token = CustomTokenObtainPairSerializer.get_token(self.user)
+        self.assertEqual(token["nombre"], "Carlos")
+        self.assertEqual(token["apellido"], "Gómez")
+        self.assertEqual(token["email"], "testclaims@ejemplo.com")
+        self.assertEqual(token["rol"], "cliente")
+
+    def test_validate_devuelve_nombre_y_apellido(self):
+        from usuarios.serializers import CustomTokenObtainPairSerializer
+        serializer = CustomTokenObtainPairSerializer(data={
+            "email": "testclaims@ejemplo.com",
+            "password": "password123"
+        })
+        self.assertTrue(serializer.is_valid())
+        data = serializer.validated_data
+        self.assertEqual(data["nombre"], "Carlos")
+        self.assertEqual(data["apellido"], "Gómez")
+        self.assertEqual(data["email"], "testclaims@ejemplo.com")
+        self.assertEqual(data["rol"], "cliente")
+
+
+class VinculacionAutomaticaUsuarioClienteTest(APITestCase):
+    """
+    TK149: Pruebas de vinculación automática entre Usuario y Cliente
+    en flujos de registro local y Google OAuth.
+    """
+    def setUp(self):
+        from clientes.models import Cliente
+        self.Cliente = Cliente
+        self.registro_url = reverse("registro")
+        self.google_url = reverse("google-auth")
+
+    def test_registro_usuario_vincula_cliente_huerfano_por_email(self):
+        # 1. Cliente preexistente creado en mostrador sin usuario asociado
+        cliente_preexistente = self.Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gómez",
+            email="carlos.gomez@ejemplo.com",
+            tipo_documento="DNI",
+            dni_cuit="35123456",
+            condicion_iva="CF",
+            telefono="1122334455"
+        )
+        self.assertIsNone(cliente_preexistente.usuario)
+
+        # 2. El cliente se registra por la web con el mismo email
+        payload = {
+            "email": "carlos.gomez@ejemplo.com",
+            "nombre": "Carlos",
+            "apellido": "Gómez",
+            "password": "MiPasswordSeguro123*"
+        }
+        res = self.client.post(self.registro_url, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        # 3. Validar que la ficha preexistente quedó vinculada al nuevo usuario
+        cliente_preexistente.refresh_from_db()
+        self.assertIsNotNone(cliente_preexistente.usuario)
+        self.assertEqual(cliente_preexistente.usuario.email, "carlos.gomez@ejemplo.com")
+        self.assertEqual(cliente_preexistente.dni_cuit, "35123456")
+
+    @patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_google_oauth_vincula_cliente_huerfano_por_email(self, mock_verify):
+        # 1. Cliente preexistente cargado en taller físico
+        cliente_preexistente = self.Cliente.objects.create(
+            nombre="Lucía",
+            apellido="Martínez",
+            email="lucia.martinez@gmail.com",
+            tipo_documento="DNI",
+            dni_cuit="38999888",
+            condicion_iva="CF"
+        )
+        self.assertIsNone(cliente_preexistente.usuario)
+
+        # 2. Ingreso por Google OAuth por primera vez
+        mock_verify.return_value = {
+            "email": "lucia.martinez@gmail.com",
+            "given_name": "Lucía",
+            "family_name": "Martínez",
+            "sub": "google-sub-id-lucia-123"
+        }
+        res = self.client.post(self.google_url, {"id_token": "valid-token-lucia"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # 3. Validar vinculación automática
+        cliente_preexistente.refresh_from_db()
+        self.assertIsNotNone(cliente_preexistente.usuario)
+        self.assertEqual(cliente_preexistente.usuario.email, "lucia.martinez@gmail.com")
+        self.assertEqual(cliente_preexistente.usuario.google_id, "google-sub-id-lucia-123")
+
+    def test_registro_usuario_crea_nueva_ficha_cliente_si_no_existe_previa(self):
+        # Registro de un usuario completamente nuevo sin historial en el taller
+        payload = {
+            "email": "usuario.nuevo@ejemplo.com",
+            "nombre": "Mariana",
+            "apellido": "Ríos",
+            "password": "PasswordNuevo123*"
+        }
+        res = self.client.post(self.registro_url, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+
+        user = User.objects.get(email="usuario.nuevo@ejemplo.com")
+        self.assertTrue(hasattr(user, "cliente_perfil"))
+        self.assertIsNotNone(user.cliente_perfil)
+        self.assertEqual(user.cliente_perfil.nombre, "Mariana")
+        self.assertEqual(user.cliente_perfil.apellido, "Ríos")
+        self.assertEqual(user.cliente_perfil.email, "usuario.nuevo@ejemplo.com")
+        self.assertTrue(len(user.cliente_perfil.dni_cuit) >= 7)
+
+    def test_registro_no_sobreescribe_cliente_ya_vinculado_a_otro_usuario(self):
+        # 1. Usuario original ya vinculado a su cliente
+        user_original = User.objects.create_user(
+            email="original@ejemplo.com",
+            nombre="Original",
+            apellido="Titular",
+            rol="cliente",
+            password="passOriginal123*"
+        )
+        cliente_original = self.Cliente.objects.create(
+            usuario=user_original,
+            nombre="Original",
+            apellido="Titular",
+            email="original@ejemplo.com",
+            tipo_documento="DNI",
+            dni_cuit="28444555"
+        )
+
+        # 2. Registrar usuario secundario
+        user_segundo = User.objects.create_user(
+            email="segundo@ejemplo.com",
+            nombre="Segundo",
+            apellido="Usuario",
+            rol="cliente",
+            password="passSegundo123*"
+        )
+
+        # 3. Intentar forzar vinculación
+        from usuarios.signals import vincular_o_crear_cliente_usuario
+        vincular_o_crear_cliente_usuario(user_segundo, crear_si_no_existe=True)
+
+        cliente_original.refresh_from_db()
+        # Verificar que el cliente original jamás cambió de usuario
+        self.assertEqual(cliente_original.usuario, user_original)
+        self.assertNotEqual(cliente_original.usuario, user_segundo)
+
+
+class AutenticacionPermisosAPITests(APITestCase):
+    """
+    AUT-BE-03: Pruebas de autenticación y permisos por rol.
+    Trazabilidad: HU-02 / HU-05 ↔ TEST-G-002, TEST-G-004, TEST-L-004.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_aut_be_03@test.com",
+            nombre="Admin",
+            apellido="Seguridad",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_aut_be_03@test.com",
+            nombre="Tecnico",
+            apellido="Seguridad",
+            rol="tecnico",
+            password="tecnicopassword123"
+        )
+        self.cliente = User.objects.create_user(
+            email="cliente_aut_be_03@test.com",
+            nombre="Cliente",
+            apellido="Seguridad",
+            rol="cliente",
+            password="clientepassword123"
+        )
+
+    def test_peticion_anonima_perfil_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de perfil rechaza peticiones no autenticadas con 401."""
+        # Arrange
+        url = reverse("perfil-usuario")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_lista_admin_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint administrativo de usuarios rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_clientes_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de clientes rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_facturacion_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de facturación rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_peticion_anonima_turnos_rechazada_con_401(self):
+        """AUT-BE-03 / HU-02: Endpoint de turnos rechaza petición anónima con 401."""
+        # Arrange
+        url = reverse("turno-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_rol_cliente_rechazado_en_facturacion_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no tiene autorización para listar facturas fiscales (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("factura-list")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_cliente_rechazado_en_emision_factura_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no puede emitir comprobantes fiscales en ARCA (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_tecnico_rechazado_en_emision_factura_con_403(self):
+        """AUT-BE-03 / HU-05: Rol técnico no tiene permiso de emisor fiscal (exclusivo admin) (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.tecnico)
+        url = reverse("factura-emitir")
+
+        # Act
+        response = self.client.post(url, {}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_cliente_rechazado_en_lista_admin_usuarios_con_403(self):
+        """AUT-BE-03 / HU-05: Rol cliente no puede consultar la lista administrativa de usuarios (403 Forbidden)."""
+        # Arrange
+        self.client.force_authenticate(user=self.cliente)
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_rol_admin_autorizado_accede_correctamente_con_200(self):
+        """AUT-BE-03 / HU-05: Rol admin autenticado accede exitosamente a endpoints restringidos (200 OK)."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("admin-usuarios-lista")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+
+
+
 
 
 

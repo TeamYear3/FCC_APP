@@ -49,6 +49,15 @@ def notificar_presupuesto_websocket(orden: OrdenTrabajo) -> dict:
         "estado": orden.estado
     }
 
+    import uuid
+    payload["evento_id"] = str(uuid.uuid4())
+
+    try:
+        from core.mongo import registrar_evento_websocket
+        registrar_evento_websocket("notificacion_presupuesto", payload, grupo=f"orden_{orden.numero_ot}")
+    except Exception as e:
+        logger.warning(f"No se pudo registrar evento de presupuesto en MongoDB: {e}")
+
     try:
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
@@ -76,7 +85,9 @@ def notificar_cambio_estado_websocket(orden: OrdenTrabajo, estado_anterior: str)
     Emite una notificación WebSocket en cada cambio de estado de la OrdenTrabajo.
     Publica el evento en el grupo de la orden específica y en el grupo global.
     """
+    import uuid
     payload = {
+        "evento_id": str(uuid.uuid4()),
         "event": "cambio_estado_orden",
         "orden_id": str(orden.id),
         "numero_ot": orden.numero_ot,
@@ -86,6 +97,12 @@ def notificar_cambio_estado_websocket(orden: OrdenTrabajo, estado_anterior: str)
         "estado_nuevo_display": orden.get_estado_display(),
         "monto_total": str(orden.monto_total)
     }
+
+    try:
+        from core.mongo import registrar_evento_websocket
+        registrar_evento_websocket("orden_actualizada", payload, grupo=f"orden_{orden.numero_ot}")
+    except Exception as e:
+        logger.warning(f"No se pudo registrar evento de cambio de estado en MongoDB: {e}")
 
     try:
         from channels.layers import get_channel_layer
@@ -114,7 +131,9 @@ def notificar_adjunto_diagnostico_websocket(adjunto_o_id, orden_id, numero_ot=No
     Emite una notificación WebSocket cuando se sube o elimina una foto de diagnóstico.
     Permite sincronización multidispositivo en tiempo real (PC, smartphone).
     """
+    import uuid
     payload = {
+        "evento_id": str(uuid.uuid4()),
         "event": f"adjunto_{accion}",
         "accion": accion,
         "orden_id": str(orden_id),
@@ -122,6 +141,12 @@ def notificar_adjunto_diagnostico_websocket(adjunto_o_id, orden_id, numero_ot=No
         "adjunto_id": str(adjunto_o_id),
         "adjunto": datos_adjunto
     }
+
+    try:
+        from core.mongo import registrar_evento_websocket
+        registrar_evento_websocket("adjunto_actualizado", payload, grupo=f"orden_{numero_ot}" if numero_ot else "ordenes_actualizaciones")
+    except Exception as e:
+        logger.warning(f"No se pudo registrar evento de adjunto en MongoDB: {e}")
 
     try:
         from channels.layers import get_channel_layer

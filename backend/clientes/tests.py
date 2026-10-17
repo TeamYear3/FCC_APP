@@ -139,6 +139,17 @@ class ClienteAPITestCase(APITestCase):
         self.assertEqual(response.data["nombre"], "Ana")
         self.assertEqual(response.data["dni_cuit"], "12345678")
 
+    def test_listar_clientes_estructura_paginada_estandar_tk170(self):
+        """TK170: Verifica que el listado de clientes responde con la estructura paginada estándar."""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("count", response.data)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)
+        self.assertIn("results", response.data)
+        self.assertIsInstance(response.data["results"], list)
+
     def test_crear_cliente_cuit_valido(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {
@@ -328,3 +339,301 @@ class ClienteAPITestCase(APITestCase):
         }
         response = self.client.patch(url_detalle, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_detalle_cliente_acceso_permitido_titular_tk197(self):
+        """TK197: Verificar que un cliente puede consultar su propia ficha de cliente (GET)."""
+        self.cliente_prueba.usuario = self.cliente_user
+        self.cliente_prueba.save()
+
+        self.client.force_authenticate(user=self.cliente_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        response = self.client.get(url_detalle)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["nombre"], self.cliente_prueba.nombre)
+        self.assertEqual(response.data["dni_cuit"], self.cliente_prueba.dni_cuit)
+
+    def test_detalle_cliente_acceso_denegado_cliente_ajeno_tk197(self):
+        """TK197: Verificar que un cliente recibe 403 Forbidden al consultar la ficha de otro cliente."""
+        otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_ficha_tk197@example.com",
+            nombre="Otro",
+            apellido="Cliente",
+            rol="cliente",
+            password="password123"
+        )
+        self.client.force_authenticate(user=otro_cliente_user)
+        url_detalle = reverse('detalle-cliente', kwargs={'pk': self.cliente_prueba.id})
+        response = self.client.get(url_detalle)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+class ClientesCasosFelicesAPITest(APITestCase):
+    """
+    AUT-BE-01: Suite DRF y cobertura de casos felices en recursos expuestos (TK213).
+    Trazabilidad: HU-06 (Gestión de Clientes) ↔ TEST-D-004.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin_aut_be_01@example.com",
+            nombre="Admin",
+            apellido="AUT",
+            rol="admin",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Esteban",
+            apellido="Quito",
+            tipo_documento="DNI",
+            dni_cuit="20345678",
+            condicion_iva="CF",
+            telefono="1144332211",
+            domicilio="Calle Falsa 123"
+        )
+
+    def test_consulta_listado_clientes_exitoso(self):
+        """HU-06 / TEST-D-004: Verificar que un usuario admin obtiene HTTP 200 OK al listar clientes."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 1)
+
+    def test_consulta_detalle_cliente_exitoso(self):
+        """HU-06 / TEST-D-004: Verificar que un usuario admin obtiene HTTP 200 OK al consultar un cliente por ID."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["dni_cuit"], "20345678")
+        self.assertEqual(response.data["nombre"], "Esteban")
+
+    def test_crear_cliente_payload_valido_exitoso(self):
+        """HU-06 / TEST-D-001: Creación de cliente con datos válidos retornando HTTP 201 Created."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {
+            "nombre": "Gonzalo",
+            "apellido": "Higuain",
+            "tipo_documento": "DNI",
+            "dni_cuit": "31445566",
+            "condicion_iva": "CF",
+            "telefono": "1199887766",
+            "domicilio": "Av del Libertador 1000"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["dni_cuit"], "31445566")
+        self.assertEqual(response.data["nombre"], "Gonzalo")
+
+    def test_actualizar_cliente_payload_valido_exitoso(self):
+        """HU-06 / TEST-D-004: Modificación parcial de cliente retornando HTTP 200 OK."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+        payload = {"telefono": "1122334455"}
+
+        # Act
+        response = self.client.patch(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["telefono"], "1122334455")
+
+
+class MetodosNoPermitidosClientesAPITests(APITestCase):
+    """
+    AUT-BE-02: Validación de verbos HTTP no permitidos (405 Method Not Allowed)
+    en endpoints de colección y detalle de clientes.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_405_cli@example.com",
+            nombre="Admin",
+            apellido="Metodos",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Prueba",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF",
+            telefono="1144332211",
+            domicilio="Av. Rivadavia 2000"
+        )
+
+    def test_coleccion_clientes_rechaza_put_con_405(self):
+        """AUT-BE-02 / HU-06: Endpoint coleccion de clientes no admite PUT global."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.put(url, {"nombre": "Invalido"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("PUT", response.headers["Allow"])
+
+    def test_coleccion_clientes_rechaza_delete_con_405(self):
+        """AUT-BE-02 / HU-06: Endpoint coleccion de clientes no admite DELETE masivo."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("DELETE", response.headers["Allow"])
+
+    def test_detalle_cliente_rechaza_post_con_405(self):
+        """AUT-BE-02 / HU-06: Endpoint detalle de cliente no admite POST."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-cliente", kwargs={"pk": self.cliente.id})
+
+        # Act
+        response = self.client.post(url, {"nombre": "Nuevo"}, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertIn("Allow", response.headers)
+        self.assertNotIn("POST", response.headers["Allow"])
+
+
+class SerializerErroresPorCampoClientesAPITests(APITestCase):
+    """
+    AUT-BE-04: Validación de serializers ante payloads inválidos con errores por campo (400 Bad Request).
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_400_cli@test.com",
+            nombre="Admin",
+            apellido="Validador",
+            rol="admin",
+            password="adminpassword123"
+        )
+
+    def test_crear_cliente_payload_vacio_retorna_400_con_campos_requeridos(self):
+        """AUT-BE-04 / HU-06: Payload vacío retorna 400 Bad Request especificando campos obligatorios."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {}
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("nombre", response.data)
+        self.assertIn("dni_cuit", response.data)
+
+    def test_crear_cliente_dni_formato_invalido_retorna_400_especifico(self):
+        """AUT-BE-04 / HU-06: DNI con longitud menor a 7 dígitos retorna 400 con mensaje en dni_cuit."""
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("crear-cliente")
+        payload = {
+            "nombre": "Esteban",
+            "apellido": "Invalido",
+            "tipo_documento": "DNI",
+            "dni_cuit": "123",
+            "condicion_iva": "CF"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("dni_cuit", response.data)
+
+
+class ClienteOptimizacionORMTests(APITestCase):
+    """
+    TK181 / US-04: Validación de optimización ORM con select_related('usuario')
+    en el listado de clientes para prevenir consultas N+1.
+    """
+
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_orm_test@example.com",
+            nombre="Admin",
+            apellido="ORM",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        # Crear 4 clientes con sus respectivos usuarios vinculados
+        for i in range(1, 5):
+            usr = User.objects.create_user(
+                email=f"cliente_orm_{i}@example.com",
+                nombre=f"Nombre{i}",
+                apellido=f"Apellido{i}",
+                rol="cliente",
+                password="password123"
+            )
+            Cliente.objects.create(
+                usuario=usr,
+                nombre=f"Cliente{i}",
+                apellido=f"Apellido{i}",
+                tipo_documento="DNI",
+                dni_cuit=f"3000000{i}",
+                condicion_iva="CF",
+                telefono=f"351000000{i}",
+                domicilio=f"Calle Test {i}"
+            )
+
+    def test_listado_clientes_precarga_usuario_con_select_related_sin_n_mas_1(self):
+        """
+        Verifica que CrearClienteView utiliza select_related('usuario')
+        manteniendo un número constante y determinista de queries al listar.
+        """
+        # Arrange
+        url = reverse("crear-cliente")
+
+        # Act & Assert
+        # 1 query: conteo o lista unificada con JOIN de usuario
+        with self.assertNumQueries(2):  # 1 count (paginador) + 1 select_related con JOIN a auth_user
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 4)
+
+        # Comprobar que en el queryset directo la relación usuario está en cache sin queries extra
+        from clientes.views import CrearClienteView
+        view = CrearClienteView()
+        qs = view.get_queryset()
+        with self.assertNumQueries(1):
+            lista_clientes = list(qs[:4])
+            for c in lista_clientes:
+                if c.usuario:
+                    _ = c.usuario.email
+

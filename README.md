@@ -1,5 +1,7 @@
 # FCC_APP - Sistema de Gestión Comercial y Operativa para Talleres Mecánicos
 
+> **Versión Estable:** `v1.0.0` (Sprint 4 - Release Oficial) | **Arquitectura:** Monorepo Modular Fullstack
+
 Plataforma web integral de arquitectura modular diseñada para digitalizar de punta a punta la administración operativa, el control de órdenes de trabajo (OT) y la gestión comercial/fiscal de talleres mecánicos automotrices. Desarrollado por estudiantes de la Tecnicatura Superior en Desarrollo de Software (TSDS) - ISPC, 2026.
 
 ---
@@ -179,59 +181,89 @@ El sistema cuenta con tres perfiles de usuario preconfigurados con permisos dife
 - `DELETE /api/clientes/<id>/` - Baja lógica del cliente.
 
 ### 🚗 Vehículos (`/api/vehiculos/`)
-- `GET /api/vehiculos/` - Listado general de vehículos vinculados a clientes.
+- `GET /api/vehiculos/` - Listado general de vehículos vinculados a clientes (con optimización `select_related`).
 - `POST /api/vehiculos/` - Registro de nuevo vehículo con validación de patente.
 - `GET /api/vehiculos/<id>/` - Ficha técnica e historial de reparaciones del vehículo.
 - `PUT/PATCH /api/vehiculos/<id>/` - Modificación de datos del vehículo.
+- `GET /api/vehiculos/<id>/mantenimientos/` - Consulta de planes de mantenimiento preventivo y desgaste por kilometraje.
+- `POST /api/vehiculos/<id>/mantenimientos/` - Asignación de plan de mantenimiento preventivo programado.
 
 ### 📋 Órdenes de Trabajo y Presupuestos (`/api/ordenes/`)
 - `GET /api/ordenes/` - Listado de órdenes de trabajo con filtros avanzados (estado, fecha, complejidad, patente).
 - `POST /api/ordenes/` - Creación de nueva orden de trabajo con checklist inicial.
-- `GET /api/ordenes/<id>/` - Expediente operativo completo de la OT.
+- `GET /api/ordenes/<id>/` - Expediente operativo completo de la OT con precarga de ítems.
 - `PATCH /api/ordenes/<id>/` - Actualización de estado operativo (ingresado, en_proceso, en_pausa, finalizado, entregado).
 - `POST /api/ordenes/<id>/presupuesto/` - Registro y actualización de ítems de presupuesto (mano de obra y repuestos).
-- `POST /api/ordenes/<id>/aprobar/` - Aprobación del presupuesto por parte del cliente (presencial, llamada, WhatsApp).
+- `POST /api/ordenes/<id>/aprobar/` - Aprobación del presupuesto por parte del cliente (presencial, llamada, WhatsApp o portal).
+- `POST /api/ordenes/<id>/rechazar/` - Rechazo formal del presupuesto por el cliente con registro del motivo técnico.
 - `POST /api/ordenes/<id>/cobro/` - Registro de cobro operativo (efectivo, transferencia, tarjeta).
-- `GET /api/ordenes/<id>/pdf/` - Generación y descarga dinámica del comprobante PDF de la OT.
-- `POST /api/ordenes/<id>/adjuntos/` - Carga de fotos de evidencia mecánica y diagnóstico.
+- `GET /api/ordenes/<id>/pdf/` - Generación y descarga dinámica del comprobante PDF de la OT con ReportLab.
+- `POST /api/ordenes/<id>/adjuntos/` - Carga de fotos de evidencia mecánica y diagnóstico vinculadas a ítems.
 - `DELETE /api/ordenes/adjuntos/<id>/` - Eliminación de evidencia fotográfica.
+- `GET /api/ordenes/reportes/rentabilidad/` - Dashboard de métricas financieras, margen de rentabilidad y servicios más demandados con filtros de periodo.
 
 ### 🗓️ Agenda y Turnos (`/api/turnos/`)
-- `GET /api/turnos/` - Consulta de turnos agendados en el taller para FullCalendar.
-- `POST /api/turnos/` - Agendamiento de nuevo turno con validación de cupo diario (máximo 2 por defecto, con opción de sobre-cupo forzado).
-- `PUT/PATCH /api/turnos/<id>/` - Reprogramación y cambio de estado de turnos.
+- `GET /api/turnos/` - Consulta de turnos agendados en el taller para FullCalendar (con filtro por cliente en portal).
+- `POST /api/turnos/` - Agendamiento de nuevo turno con validación de cupo diario (máximo 2 por defecto, con opción de sobre-cupo forzado para administrador).
+- `POST /api/turnos/reservar/` - Reserva online de turnos para clientes desde el portal con validación de vehículo propio y estado pendiente.
+- `PUT/PATCH /api/turnos/<id>/` - Reprogramación y cambio de estado de turnos con notificación automática por email.
 - `DELETE /api/turnos/<id>/` - Cancelación y eliminación física del turno.
 
 ### 🧾 Facturación y ARCA (`/api/facturacion/`)
 - `GET /api/facturacion/` - Listado de comprobantes y estado fiscal.
-- `POST /api/facturacion/emitir/` - Emisión de Factura Electrónica sincronizada con la API de ARCA (ex AFIP).
+- `POST /api/facturacion/emitir/` - Emisión de Factura Electrónica sincronizada con la API de ARCA (ex AFIP) con guarda de idempotencia fiscal.
 - `GET /api/facturacion/<id>/comprobante/` - Descarga de comprobante fiscal.
 
 ### ⚡ Canales de Tiempo Real (WebSockets)
-- `ws://localhost:8000/ws/notificaciones/` - Canal de eventos y notificaciones push en vivo para actualización instantánea de estados de OT, fotos de diagnóstico y alertas de cupo en taller.
+- `ws://localhost:8000/ws/notificaciones/` - Canal de eventos y notificaciones push en vivo respaldado por Redis Channel Layer para actualización instantánea de estados de OT, fotos de diagnóstico y alertas de taller.
 
 ---
 
-## 🧪 Ejecución de Pruebas Unitarias
+## 🧪 Pirámide de Automatización de Pruebas (Sprint 4 V&V)
 
-### Backend (Django REST Test Suite)
+El aseguramiento de la calidad en **FCC_APP** se implementa bajo una pirámide de automatización multicapa:
+
+### Capa 1: Backend Unit & Integration Tests (DRF + PostgreSQL + Coverage)
 ```bash
-# Ejecutar todas las pruebas unitarias del backend
+# Ejecutar la suite completa sobre base de datos PostgreSQL de test (patrón AAA)
 python manage.py test --settings=config.settings.test
 
-# Ejecutar pruebas de un módulo específico (ej. órdenes)
-python manage.py test ordenes --settings=config.settings.test
+# Medir cobertura de código con coverage.py (meta ≥ 80%)
+coverage run --source='.' manage.py test --settings=config.settings.test
+coverage report -m
+coverage html
 ```
 
-### Frontend (Angular Test Suite con Vitest)
+### Capa 2: API de Caja Negra (Postman v2.1 + Newman CLI)
+```bash
+# Ejecutar colección de API con entorno dinámico y generación de reporte HTML
+newman run tests/api/coleccion.json -e tests/api/entorno.local.json -r cli,htmlextra --reporter-htmlextra-export tests/api/reports/report_newman.html
+```
+
+### Capa 3: Frontend Unitario y E2E (Vitest + Playwright POM)
 ```bash
 cd frontend
 
-# Ejecutar suite de pruebas unitarias en modo headless (una sola corrida)
+# Pruebas unitarias de componentes y servicios Angular
 npm test -- --watch=false
 
-# Validar compilación de producción de Angular
+# Validar compilación de producción de Angular AOT
 npm run build
+
+# Pruebas de integración E2E con Playwright (Page Object Model)
+npm run test:e2e
+
+# Ejecutar flujos críticos específicos (Autenticación, Clientes/Vehículos, Taller)
+npm run test:e2e:smoke
+npm run test:e2e:taller
+```
+
+### Transversal: Accesibilidad Web (WCAG 2.2 Nivel AA)
+```bash
+cd frontend
+
+# Auditoría automatizada de accesibilidad con axe-core en Playwright
+npm run test:a11y
 ```
 
 ---
@@ -245,6 +277,7 @@ Dentro de la arquitectura de **FCC_APP**, el modelo de datos utiliza un enfoque 
    - **`audit_logs` (Historial de Trazabilidad de OTs):** Registro inmutable tipo *append-only* de cada cambio de estado, diagnóstico técnico y movimiento de repuestos en los expedientes de taller.
    - **`arca_error_logs` (Telemetría tributaria de ARCA):** Payload JSON estructurado con las respuestas, excepciones y tokens de autenticación devueltos por la API de ARCA para auditar rechazos o inconsistencias de facturación fiscal.
    - **`websocket_events` (Historial de Eventos en Tiempo Real):** Registro de mensajería y notificaciones push transmitidas mediante Django Channels / Daphne entre Administradores y Técnicos en taller.
+   - **`obd2_diagnosticos` (Diagnósticos Técnicos y Telemetría Vehicular):** Registro de lecturas electrónicas y códigos de falla OBD-II relevados durante el diagnóstico del vehículo.
 
 ---
 

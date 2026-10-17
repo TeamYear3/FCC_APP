@@ -11,10 +11,16 @@ class CrearVehiculoView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        base_qs = (
+            Vehiculo.objects.filter(activo=True)
+            .select_related('cliente__usuario')
+            .prefetch_related('mantenimientos_programados')
+            .order_by('-creado_en')
+        )
         if getattr(user, 'rol', None) == 'cliente':
-            return Vehiculo.objects.filter(activo=True, cliente__usuario=user)
+            return base_qs.filter(cliente__usuario=user)
 
-        queryset = Vehiculo.objects.filter(activo=True)
+        queryset = base_qs
         cliente_id = self.request.query_params.get('cliente')
         if cliente_id:
             queryset = queryset.filter(cliente_id=cliente_id)
@@ -32,11 +38,23 @@ class DetalleVehiculoView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
         return [IsAuthenticated(), EsAdministrador()]
 
     def get_queryset(self):
-        return Vehiculo.objects.filter(activo=True)
+        return (
+            Vehiculo.objects.filter(activo=True)
+            .select_related('cliente__usuario')
+            .prefetch_related('mantenimientos_programados')
+        )
+
+    def get_object(self):
+        obj = super().get_object()
+        user = self.request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            if not obj.cliente or obj.cliente.usuario_id != user.id:
+                raise PermissionDenied("No tiene autorización para consultar este vehículo.")
+        return obj
 
     def perform_destroy(self, instance):
         if instance.ordenes.exists():
@@ -310,7 +328,7 @@ class MantenimientoProgramadoView(generics.ListCreateAPIView):
             if not vehiculo.cliente or vehiculo.cliente.usuario_id != user.id:
                 raise PermissionDenied("No tiene autorización para consultar los mantenimientos de este vehículo.")
 
-        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).order_by('-creado_en')
+        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).select_related('vehiculo').order_by('-creado_en')
 
     def perform_create(self, serializer):
         vehiculo_id = self.kwargs.get('pk')
@@ -320,6 +338,42 @@ class MantenimientoProgramadoView(generics.ListCreateAPIView):
             raise NotFound("El vehículo especificado no existe.")
 
         serializer.save(vehiculo=vehiculo)
+
+
+class DetalleMantenimientoProgramadoView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = MantenimientoProgramadoSerializer
+    lookup_field = 'pk'
+    lookup_url_kwarg = 'mantenimiento_pk'
+
+    def get_permissions(self):
+        if self.request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def check_object_permissions(self, request, obj):
+        user = request.user
+        rol = getattr(user, 'rol', None)
+        if rol in ('admin', 'tecnico'):
+            return
+        if rol == 'cliente' and request.method in ('GET', 'HEAD', 'OPTIONS'):
+            vehiculo = getattr(obj, 'vehiculo', None)
+            if vehiculo and vehiculo.cliente and vehiculo.cliente.usuario_id == user.id:
+                return
+        raise PermissionDenied("No tiene autorización para acceder a este mantenimiento.")
+
+    def get_queryset(self):
+        vehiculo_id = self.kwargs.get('pk')
+        try:
+            vehiculo = Vehiculo.objects.select_related('cliente__usuario').get(id=vehiculo_id)
+        except Vehiculo.DoesNotExist:
+            raise NotFound("El vehículo especificado no existe.")
+
+        user = self.request.user
+        if getattr(user, 'rol', None) == 'cliente':
+            if not vehiculo.cliente or vehiculo.cliente.usuario_id != user.id:
+                raise PermissionDenied("No tiene autorización para consultar los mantenimientos de este vehículo.")
+
+        return MantenimientoProgramado.objects.filter(vehiculo_id=vehiculo_id).select_related('vehiculo')
 
 
 

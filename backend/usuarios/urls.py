@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     GoogleAuthView,
+    VincularGoogleView,
     LogoutView,
     DevLoginView,
     LoginView,
@@ -16,6 +17,7 @@ from .views import (
 
 urlpatterns = [
     path("auth/google/", GoogleAuthView.as_view(), name="google-auth"),
+    path("auth/vincular-google/", VincularGoogleView.as_view(), name="vincular-google"),
     path("auth/dev-login/", DevLoginView.as_view(), name="dev-login"),
     path("auth/login/", LoginView.as_view(), name="login"),
     path("auth/registro/", RegistroView.as_view(), name="registro"),

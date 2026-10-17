@@ -169,13 +169,93 @@
     </div>
   </div>
 
-  <!-- Cuadrícula del Calendario Mensual -->
+  <!-- VISTA MOBILE: AGENDA DE VENCIMIENTOS (TK188) -->
+  <div class="sm:hidden space-y-4">
+    <div class="flex items-center justify-between px-1">
+      <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">
+        Vencimientos de {{ nombreMesActual }}
+      </span>
+      <span class="px-2 py-0.5 rounded-badge bg-white/10 text-white text-[11px] font-bold">
+        {{ diasConFacturas.length }} días activos
+      </span>
+    </div>
+
+    @if (diasConFacturas.length === 0) {
+      <div class="bg-color-surface-container border border-white/10 rounded-card p-6 text-center text-zinc-400 space-y-2">
+        <span class="text-3xl block">📅</span>
+        <p class="text-sm font-semibold text-white">Sin vencimientos para este mes</p>
+        <p class="text-xs text-zinc-500">No se encontraron facturas pendientes de cobro o vencimientos registrados en este período.</p>
+      </div>
+    } @else {
+      <div class="space-y-3">
+        @for (day of diasConFacturas; track day.dateString) {
+          <div
+            class="bg-color-surface-container border rounded-card p-3.5 space-y-2.5 transition-all shadow-md"
+            [ngClass]="{
+              'border-color-primary-accent/60 bg-black/60': day.isToday,
+              'border-white/10 bg-black/40': !day.isToday
+            }"
+          >
+            <!-- Cabecera del Día -->
+            <div class="flex items-center justify-between border-b border-white/10 pb-2">
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+                  [ngClass]="day.isToday ? 'bg-color-primary-accent text-black' : 'bg-white/15 text-white'"
+                >
+                  {{ day.dayNumber }}
+                </span>
+                <span class="text-xs font-bold text-white">
+                  {{ dayNames[day.date.getDay()] }} - {{ day.dateString }}
+                </span>
+                @if (day.isToday) {
+                  <span class="px-1.5 py-0.2 rounded bg-color-primary-accent/20 text-color-primary-accent text-[10px] font-bold">
+                    Hoy
+                  </span>
+                }
+              </div>
+              <span class="text-[11px] text-zinc-400 font-semibold">
+                {{ day.facturas.length }} {{ day.facturas.length === 1 ? 'doc' : 'docs' }}
+              </span>
+            </div>
+
+            <!-- Listado de Facturas del Día -->
+            <div class="space-y-2">
+              @for (fact of day.facturas; track fact.id) {
+                <div
+                  (click)="abrirDetalle(fact)"
+                  class="p-2.5 rounded-card border cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex flex-col gap-1.5"
+                  [ngClass]="{
+                    'bg-emerald-500/10 border-emerald-500/30 text-emerald-300': fact.semaforo === 'pagada',
+                    'bg-green-500/10 border-green-500/30 text-green-200': fact.semaforo === 'a_vencer',
+                    'bg-rose-500/10 border-rose-500/30 text-rose-300': fact.semaforo === 'vencida',
+                    'bg-zinc-500/10 border-zinc-500/30 text-zinc-300': fact.semaforo === 'sin_interaccion'
+                  }"
+                >
+                  <div class="flex items-center justify-between">
+                    <span class="font-mono text-xs font-black">{{ fact.numero_comprobante }}</span>
+                    <span class="font-mono text-sm font-black text-white">${{ fact.total | number: '1.2-2' }}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-[11px] text-zinc-400">
+                    <span class="truncate max-w-[180px]">{{ fact.cliente }}</span>
+                    <span class="font-mono">{{ fact.patente }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- VISTA DESKTOP / TABLET: Cuadrícula del Calendario Mensual (TK188) -->
   <div
-    class="bg-color-surface-container border border-white/10 rounded-card p-4 shadow-2xl overflow-x-auto"
+    class="hidden sm:block bg-color-surface-container border border-white/10 rounded-card p-4 shadow-2xl overflow-x-auto"
   >
     <!-- Encabezados de Días de la Semana -->
     <div
-      class="grid grid-cols-7 gap-2 min-w-[700px] mb-2 text-center text-xs font-extrabold uppercase tracking-wider text-zinc-400"
+      class="grid grid-cols-7 gap-2 min-w-[620px] md:min-w-0 mb-2 text-center text-xs font-extrabold uppercase tracking-wider text-zinc-400"
     >
       @for (d of dayNames; track d) {
         <div class="py-2">
@@ -185,7 +265,7 @@
     </div>
 
     <!-- Celdas de Días -->
-    <div class="grid grid-cols-7 gap-2 min-w-[700px]">
+    <div class="grid grid-cols-7 gap-2 min-w-[620px] md:min-w-0">
       @for (day of calendarDays(); track day) {
         <div
           class="min-h-[110px] p-2 rounded-card border transition-all flex flex-col justify-between"
