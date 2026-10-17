@@ -27,6 +27,7 @@ export interface MantenimientoProgramadoCreatePayload {
 export interface MantenimientoProgramadoResponse extends MantenimientoProgramadoCreatePayload {
   id: string;
   vehiculo: string;
+  porcentaje_desgaste?: number;
   completado_en?: string | null;
   creado_en: string;
 }

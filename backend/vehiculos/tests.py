@@ -1217,3 +1217,187 @@ class VehiculoOptimizacionORMTests(APITestCase):
         self.assertEqual(response.data["patente"], self.vehiculos[0].patente)
         self.assertIn("mantenimientos_programados", response.data)
 
+
+class MantenimientoProgramadoAPITests(APITestCase):
+    """
+    TK211 / US-21: Pruebas de integración del formulario y endpoints de mantenimientos programados.
+    """
+    def setUp(self):
+        # Arrange
+        self.admin = User.objects.create_user(
+            email="admin_maint@example.com",
+            nombre="Admin",
+            apellido="Maint",
+            rol="admin",
+            password="adminpassword123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_maint@example.com",
+            nombre="Cliente",
+            apellido="Maint",
+            rol="cliente",
+            password="password123"
+        )
+        self.cliente = Cliente.objects.create(
+            usuario=self.cliente_user,
+            nombre="Titular",
+            apellido="Maint",
+            tipo_documento="DNI",
+            dni_cuit="28776655",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA200BB",
+            marca="Ford",
+            modelo="Ranger",
+            kilometraje=30000,
+            kilometraje_actual=30000,
+            activo=True
+        )
+
+    def test_admin_puede_crear_mantenimiento_programado_exito(self):
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {
+            "tipo_servicio": "Cambio de Distribución",
+            "kilometraje_objetivo": 60000,
+            "fecha_limite": "2027-01-01"
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["tipo_servicio"], "Cambio de Distribución")
+        self.assertEqual(response.data["kilometraje_objetivo"], 60000)
+        # 30.000 / 60.000 = 50.0%
+        self.assertEqual(response.data["porcentaje_desgaste"], 50.0)
+        self.assertFalse(response.data["completado"])
+
+    def test_cliente_puede_consultar_mantenimientos_de_su_vehiculo(self):
+        # Arrange
+        MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Filtro de Aire",
+            kilometraje_objetivo=40000
+        )
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        results = response.data.get("results", response.data)
+        self.assertGreaterEqual(len(results), 1)
+        self.assertEqual(results[0]["tipo_servicio"], "Filtro de Aire")
+        # 30000 / 40000 = 75.0%
+        self.assertEqual(results[0]["porcentaje_desgaste"], 75.0)
+
+    def test_cliente_prohibido_crear_mantenimiento_programado(self):
+        # Arrange
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {
+            "tipo_servicio": "Intento Cliente",
+            "kilometraje_objetivo": 50000
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_crear_mantenimiento_kilometraje_invalido_retorna_400(self):
+        # Arrange
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id})
+        payload = {
+            "tipo_servicio": "Pastillas",
+            "kilometraje_objetivo": 0
+        }
+
+        # Act
+        response = self.client.post(url, payload, format="json")
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("kilometraje_objetivo", response.data)
+
+    def test_detalle_mantenimiento_programado_admin_exito(self):
+        # Arrange
+        maint = MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Cambio de Correa",
+            kilometraje_objetivo=60000
+        )
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id, "mantenimiento_pk": maint.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(maint.id))
+        self.assertEqual(response.data["tipo_servicio"], "Cambio de Correa")
+        self.assertEqual(response.data["porcentaje_desgaste"], 50.0)
+
+    def test_detalle_mantenimiento_programado_cliente_titular_exito(self):
+        # Arrange
+        maint = MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Revisión de Frenos",
+            kilometraje_objetivo=40000
+        )
+        self.client.force_authenticate(user=self.cliente_user)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id, "mantenimiento_pk": maint.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(maint.id))
+        self.assertEqual(response.data["porcentaje_desgaste"], 75.0)
+
+    def test_detalle_mantenimiento_programado_cliente_ajeno_retorna_403(self):
+        # Arrange
+        otro_cliente_user = User.objects.create_user(
+            email="otro_cliente_maint@example.com",
+            nombre="Otro",
+            apellido="Cliente",
+            rol="cliente",
+            password="password123"
+        )
+        maint = MantenimientoProgramado.objects.create(
+            vehiculo=self.vehiculo,
+            tipo_servicio="Revisión de Frenos",
+            kilometraje_objetivo=40000
+        )
+        self.client.force_authenticate(user=otro_cliente_user)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": self.vehiculo.id, "mantenimiento_pk": maint.id})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_detalle_mantenimiento_vehiculo_inexistente_retorna_404(self):
+        # Arrange
+        import uuid
+        self.client.force_authenticate(user=self.admin)
+        url = reverse("detalle-mantenimiento-vehiculo", kwargs={"pk": uuid.uuid4(), "mantenimiento_pk": uuid.uuid4()})
+
+        # Act
+        response = self.client.get(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
