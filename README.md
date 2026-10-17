@@ -1,6 +1,6 @@
 # FCC_APP - Sistema de Gestión Comercial y Operativa para Talleres Mecánicos
 
-> **Versión Estable:** `v0.4.0` (Sprint 4) | **Arquitectura:** Monorepo Modular Fullstack
+> **Versión Estable:** `v1.0.0` (Sprint 4 - Release Oficial) | **Arquitectura:** Monorepo Modular Fullstack
 
 Plataforma web integral de arquitectura modular diseñada para digitalizar de punta a punta la administración operativa, el control de órdenes de trabajo (OT) y la gestión comercial/fiscal de talleres mecánicos automotrices. Desarrollado por estudiantes de la Tecnicatura Superior en Desarrollo de Software (TSDS) - ISPC, 2026.
 
