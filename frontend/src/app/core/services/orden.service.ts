@@ -279,6 +279,13 @@ export class OrdenService {
       payloadSanitizado
     );
   }
+
+  /**
+   * Eliminar una Orden de Trabajo definitivamente (DELETE /api/ordenes/<id>/)
+   */
+  eliminarOrden(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}${id}/`);
+  }
 }
 
 

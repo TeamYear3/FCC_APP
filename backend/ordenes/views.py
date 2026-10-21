@@ -139,18 +139,20 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
 CrearOrdenTrabajoView = ListarCrearOrdenTrabajoView
 
 
-class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
+class DetalleOrdenTrabajoView(generics.RetrieveDestroyAPIView):
     """
-    TK095 & TK183: Endpoint GET /api/ordenes/<uuid:id>/
-    Retorna el detalle completo y consolidado de una Orden de Trabajo individual
-    con sus items de presupuesto, adjuntos de diagnóstico e historial de estados precargados.
-    Restringe el acceso si el rol es 'cliente' y la OT no pertenece a sus vehículos.
+    TK095, TK183 & TK184: Endpoint GET /api/ordenes/<uuid:id>/ y DELETE /api/ordenes/<uuid:id>/
+    Retorna el detalle consolidado de una Orden de Trabajo o permite su eliminación
+    definitiva con registro de auditoría NoSQL en MongoDB.
+    Restringe la eliminación a Administradores y Técnicos autorizados.
     """
     serializer_class = DetalleOrdenTrabajoSerializer
     lookup_field = 'id'
     lookup_url_kwarg = 'id'
 
     def get_permissions(self):
+        if self.request.method == 'DELETE':
+            return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
         return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get_queryset(self):
@@ -175,6 +177,25 @@ class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
             return
         else:
             raise PermissionDenied("No tiene permisos para realizar esta acción.")
+
+    def perform_destroy(self, instance):
+        orden_id = str(instance.id)
+        numero_ot = instance.numero_ot
+        estado_previo = instance.estado
+
+        try:
+            from core.mongo import registrar_auditoria_ot
+            registrar_auditoria_ot(
+                orden_id=orden_id,
+                estado_anterior=estado_previo,
+                estado_nuevo='ELIMINADO',
+                usuario=self.request.user,
+                metadata={"numero_ot": numero_ot, "motivo": "Eliminación directa de orden de trabajo"}
+            )
+        except Exception:
+            pass
+
+        instance.delete()
 
 
 class AgregarManoDeObraView(APIView):

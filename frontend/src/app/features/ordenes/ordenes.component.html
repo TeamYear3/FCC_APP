@@ -328,12 +328,13 @@
         <div class="block sm:hidden space-y-3">
           @for (orden of ordenesMostradas(); track orden.id) {
             <div
-              (click)="verOrden(orden)"
+              (click)="abrirModalPreview(orden)"
               class="p-4 rounded-2xl border transition-all cursor-pointer space-y-3"
               [ngClass]="{
                 'bg-color-primary-accent/15 border-color-primary-accent shadow-lg': orden.id === ordenActiva()?.id,
                 'bg-black/40 border-white/10 hover:border-white/20': orden.id !== ordenActiva()?.id
               }"
+              title="Haz clic para ver resumen rápido de la orden"
             >
               <!-- Cabecera de la Tarjeta Móvil -->
               <div class="flex items-start justify-between gap-2">
@@ -381,18 +382,28 @@
                 </div>
               </div>
 
-              <!-- Botón Ver Orden Táctil -->
-              <div class="pt-2 border-t border-white/5" (click)="$event.stopPropagation()">
+              <!-- Botones de Acción Táctil (Ver Orden y Eliminar) -->
+              <div class="pt-2 border-t border-white/5 flex items-center gap-2" (click)="$event.stopPropagation()">
                 <button
                   type="button"
                   (click)="verOrden(orden)"
-                  class="w-full min-h-[44px] px-4 rounded-xl bg-color-primary-accent text-black font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer border-0 hover:bg-color-primary-accent/90 active:scale-[0.98]"
+                  class="flex-1 min-h-[42px] px-4 rounded-xl bg-color-primary-accent text-black font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer border-0 hover:bg-color-primary-accent/90 active:scale-[0.98]"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
                   <span>Ver Orden</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="abrirModalEliminar(orden)"
+                  title="Eliminar orden de trabajo"
+                  class="min-h-[42px] px-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -405,24 +416,22 @@
             <thead>
               <tr class="border-b border-white/10 text-zinc-400 font-semibold uppercase tracking-wider text-[11px]">
                 <th class="py-3 px-3">OT #</th>
-                <th class="py-3 px-3">Vehículo / Patente</th>
-                <th class="py-3 px-3">Titular / Cliente</th>
-                <th class="py-3 px-3">Fecha Ingreso</th>
+                <th class="py-3 px-3">Vehículo</th>
+                <th class="py-3 px-3">Fecha</th>
                 <th class="py-3 px-3">Complejidad</th>
                 <th class="py-3 px-3">Estado</th>
-                <th class="py-3 px-3 text-right">Presupuesto</th>
-                <th class="py-3 px-3 text-center"></th>
+                <th class="py-3 px-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5">
               @for (orden of ordenesMostradas(); track orden.id) {
                 <tr
-                  (click)="verOrden(orden)"
-                  class="transition-colors cursor-pointer group"
+                  (click)="abrirModalPreview(orden)"
+                  class="transition-colors cursor-pointer group hover:bg-white/5"
                   [ngClass]="{
-                    'bg-color-primary-accent/10 border-l-4 border-color-primary-accent font-medium': orden.id === ordenActiva()?.id,
-                    'hover:bg-white/5': orden.id !== ordenActiva()?.id
+                    'bg-color-primary-accent/10 border-l-4 border-color-primary-accent font-medium': orden.id === ordenActiva()?.id
                   }"
+                  title="Haz clic para ver resumen rápido de la orden"
                 >
                   <!-- Columna N° OT -->
                   <td class="py-3 px-3 whitespace-nowrap">
@@ -437,7 +446,7 @@
                     </span>
                   </td>
 
-                  <!-- Columna Vehículo / Patente -->
+                  <!-- Columna Vehículo -->
                   <td class="py-3 px-3">
                     <div class="font-bold text-white text-xs">
                       {{ orden.vehiculo_marca_modelo || 'Vehículo ' + (orden.vehiculo_patente || '') }}
@@ -447,12 +456,6 @@
                         {{ orden.vehiculo_patente || 'S/D' }}
                       </span>
                     </div>
-                  </td>
-
-                  <!-- Columna Titular / Cliente -->
-                  <td class="py-3 px-3 whitespace-nowrap">
-                    <div class="text-white font-medium">{{ orden.cliente_nombre || 'Cliente General' }}</div>
-                    <div class="text-zinc-400 text-[11px]">{{ orden.cliente_telefono || 'Sin teléfono' }}</div>
                   </td>
 
                   <!-- Columna Fecha Ingreso -->
@@ -491,14 +494,9 @@
                     </div>
                   </td>
 
-                  <!-- Columna Presupuesto -->
-                  <td class="py-3 px-3 text-right whitespace-nowrap font-mono font-bold text-white">
-                    $ {{ (orden.monto_total || 0) | number:'1.2-2' }}
-                  </td>
-
-                  <!-- Columna Ver Orden -->
-                  <td class="py-3 px-3 text-center whitespace-nowrap">
-                    <div class="inline-flex items-center justify-center" (click)="$event.stopPropagation()">
+                  <!-- Columna Acciones: Ver Orden y Eliminar -->
+                  <td class="py-3 px-3 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center gap-1.5 justify-end" (click)="$event.stopPropagation()">
                       <!-- Botón Ver Orden Principal -->
                       <button
                         type="button"
@@ -511,6 +509,18 @@
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                         <span>Ver Orden</span>
+                      </button>
+
+                      <!-- Botón Eliminar Orden -->
+                      <button
+                        type="button"
+                        (click)="abrirModalEliminar(orden)"
+                        title="Eliminar orden de trabajo"
+                        class="min-h-[34px] px-2.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500 border border-red-500/30 text-red-400 hover:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1 shadow-sm active:scale-[0.98]"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -607,6 +617,19 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
             <span>Cambiar Estado</span>
+          </button>
+
+          <!-- Eliminar OT -->
+          <button
+            type="button"
+            (click)="abrirModalEliminar(ordenActiva()!)"
+            class="min-h-[42px] px-3.5 py-2 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+            title="Eliminar orden de trabajo permanentemente"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Eliminar</span>
           </button>
         </div>
       </div>
@@ -1137,6 +1160,195 @@
               <span>Confirmar y Pasar a EN PROCESO</span>
             }
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de Confirmación de Eliminación Definitiva -->
+  @if (mostrarModalEliminar() && ordenAEliminar()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" (click)="cerrarModalEliminar()">
+      <div
+        class="bg-color-surface-container border border-red-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 text-white"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Icono y Título -->
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0 text-red-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">¿Eliminar Orden de Trabajo?</h3>
+            <p class="text-xs text-zinc-400 mt-1">
+              Orden <span class="font-mono font-bold text-color-primary-accent">#{{ ordenAEliminar()?.numero_ot || (ordenAEliminar()?.id ? ordenAEliminar()?.id?.slice(0, 8) : 'S/N') }}</span>
+              · {{ ordenAEliminar()?.vehiculo_marca_modelo }} ({{ ordenAEliminar()?.vehiculo_patente }})
+            </p>
+          </div>
+        </div>
+
+        <!-- Alerta Irreversible -->
+        <div class="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-200 leading-relaxed">
+          <strong>⚠️ Advertencia:</strong> Si eliminas esta orden de trabajo <strong>no se va a poder recuperar</strong>. Se eliminarán de forma permanente todos los ítems presupuestados, mano de obra, repuestos y evidencias registradas.
+        </div>
+
+        @if (errorEliminacion()) {
+          <div class="p-3 rounded-lg bg-red-900/40 border border-red-700 text-xs text-red-200">
+            {{ errorEliminacion() }}
+          </div>
+        }
+
+        <!-- Botones de Acción -->
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="cerrarModalEliminar()"
+            [disabled]="eliminandoOrden()"
+            class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white font-bold text-xs transition-all cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="confirmarEliminacion()"
+            [disabled]="eliminandoOrden()"
+            class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-[0.98] disabled:opacity-50"
+          >
+            @if (eliminandoOrden()) {
+              <div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Eliminando...</span>
+            } @else {
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Sí, eliminar definitivamente</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de Vista Rápida / Preview (Clic en Fila) -->
+  @if (mostrarModalPreview() && ordenPreview()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" (click)="cerrarModalPreview()">
+      <div
+        class="bg-color-surface-container border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-white"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Cabecera del Preview -->
+        <div class="flex items-start justify-between border-b border-white/10 pb-4">
+          <div>
+            <div class="flex items-center gap-2.5">
+              <span class="font-mono text-2xl font-black text-color-primary-accent">
+                #{{ ordenPreview()?.numero_ot || (ordenPreview()?.id ? 'OT-' + ordenPreview()?.id?.slice(0, 8) : 'S/N') }}
+              </span>
+              <span
+                class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide"
+                [ngClass]="getEstadoBadgeClass(ordenPreview()!.estado)"
+              >
+                {{ ordenPreview()?.estado?.replace('_', ' ') }}
+              </span>
+            </div>
+            <p class="text-xs text-zinc-400 mt-1">Vista previa rápida del expediente</p>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarModalPreview()"
+            class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Datos del Vehículo y Cliente -->
+        <div class="grid grid-cols-2 gap-3 text-xs bg-black/30 border border-white/5 rounded-xl p-3.5">
+          <div>
+            <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Vehículo</span>
+            <span class="font-bold text-white">{{ ordenPreview()?.vehiculo_marca_modelo || 'Vehículo Registrado' }}</span>
+            <span class="block font-mono text-color-primary-accent font-bold mt-0.5">{{ ordenPreview()?.vehiculo_patente || 'S/D' }}</span>
+          </div>
+          <div>
+            <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Titular / Cliente</span>
+            <span class="font-bold text-white">{{ ordenPreview()?.cliente_nombre || 'Cliente General' }}</span>
+            <span class="block text-zinc-400 text-[11px] mt-0.5">Tel: {{ ordenPreview()?.cliente_telefono || 'No registrado' }}</span>
+          </div>
+        </div>
+
+        <!-- Diagnóstico y Fechas -->
+        <div class="space-y-2 text-xs">
+          <div>
+            <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Diagnóstico / Falla</span>
+            <p class="text-zinc-200 mt-0.5 bg-black/20 p-2.5 rounded-lg border border-white/5 italic">
+              "{{ ordenPreview()?.descripcion_problema || 'Inspección técnica general' }}"
+            </p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <div>
+              <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Ingreso</span>
+              <span class="font-medium text-white">{{ ordenPreview()?.fecha_ingreso | date:'dd MMM yyyy' }}</span>
+            </div>
+            <div>
+              <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Complejidad</span>
+              <span
+                class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-0.5"
+                [ngClass]="getComplejidadBadgeClass(ordenPreview()?.complejidad)"
+              >
+                Complejidad {{ ordenPreview()?.complejidad || 'Media' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presupuesto y Cobro -->
+        <div class="p-3.5 rounded-xl bg-color-primary-accent/10 border border-color-primary-accent/30 flex items-center justify-between">
+          <div>
+            <span class="text-[10px] text-zinc-400 block uppercase font-semibold">Presupuesto Estimado</span>
+            <span class="font-mono text-lg font-black text-color-primary-accent">
+              $ {{ (ordenPreview()?.monto_total || 0) | number:'1.2-2' }}
+            </span>
+          </div>
+          <span
+            class="px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider"
+            [ngClass]="{
+              'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenPreview()?.estado_cobro === 'cobrado',
+              'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenPreview()?.estado_cobro !== 'cobrado'
+            }"
+          >
+            {{ ordenPreview()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}
+          </span>
+        </div>
+
+        <!-- Footer: Acciones -->
+        <div class="flex items-center justify-between gap-3 pt-2 border-t border-white/10">
+          <button
+            type="button"
+            (click)="cerrarModalPreview(); abrirModalEliminar(ordenPreview()!)"
+            class="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>Eliminar</span>
+          </button>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              (click)="cerrarModalPreview()"
+              class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white font-bold text-xs transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+            <button
+              type="button"
+              (click)="irAExpedienteDesdePreview()"
+              class="px-4 py-2 rounded-xl bg-color-primary-accent hover:bg-color-primary-accent/90 text-black font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-[0.98]"
+            >
+              <span>Ver Expediente Completo →</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

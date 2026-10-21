@@ -47,6 +47,16 @@ export class OrdenesComponent implements OnInit {
   readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
   readonly modoModalEstado = signal<'estado' | 'cobro'>('estado');
 
+  // Control de modal de confirmación de eliminación
+  readonly mostrarModalEliminar = signal<boolean>(false);
+  readonly ordenAEliminar = signal<OrdenResponse | null>(null);
+  readonly eliminandoOrden = signal<boolean>(false);
+  readonly errorEliminacion = signal<string | null>(null);
+
+  // Control de modal de vista rápida / preview
+  readonly mostrarModalPreview = signal<boolean>(false);
+  readonly ordenPreview = signal<OrdenResponse | null>(null);
+
   // Filtros Avanzados y UI State
   readonly filtrosAvanzadosAbiertos = signal<boolean>(false);
   readonly modoDetalle = signal<boolean>(false);
@@ -238,6 +248,66 @@ export class OrdenesComponent implements OnInit {
 
   volverAlListado(): void {
     this.modoDetalle.set(false);
+  }
+
+  abrirModalEliminar(orden: OrdenResponse): void {
+    this.ordenAEliminar.set(orden);
+    this.errorEliminacion.set(null);
+    this.mostrarModalEliminar.set(true);
+  }
+
+  cerrarModalEliminar(): void {
+    this.mostrarModalEliminar.set(false);
+    this.ordenAEliminar.set(null);
+    this.errorEliminacion.set(null);
+  }
+
+  confirmarEliminacion(): void {
+    const orden = this.ordenAEliminar();
+    if (!orden) return;
+
+    this.eliminandoOrden.set(true);
+    this.errorEliminacion.set(null);
+
+    this.ordenService.eliminarOrden(orden.id).subscribe({
+      next: () => {
+        this.eliminandoOrden.set(false);
+        this.successOT.set(`Orden #${orden.numero_ot || orden.id.slice(0, 8)} eliminada permanentemente.`);
+        this.cerrarModalEliminar();
+
+        // Si se estaba visualizando el expediente de la orden eliminada, volver al listado
+        if (this.modoDetalle() && this.ordenActiva()?.id === orden.id) {
+          this.volverAlListado();
+        }
+
+        // Recargar listado
+        this.cargarOrdenes(this.paginaActual());
+      },
+      error: (err) => {
+        this.eliminandoOrden.set(false);
+        console.error('Error al eliminar orden de trabajo:', err);
+        const msg = err.error?.detail || err.error?.message || 'Error al eliminar la orden de trabajo. Verifique permisos.';
+        this.errorEliminacion.set(msg);
+      }
+    });
+  }
+
+  abrirModalPreview(orden: OrdenResponse): void {
+    this.ordenPreview.set(orden);
+    this.mostrarModalPreview.set(true);
+  }
+
+  cerrarModalPreview(): void {
+    this.mostrarModalPreview.set(false);
+    this.ordenPreview.set(null);
+  }
+
+  irAExpedienteDesdePreview(): void {
+    const orden = this.ordenPreview();
+    this.cerrarModalPreview();
+    if (orden) {
+      this.verOrden(orden);
+    }
   }
 
   toggleFiltrosAvanzados(): void {
