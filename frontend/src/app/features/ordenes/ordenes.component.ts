@@ -11,7 +11,7 @@ import { DiagnosticoFotosComponent } from './diagnostico-fotos/diagnostico-fotos
 import { PresupuestoFormComponent } from './presupuesto-form/presupuesto-form.component';
 import { PageComponent } from '../../shared/components/page-component/page-component';
 
-export type OrderTab = 'Resumen' | 'Carga de Mano de Obra y Repuestos' | 'Imágenes';
+export type OrderTab = 'Resumen' | 'Carga de Repuestos y Mano de Obra' | 'Cargar Multimedia';
 
 @Component({
   selector: 'app-ordenes',
@@ -47,6 +47,10 @@ export class OrdenesComponent implements OnInit {
   readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
   readonly modoModalEstado = signal<'estado' | 'cobro'>('estado');
 
+  // Filtros Avanzados y UI State
+  readonly filtrosAvanzadosAbiertos = signal<boolean>(false);
+  readonly modoDetalle = signal<boolean>(false);
+
   // Filtros Avanzados (TK056 / TK119)
   readonly busqueda = signal<string>('');
   readonly estadoFiltro = signal<string>('todos');
@@ -54,15 +58,72 @@ export class OrdenesComponent implements OnInit {
   readonly fechaDesde = signal<string>('');
   readonly fechaHasta = signal<string>('');
 
+  readonly hayFiltrosActivos = computed<boolean>(() => {
+    return (
+      !!this.busqueda().trim() ||
+      this.estadoFiltro() !== 'todos' ||
+      this.complejidadFiltro() !== 'todas' ||
+      !!this.fechaDesde() ||
+      !!this.fechaHasta()
+    );
+  });
+
+  readonly totalFiltrosActivos = computed<number>(() => {
+    let count = 0;
+    if (this.busqueda().trim()) count++;
+    if (this.estadoFiltro() !== 'todos') count++;
+    if (this.complejidadFiltro() !== 'todas') count++;
+    if (this.fechaDesde()) count++;
+    if (this.fechaHasta()) count++;
+    return count;
+  });
+
   // Estado de lista paginada y orden activa (TK120)
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
   readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
   readonly otQueryParam = signal<string | null>(null);
 
+  // Priorización de órdenes por importancia cuando no hay búsqueda activa
+  private calcularPuntajeImportancia(orden: OrdenResponse): number {
+    const estado = (orden.estado || '').toLowerCase();
+    const complejidad = (orden.complejidad || '').toLowerCase();
+
+    // Nivel 1: Alta complejidad en pausa o en proceso (máxima criticidad)
+    if (complejidad === 'alta' && (estado === 'en_pausa' || estado === 'en_proceso')) return 1;
+    // Nivel 2: Cualquier orden en pausa (bloqueo técnico)
+    if (estado === 'en_pausa') return 2;
+    // Nivel 3: En proceso operativo
+    if (estado === 'en_proceso') return 3;
+    // Nivel 4: Alta complejidad en cualquier otro estado
+    if (complejidad === 'alta') return 4;
+    // Nivel 5: En presupuesto o ingresado
+    if (estado === 'en_presupuesto' || estado === 'ingresado') return 5;
+    // Nivel 6: Aprobado listo para iniciar
+    if (estado === 'aprobado') return 6;
+    // Nivel 7: Finalizado / Entregado / Cancelado
+    return 7;
+  }
+
+  readonly ordenesMostradas = computed<OrdenResponse[]>(() => {
+    const lista = [...this.listaOrdenes()];
+    if (this.hayFiltrosActivos()) {
+      return lista; // En búsqueda se preserva el orden devuelto por la búsqueda
+    }
+    // Ordenar por importancia y luego por fecha reciente
+    return lista.sort((a, b) => {
+      const pA = this.calcularPuntajeImportancia(a);
+      const pB = this.calcularPuntajeImportancia(b);
+      if (pA !== pB) return pA - pB;
+      const fA = new Date(a.fecha_ingreso || a.creado_en || 0).getTime();
+      const fB = new Date(b.fecha_ingreso || b.creado_en || 0).getTime();
+      return fB - fA;
+    });
+  });
+
   readonly ordenActiva = computed<OrdenResponse | null>(() => {
     const sel = this.ordenSeleccionada();
     if (sel) return sel;
-    const lista = this.listaOrdenes();
+    const lista = this.ordenesMostradas();
     return lista.length > 0 ? lista[0] : null;
   });
 
@@ -164,6 +225,23 @@ export class OrdenesComponent implements OnInit {
         elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
+  }
+
+  verOrden(orden: OrdenResponse): void {
+    this.ordenSeleccionada.set(orden);
+    this.cargarItemsDeOrden(orden.id);
+    this.modoDetalle.set(true);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  volverAlListado(): void {
+    this.modoDetalle.set(false);
+  }
+
+  toggleFiltrosAvanzados(): void {
+    this.filtrosAvanzadosAbiertos.update(v => !v);
   }
 
   imprimirOT(orden?: OrdenResponse | null): void {
@@ -315,7 +393,7 @@ export class OrdenesComponent implements OnInit {
   }
 
   readonly activeTab = signal<OrderTab>('Resumen');
-  readonly tabs: OrderTab[] = ['Resumen', 'Carga de Mano de Obra y Repuestos', 'Imágenes'];
+  readonly tabs: OrderTab[] = ['Resumen', 'Carga de Repuestos y Mano de Obra', 'Cargar Multimedia'];
 
   // Ítems reales del presupuesto (servicios y repuestos)
   readonly itemsPresupuesto = signal<ItemPresupuesto[]>([]);
@@ -441,7 +519,7 @@ export class OrdenesComponent implements OnInit {
     const orden = this.ordenActiva();
     const estado = (orden?.estado || '').toLowerCase();
 
-    if (tab === 'Carga de Mano de Obra y Repuestos') {
+    if (tab === 'Carga de Repuestos y Mano de Obra') {
       if (estado === 'en_presupuesto' || estado === 'ingresado' || estado === 'en presupuesto') {
         return {
           texto: 'Aprobar Presupuesto y Convertir en OT',
@@ -458,7 +536,7 @@ export class OrdenesComponent implements OnInit {
       };
     }
 
-    if (tab === 'Imágenes') {
+    if (tab === 'Cargar Multimedia') {
       return {
         texto: 'Revisar / Adjuntar Evidencias Fotográficas',
         icono: 'photo_camera',

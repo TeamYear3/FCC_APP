@@ -9,23 +9,6 @@
       categoria="Órdenes de Trabajo (OT)"
       [userRole]="userRole()"
     >
-      <!-- Botón Nueva Orden (Pill Action Button) -->
-      <a
-        actions
-        [routerLink]="nuevaOrdenUrl()"
-        class="min-h-[48px] px-md py-2.5 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] flex items-center gap-2 cursor-pointer decoration-none shadow-md"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5 stroke-[2.5dp]"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-        <span>Nueva Orden</span>
-      </a>
     </app-page-component>
 
     <!-- Banner de éxito de OT creada -->
@@ -76,162 +59,216 @@
       </div>
     }
 
-    <!-- Panel de Búsqueda y Filtros Avanzados (TK056) -->
-    <div
-      class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4"
-    >
-      <div class="flex items-center justify-between border-b border-white/5 pb-3">
-        <div class="flex items-center gap-2">
+    @if (!modoDetalle()) {
+      <!-- Barra de Búsqueda y Acciones Rápidas Unificadas -->
+      <div class="bg-color-surface-container border border-white/5 rounded-2xl p-3 sm:p-4 mb-lg shadow-xl space-y-3">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <!-- Input de Búsqueda que ocupa todo el ancho principal -->
+        <div class="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 focus-within:border-color-primary-accent transition-colors">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-color-primary-accent"
+            class="h-5 w-5 text-color-primary-accent shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             stroke-width="2"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <h2 class="text-sm font-bold text-white uppercase tracking-wider">
-            Búsqueda y Filtros Avanzados
-          </h2>
+          <input
+            type="text"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event); onFiltroChange()"
+            placeholder="Buscar órdenes de trabajo por OT, patente, cliente, vehículo o falla..."
+            class="bg-transparent text-white placeholder-zinc-400 w-full focus:outline-none text-xs sm:text-sm font-medium"
+          />
+          @if (busqueda()) {
+            <button
+              type="button"
+              (click)="busqueda.set(''); onFiltroChange()"
+              class="text-zinc-400 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-0.5"
+              title="Borrar búsqueda"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          }
         </div>
-        <button
-          type="button"
-          (click)="limpiarFiltros()"
-          class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1 bg-transparent border-0 cursor-pointer"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-3.5 w-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
+
+        <!-- Botones de Acción en la misma fila -->
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Botón Filtros Avanzados -->
+          <button
+            type="button"
+            (click)="toggleFiltrosAvanzados()"
+            class="min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+            [ngClass]="{
+              'bg-color-primary-accent/15 border-color-primary-accent text-color-primary-accent': filtrosAvanzadosAbiertos() || totalFiltrosActivos() > 0,
+              'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white': !filtrosAvanzadosAbiertos() && totalFiltrosActivos() === 0
+            }"
+            title="Desplegar u ocultar filtros avanzados"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Limpiar filtros
-        </button>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span>Filtros</span>
+            @if (totalFiltrosActivos() > 0) {
+              <span class="w-4 h-4 rounded-full bg-color-primary-accent text-black text-[10px] font-extrabold flex items-center justify-center">
+                {{ totalFiltrosActivos() }}
+              </span>
+            }
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3.5 w-3.5 transition-transform duration-200"
+              [ngClass]="{ 'rotate-180': filtrosAvanzadosAbiertos() }"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <!-- Botón Nueva Orden al lado de la barra de búsqueda -->
+          <a
+            [routerLink]="nuevaOrdenUrl()"
+            class="min-h-[44px] px-4 py-2 rounded-xl bg-color-primary-accent text-black font-bold text-xs sm:text-sm transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer decoration-none shadow-md whitespace-nowrap"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 stroke-[2.5]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Nueva Orden</span>
+          </a>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-        <!-- Búsqueda Patente / Cliente -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Patente / Cliente</label>
-          <div
-            class="bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 flex items-center gap-2 focus-within:border-color-primary-accent transition-colors"
-          >
-            <input
-              type="text"
-              [ngModel]="busqueda()"
-              (ngModelChange)="busqueda.set($event); onFiltroChange()"
-              placeholder="Ej: ABC123 o Pérez..."
-              class="bg-transparent text-white placeholder-zinc-400 w-full focus:outline-none text-xs font-medium"
-            />
+      <!-- Panel Desplegable de Filtros Secundarios -->
+      @if (filtrosAvanzadosAbiertos()) {
+        <div class="pt-3 border-t border-white/5 space-y-3 animate-fadeIn">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <!-- Selector de Estado -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Estado de la Orden</label>
+              <select
+                [ngModel]="estadoFiltro()"
+                (ngModelChange)="estadoFiltro.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              >
+                <option value="todos">Todos los Estados</option>
+                <option value="ingresado">Ingresado</option>
+                <option value="en_presupuesto">En Presupuesto</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="en_proceso">En Proceso</option>
+                <option value="en_pausa">En Pausa</option>
+                <option value="finalizado">Finalizado</option>
+                <option value="entregado">Entregado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+
+            <!-- Selector de Complejidad -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Nivel Complejidad</label>
+              <select
+                [ngModel]="complejidadFiltro()"
+                (ngModelChange)="complejidadFiltro.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              >
+                <option value="todas">Todas las Complejidades</option>
+                <option value="baja">🟢 Baja (Service Rápido)</option>
+                <option value="media">🟡 Media (Frenos / Tren Del.)</option>
+                <option value="alta">🔴 Alta (Motor / Transmisión)</option>
+              </select>
+            </div>
+
+            <!-- Fecha Desde -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Fecha Desde</label>
+              <input
+                type="date"
+                [ngModel]="fechaDesde()"
+                (ngModelChange)="fechaDesde.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              />
+            </div>
+
+            <!-- Fecha Hasta -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Fecha Hasta</label>
+              <input
+                type="date"
+                [ngModel]="fechaHasta()"
+                (ngModelChange)="fechaHasta.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-1">
+            <button
+              type="button"
+              (click)="limpiarFiltros()"
+              class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1.5 bg-transparent border-0 cursor-pointer py-1 px-2 rounded-lg hover:bg-white/5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Restablecer y limpiar filtros</span>
+            </button>
           </div>
         </div>
-
-        <!-- Selector de Estado -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Estado de la Orden</label>
-          <select
-            [ngModel]="estadoFiltro()"
-            (ngModelChange)="estadoFiltro.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          >
-            <option value="todos">Todos los Estados</option>
-            <option value="ingresado">Ingresado</option>
-            <option value="en_presupuesto">En Presupuesto</option>
-            <option value="aprobado">Aprobado</option>
-            <option value="en_proceso">En Proceso</option>
-            <option value="en_pausa">En Pausa</option>
-            <option value="finalizado">Finalizado</option>
-            <option value="entregado">Entregado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-
-        <!-- Selector de Complejidad Operativa (TK101) -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Nivel Complejidad</label>
-          <select
-            [ngModel]="complejidadFiltro()"
-            (ngModelChange)="complejidadFiltro.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          >
-            <option value="todas">Todas las Complejidades</option>
-            <option value="baja">🟢 Baja (Service Rápido)</option>
-            <option value="media">🟡 Media (Frenos / Tren Del.)</option>
-            <option value="alta">🔴 Alta (Motor / Transmisión)</option>
-          </select>
-        </div>
-
-        <!-- Fecha Desde -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Fecha Desde</label>
-          <input
-            type="date"
-            [ngModel]="fechaDesde()"
-            (ngModelChange)="fechaDesde.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          />
-        </div>
-
-        <!-- Fecha Hasta -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Fecha Hasta</label>
-          <input
-            type="date"
-            [ngModel]="fechaHasta()"
-            (ngModelChange)="fechaHasta.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          />
-        </div>
-      </div>
+      }
     </div>
 
     <!-- Grilla / Listado Dinámico de Órdenes de Trabajo (TK120) -->
     <div
       class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4"
     >
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
-        <div class="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-color-primary-accent"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            />
-          </svg>
-          <h2 class="text-sm font-bold text-white uppercase tracking-wider">
-            Listado de Órdenes de Trabajo
-          </h2>
-          <span
-            class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
-          >
-            {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
-          </span>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
+          <div class="flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 text-color-primary-accent"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+              />
+            </svg>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider">
+              @if (hayFiltrosActivos()) {
+                Resultados de Búsqueda
+              } @else {
+                Órdenes de Trabajo (Priorizadas por Importancia)
+              }
+            </h2>
+            <span
+              class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
+            >
+              {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
+            </span>
+          </div>
+          <p class="text-xs text-zinc-400">
+            @if (hayFiltrosActivos()) {
+              🔍 <span class="text-white">Búsqueda activa:</span> Resultados focalizados.
+            } @else {
+              ⚡ <span class="text-zinc-300">Criterio:</span> Priorizando órdenes críticas, en pausa y en proceso.
+            }
+          </p>
         </div>
-        <p class="text-xs text-zinc-400">
-          💡 <span class="text-zinc-300">Tip:</span> Haz clic para seleccionar o <strong class="text-color-primary-accent">doble clic</strong> para enfocar el expediente.
-        </p>
-      </div>
 
       <!-- Estado Cargando -->
       @if (cargando()) {
@@ -258,7 +295,7 @@
           </svg>
           <span class="text-xs uppercase tracking-wider font-semibold">Cargando órdenes del taller...</span>
         </div>
-      } @else if (listaOrdenes().length === 0) {
+      } @else if (ordenesMostradas().length === 0) {
         <!-- Estado Vacío -->
         <div class="py-12 text-center space-y-3">
           <div class="w-12 h-12 rounded-full bg-white/5 mx-auto flex items-center justify-center text-zinc-500">
@@ -287,11 +324,11 @@
           </div>
         </div>
       } @else {
-        <!-- Vista Móvil de Tarjetas Táctiles (< 640px) (TK105) -->
+        <!-- Vista Móvil de Tarjetas Táctiles (< 640px) -->
         <div class="block sm:hidden space-y-3">
-          @for (orden of listaOrdenes(); track orden.id) {
+          @for (orden of ordenesMostradas(); track orden.id) {
             <div
-              (click)="seleccionarOrden(orden, true)"
+              (click)="verOrden(orden)"
               class="p-4 rounded-2xl border transition-all cursor-pointer space-y-3"
               [ngClass]="{
                 'bg-color-primary-accent/15 border-color-primary-accent shadow-lg': orden.id === ordenActiva()?.id,
@@ -344,24 +381,24 @@
                 </div>
               </div>
 
-              <!-- Botones de Acción Táctiles (Mínimo 44px de alto) (TK105) -->
-              <div class="pt-2 border-t border-white/5 grid grid-cols-4 gap-2" (click)="$event.stopPropagation()">
+              <!-- Botones de Acción Táctiles (Mínimo 44px de alto) -->
+              <div class="pt-2 border-t border-white/5 flex items-center gap-2" (click)="$event.stopPropagation()">
                 <button
                   type="button"
-                  (click)="seleccionarOrden(orden, true)"
-                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-color-primary-accent hover:text-black text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
-                  title="Ver Expediente"
+                  (click)="verOrden(orden)"
+                  class="flex-1 min-h-[44px] px-3 rounded-xl bg-color-primary-accent text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow cursor-pointer border-0"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
+                  <span>Ver Orden</span>
                 </button>
 
                 <button
                   type="button"
                   (click)="abrirModalEstado(orden)"
-                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
+                  class="min-h-[44px] px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center transition-all border-0 cursor-pointer"
                   title="Cambiar Estado"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -372,7 +409,7 @@
                 <button
                   type="button"
                   (click)="abrirModalCobro(orden)"
-                  class="min-h-[44px] rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-400 font-bold text-xs flex items-center justify-center gap-1 transition-all border border-emerald-500/30 cursor-pointer"
+                  class="min-h-[44px] px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-400 font-bold text-xs flex items-center justify-center transition-all border border-emerald-500/30 cursor-pointer"
                   title="Registrar Cobro"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -383,7 +420,7 @@
                 <button
                   type="button"
                   (click)="imprimirOT(orden)"
-                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
+                  class="min-h-[44px] px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center transition-all border-0 cursor-pointer"
                   title="Descargar PDF"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -411,10 +448,9 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5">
-              @for (orden of listaOrdenes(); track orden.id) {
+              @for (orden of ordenesMostradas(); track orden.id) {
                 <tr
-                  (click)="seleccionarOrden(orden)"
-                  (dblclick)="seleccionarOrden(orden, true)"
+                  (click)="verOrden(orden)"
                   class="transition-colors cursor-pointer group"
                   [ngClass]="{
                     'bg-color-primary-accent/10 border-l-4 border-color-primary-accent font-medium': orden.id === ordenActiva()?.id,
@@ -496,17 +532,18 @@
                   <!-- Columna Acciones Rápidas -->
                   <td class="py-3 px-3 text-center whitespace-nowrap">
                     <div class="inline-flex items-center gap-1.5" (click)="$event.stopPropagation()">
-                      <!-- Botón Ver Expediente -->
+                      <!-- Botón Ver Orden Principal -->
                       <button
                         type="button"
-                        (click)="seleccionarOrden(orden, true)"
-                        title="Ver Expediente"
-                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-color-primary-accent hover:text-black text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
+                        (click)="verOrden(orden)"
+                        title="Ver detalle completo de la orden"
+                        class="min-h-[34px] px-3 py-1 rounded-xl bg-color-primary-accent hover:bg-color-primary-accent/90 text-black font-bold text-xs transition-all border-0 cursor-pointer flex items-center gap-1.5 shadow-sm"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
+                        <span>Ver Orden</span>
                       </button>
 
                       <!-- Botón Cambiar Estado -->
@@ -600,9 +637,78 @@
         </div>
       }
     </div>
+  } @else {
+    <!-- Vista Completa Dedicada del Expediente de la Orden de Trabajo (TK120) -->
+    <div id="expediente-activo" class="scroll-mt-6 animate-fadeIn">
+      <!-- Barra Superior de Navegación del Expediente y Acciones de la Orden -->
+      <div class="bg-color-surface-container border border-white/10 rounded-2xl p-4 mb-lg shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <!-- Botón Volver e Info Rápida -->
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            (click)="volverAlListado()"
+            class="min-h-[42px] px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Volver al listado</span>
+          </button>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs uppercase tracking-wider text-zinc-400 font-semibold">Expediente de Orden</span>
+              <span class="font-mono text-xs px-2 py-0.5 rounded bg-color-primary-accent/20 text-color-primary-accent font-bold">
+                #{{ ordenActiva()?.numero_ot || (ordenActiva()?.id ? ordenActiva()?.id?.slice(0, 8) : 'S/N') }}
+              </span>
+            </div>
+            <p class="text-xs text-zinc-300 font-medium mt-0.5">
+              {{ ordenActiva()?.vehiculo_marca_modelo || 'Vehículo ' + (ordenActiva()?.vehiculo_patente || '') }}
+              <span class="text-zinc-500 mx-1">·</span>
+              Patente: <span class="font-mono text-white font-bold">{{ ordenActiva()?.vehiculo_patente || 'S/D' }}</span>
+            </p>
+          </div>
+        </div>
 
-    <!-- Expediente de la Orden de Trabajo Activa (TK120) -->
-    <div id="expediente-activo" class="scroll-mt-6">
+        <!-- Acciones Principales: Imprimir OT, Registrar Cobro, Cambiar Estado -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Imprimir OT -->
+          <button
+            type="button"
+            (click)="imprimirOT()"
+            class="min-h-[42px] px-4 py-2 rounded-xl bg-black/60 border border-white/10 hover:border-color-primary-accent text-zinc-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>Imprimir OT</span>
+          </button>
+
+          <!-- Registrar Cobro -->
+          <button
+            type="button"
+            (click)="abrirModalCobro(ordenActiva()!)"
+            class="min-h-[42px] px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Registrar Cobro</span>
+          </button>
+
+          <!-- Cambiar Estado -->
+          <button
+            type="button"
+            (click)="abrirModalEstado(ordenActiva()!)"
+            class="min-h-[42px] px-4 py-2 rounded-xl bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 transition-all hover:bg-color-primary-accent/90 cursor-pointer shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>Cambiar Estado</span>
+          </button>
+        </div>
+      </div>
+
       @if (ordenActiva()) {
         <!-- Tarjeta Principal de Resumen de Orden Activa Dinámica -->
         <div
@@ -762,7 +868,6 @@
           <p class="text-zinc-400 text-sm font-medium">Seleccione una orden del listado superior para consultar su expediente técnico.</p>
         </div>
       }
-    </div>
 
 
     <!-- Estructura de Navegación por Pestañas Internas (3 Pestañas Definitivas) -->
@@ -785,7 +890,7 @@
               {{ porcentajeProgreso() }}%
             </span>
           }
-          @if (tab === 'Carga de Mano de Obra y Repuestos') {
+          @if (tab === 'Carga de Repuestos y Mano de Obra') {
             <span
               class="px-2 py-0.5 rounded-badge bg-white/10 text-zinc-300 text-[10px] font-mono"
             >
@@ -875,7 +980,7 @@
             </div>
             <button
               type="button"
-              (click)="setTab('Carga de Mano de Obra y Repuestos')"
+              (click)="setTab('Carga de Repuestos y Mano de Obra')"
               class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <span class="material-symbols-outlined text-sm text-color-primary-accent">add</span>
@@ -893,11 +998,11 @@
               <span class="material-symbols-outlined text-3xl text-zinc-600">build_circle</span>
               <p class="text-sm font-semibold text-white">No hay servicios de mano de obra registrados</p>
               <p class="text-xs text-zinc-400 max-w-sm mx-auto">
-                Dirígete a la pestaña "Carga de Mano de Obra y Repuestos" para agregar las tareas mecánicas correspondientes.
+                Dirígete a la pestaña "Carga de Repuestos y Mano de Obra" para agregar las tareas mecánicas correspondientes.
               </p>
               <button
                 type="button"
-                (click)="setTab('Carga de Mano de Obra y Repuestos')"
+                (click)="setTab('Carga de Repuestos y Mano de Obra')"
                 class="mt-2 px-4 py-2 rounded-xl bg-color-primary-accent text-black text-xs font-bold hover:bg-color-primary-accent/90 transition-all cursor-pointer"
               >
                 + Cargar Mano de Obra
@@ -957,7 +1062,7 @@
 
                   <button
                     type="button"
-                    (click)="$event.stopPropagation(); setTab('Imágenes')"
+                    (click)="$event.stopPropagation(); setTab('Cargar Multimedia')"
                     class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white text-xs flex items-center gap-1 transition-colors"
                     title="Ver evidencias fotográficas"
                   >
@@ -984,7 +1089,7 @@
             </div>
             <button
               type="button"
-              (click)="setTab('Carga de Mano de Obra y Repuestos')"
+              (click)="setTab('Carga de Repuestos y Mano de Obra')"
               class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <span class="material-symbols-outlined text-sm text-color-primary-accent">add</span>
@@ -1024,8 +1129,8 @@
       </div>
     }
 
-    <!-- PESTAÑA 2: CARGA DE MANO DE OBRA Y REPUESTOS (TK175) -->
-    @if (activeTab() === 'Carga de Mano de Obra y Repuestos') {
+    <!-- PESTAÑA 2: CARGA DE REPUESTOS Y MANO DE OBRA (TK175) -->
+    @if (activeTab() === 'Carga de Repuestos y Mano de Obra') {
       <div class="mb-lg">
         @defer (on viewport) {
           <app-presupuesto-form
@@ -1041,8 +1146,8 @@
       </div>
     }
 
-    <!-- PESTAÑA 3: IMÁGENES Y EVIDENCIAS (TK175) -->
-    @if (activeTab() === 'Imágenes') {
+    <!-- PESTAÑA 3: CARGAR MULTIMEDIA (TK175) -->
+    @if (activeTab() === 'Cargar Multimedia') {
       <div class="mb-lg">
         @defer (on viewport) {
           <app-diagnostico-fotos
@@ -1069,6 +1174,7 @@
       </button>
     </div>
   </div>
+}
 
   <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103 & TK171) -->
   @defer (when mostrarModalEstado()) {
