@@ -78,14 +78,14 @@
           <input
             type="text"
             [ngModel]="busqueda()"
-            (ngModelChange)="busqueda.set($event); onFiltroChange()"
+            (ngModelChange)="busqueda.set($event); onBusquedaChange()"
             placeholder="Buscar órdenes de trabajo por OT, patente, cliente, vehículo o falla..."
             class="bg-transparent text-white placeholder-zinc-400 w-full focus:outline-none text-xs sm:text-sm font-medium"
           />
           @if (busqueda()) {
             <button
               type="button"
-              (click)="busqueda.set(''); onFiltroChange()"
+              (click)="busqueda.set(''); onBusquedaChange()"
               class="text-zinc-400 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-0.5"
               title="Borrar búsqueda"
             >
@@ -232,11 +232,13 @@
     <div
       class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4"
     >
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
-          <div class="flex items-center gap-2">
+      <!-- Cabecera Superior: Título, Conteo y Selector de Ordenación -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/5 pb-3.5">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <div class="w-8 h-8 rounded-lg bg-color-primary-accent/10 border border-color-primary-accent/30 flex items-center justify-center text-color-primary-accent">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 text-color-primary-accent"
+              class="h-4.5 w-4.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -248,27 +250,183 @@
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
               />
             </svg>
-            <h2 class="text-sm font-bold text-white uppercase tracking-wider">
-              @if (hayFiltrosActivos()) {
-                Resultados de Búsqueda
-              } @else {
-                Órdenes de Trabajo (Priorizadas por Importancia)
-              }
-            </h2>
-            <span
-              class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
-            >
-              {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
-            </span>
           </div>
-          <p class="text-xs text-zinc-400">
-            @if (hayFiltrosActivos()) {
-              🔍 <span class="text-white">Búsqueda activa:</span> Resultados focalizados.
-            } @else {
-              ⚡ <span class="text-zinc-300">Criterio:</span> Priorizando órdenes críticas, en pausa y en proceso.
-            }
-          </p>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">
+                {{ criterioInfo().titulo }}
+              </h2>
+              <span
+                class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
+              >
+                {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
+              </span>
+            </div>
+          </div>
         </div>
+
+        <!-- Selector de Ordenación -->
+        <div class="flex items-center gap-2 self-start md:self-auto">
+          <label class="text-xs text-zinc-400 font-medium whitespace-nowrap flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+            </svg>
+            <span>Ordenar por:</span>
+          </label>
+          <select
+            [ngModel]="ordenacion()"
+            (ngModelChange)="cambiarOrdenacion($event)"
+            class="bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-color-primary-accent font-medium cursor-pointer"
+          >
+            <option value="complejidad">⚡ Complejidad (Alta → Baja)</option>
+            <option value="criticidad">🔥 Prioridad Operativa</option>
+            <option value="fecha_desc">📅 Fecha más reciente</option>
+            <option value="fecha_asc">📅 Fecha más antigua</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Barra de Criterios Rápidos (Pills / Chips con Scroll Horizontal Suave) -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <!-- 1. De Hoy (Default) -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('hoy')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'hoy' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'hoy' || !!busqueda().trim()
+          }"
+          title="Ver únicamente las órdenes ingresadas hoy, ordenadas por nivel de complejidad"
+        >
+          <span>📅</span>
+          <span>De Hoy</span>
+          <span
+            class="text-[10px] px-1 py-0.2 rounded font-mono"
+            [ngClass]="criterioVista() === 'hoy' && !busqueda().trim() ? 'bg-black/30 text-black font-bold' : 'bg-white/10 text-zinc-400'"
+          >
+            Complejidad
+          </span>
+        </button>
+
+        <!-- 2. Ver Todas -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('todas')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'todas' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'todas' || !!busqueda().trim()
+          }"
+          title="Ver todas las órdenes sin restricción de fechas (incluye días anteriores e histórico)"
+        >
+          <span>🌐</span>
+          <span>Ver Todas (Histórico)</span>
+        </button>
+
+        <!-- 3. Prioritarias -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('prioritarias')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'prioritarias' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'prioritarias' || !!busqueda().trim()
+          }"
+          title="Priorizar órdenes críticas en pausa, alta complejidad y en proceso"
+        >
+          <span>⚡</span>
+          <span>Prioritarias</span>
+        </button>
+
+        <!-- 4. Últimos 7 Días -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('semana')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'semana' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'semana' || !!busqueda().trim()
+          }"
+          title="Órdenes ingresadas durante los últimos 7 días"
+        >
+          <span>📆</span>
+          <span>Últimos 7 Días</span>
+        </button>
+
+        <!-- 5. Alta Complejidad -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('alta_complejidad')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'alta_complejidad' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'alta_complejidad' || !!busqueda().trim()
+          }"
+          title="Ver exclusivamente reparaciones de alta complejidad"
+        >
+          <span>🔴</span>
+          <span>Alta Complejidad</span>
+        </button>
+
+        <!-- 6. Activas en Taller -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('activas')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'activas' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'activas' || !!busqueda().trim()
+          }"
+          title="Órdenes en proceso, en pausa o aprobadas"
+        >
+          <span>🔧</span>
+          <span>Activas en Taller</span>
+        </button>
+
+        <!-- 7. Pendientes de Cobro -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('cobro_pendiente')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'cobro_pendiente' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'cobro_pendiente' || !!busqueda().trim()
+          }"
+          title="Órdenes con cobro pendiente de registro"
+        >
+          <span>💳</span>
+          <span>Cobro Pendiente</span>
+        </button>
+      </div>
+
+      <!-- Banner Informativo del Criterio Activo -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border-l-2 border-color-primary-accent text-xs">
+        <p class="text-zinc-300 flex items-center gap-1.5 m-0">
+          <span class="text-sm">{{ criterioInfo().icono }}</span>
+          <span class="text-zinc-400 font-medium">Criterio:</span>
+          <span class="text-white">{{ criterioInfo().descripcion }}</span>
+        </p>
+
+        @if (criterioVista() === 'hoy' && !busqueda().trim()) {
+          <button
+            type="button"
+            (click)="aplicarCriterio('todas')"
+            class="text-xs text-color-primary-accent hover:underline flex items-center gap-1 self-start sm:self-auto bg-transparent border-0 cursor-pointer p-0 font-medium whitespace-nowrap"
+          >
+            <span>Ver todas las anteriores</span>
+            <span>→</span>
+          </button>
+        } @else if (criterioVista() !== 'hoy' || busqueda().trim()) {
+          <button
+            type="button"
+            (click)="aplicarCriterio('hoy')"
+            class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1 self-start sm:self-auto bg-transparent border-0 cursor-pointer p-0 font-medium whitespace-nowrap"
+          >
+            <span>↺ Volver a hoy (por complejidad)</span>
+          </button>
+        }
+      </div>
 
       <!-- Estado Cargando -->
       @if (cargando()) {
@@ -296,32 +454,50 @@
           <span class="text-xs uppercase tracking-wider font-semibold">Cargando órdenes del taller...</span>
         </div>
       } @else if (ordenesMostradas().length === 0) {
-        <!-- Estado Vacío -->
+        <!-- Estado Vacío Inteligente según Criterio -->
         <div class="py-12 text-center space-y-3">
           <div class="w-12 h-12 rounded-full bg-white/5 mx-auto flex items-center justify-center text-zinc-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <p class="text-sm font-semibold text-white">No se encontraron órdenes registradas</p>
-          <p class="text-xs text-zinc-400 max-w-sm mx-auto">
-            No existen órdenes que coincidan con los filtros aplicados o aún no se ha generado ninguna orden de trabajo.
-          </p>
-          <div class="pt-2 flex justify-center gap-2">
-            <button
-              type="button"
-              (click)="limpiarFiltros()"
-              class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer"
-            >
-              Restablecer Filtros
-            </button>
-            <a
-              [routerLink]="nuevaOrdenUrl()"
-              class="px-3 py-1.5 rounded-lg bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer decoration-none inline-flex items-center gap-1"
-            >
-              + Nueva Orden
-            </a>
-          </div>
+          @if (criterioVista() === 'hoy' && !busqueda().trim()) {
+            <p class="text-sm font-semibold text-white">No hay órdenes registradas en el día de hoy</p>
+            <p class="text-xs text-zinc-400 max-w-sm mx-auto">
+              Hoy todavía no ingresaron nuevos vehículos. Puedes explorar las órdenes de días anteriores e histórico completo del taller.
+            </p>
+            <div class="pt-2 flex justify-center gap-2">
+              <button
+                type="button"
+                (click)="aplicarCriterio('todas')"
+                class="px-4 py-2 rounded-xl bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer border-0 flex items-center gap-1.5 shadow-md"
+              >
+                <span>🌐</span>
+                <span>Ver todas las órdenes anteriores</span>
+              </button>
+            </div>
+          } @else {
+            <p class="text-sm font-semibold text-white">No se encontraron órdenes registradas</p>
+            <p class="text-xs text-zinc-400 max-w-sm mx-auto">
+              No existen órdenes que coincidan con el criterio o los filtros aplicados.
+            </p>
+            <div class="pt-2 flex justify-center gap-2">
+              <button
+                type="button"
+                (click)="aplicarCriterio('hoy')"
+                class="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer border-0"
+              >
+                ↺ Volver a Hoy
+              </button>
+              <button
+                type="button"
+                (click)="aplicarCriterio('todas')"
+                class="px-3.5 py-1.5 rounded-lg bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer border-0"
+              >
+                🌐 Ver Todas
+              </button>
+            </div>
+          }
         </div>
       } @else {
         <!-- Vista Móvil de Tarjetas Táctiles (< 640px) -->

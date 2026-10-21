@@ -56,6 +56,8 @@ export interface OrdenFiltros {
   tecnico?: string;
   fecha_desde?: string;
   fecha_hasta?: string;
+  estado_cobro?: string;
+  ordering?: string;
 }
 
 export interface OrdenesPaginadasResponse {
@@ -154,6 +156,12 @@ export class OrdenService {
     if (filtros.tecnico?.trim()) params = params.set('tecnico', filtros.tecnico.trim());
     if (filtros.fecha_desde) params = params.set('fecha_desde', filtros.fecha_desde);
     if (filtros.fecha_hasta) params = params.set('fecha_hasta', filtros.fecha_hasta);
+    if (filtros.estado_cobro?.trim() && filtros.estado_cobro.toLowerCase() !== 'todos') {
+      params = params.set('estado_cobro', filtros.estado_cobro.trim());
+    }
+    if (filtros.ordering?.trim()) {
+      params = params.set('ordering', filtros.ordering.trim());
+    }
 
     return this.http.get<any>(this.apiUrl, { params }).pipe(
       map((res: any) => {
@@ -281,10 +289,10 @@ export class OrdenService {
   }
 
   /**
-   * Eliminar una Orden de Trabajo definitivamente (DELETE /api/ordenes/<id>/)
+   * Eliminar una Orden de Trabajo definitivamente (DELETE /api/ordenes/<id>/eliminar/)
    */
   eliminarOrden(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}${id}/`);
+    return this.http.delete<void>(`${this.apiUrl}${id}/eliminar/`);
   }
 }
 

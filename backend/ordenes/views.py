@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from django.db.models import Q, Prefetch, Count, Sum, Avg
+from django.db.models import Q, Prefetch, Count, Sum, Avg, Case, When, Value, IntegerField
 from datetime import timedelta, date
 from decimal import Decimal
 from rest_framework.exceptions import PermissionDenied
@@ -112,7 +112,15 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
 
         estado = self.request.query_params.get('estado')
         if estado and estado.lower() != 'todos':
-            queryset = queryset.filter(estado__iexact=estado.strip())
+            if ',' in estado:
+                estados_list = [e.strip().lower() for e in estado.split(',') if e.strip()]
+                queryset = queryset.filter(estado__in=estados_list)
+            else:
+                queryset = queryset.filter(estado__iexact=estado.strip())
+
+        estado_cobro = self.request.query_params.get('estado_cobro')
+        if estado_cobro and estado_cobro.lower() != 'todos':
+            queryset = queryset.filter(estado_cobro__iexact=estado_cobro.strip())
 
         tecnico = self.request.query_params.get('tecnico')
         if tecnico:
@@ -133,26 +141,39 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
         if complejidad and complejidad.lower() != 'todas':
             queryset = queryset.filter(complejidad__iexact=complejidad.strip())
 
+        ordering = self.request.query_params.get('ordering')
+        if ordering == 'complejidad':
+            queryset = queryset.annotate(
+                complejidad_peso=Case(
+                    When(complejidad='alta', then=Value(1)),
+                    When(complejidad='media', then=Value(2)),
+                    When(complejidad='baja', then=Value(3)),
+                    default=Value(4),
+                    output_field=IntegerField()
+                )
+            ).order_by('complejidad_peso', '-fecha_ingreso', '-creado_en')
+        elif ordering == 'fecha_asc':
+            queryset = queryset.order_by('fecha_ingreso', 'creado_en')
+        elif ordering == 'fecha_desc':
+            queryset = queryset.order_by('-fecha_ingreso', '-creado_en')
+
         return queryset
 
 
 CrearOrdenTrabajoView = ListarCrearOrdenTrabajoView
 
 
-class DetalleOrdenTrabajoView(generics.RetrieveDestroyAPIView):
+class DetalleOrdenTrabajoView(generics.RetrieveAPIView):
     """
-    TK095, TK183 & TK184: Endpoint GET /api/ordenes/<uuid:id>/ y DELETE /api/ordenes/<uuid:id>/
-    Retorna el detalle consolidado de una Orden de Trabajo o permite su eliminación
-    definitiva con registro de auditoría NoSQL en MongoDB.
-    Restringe la eliminación a Administradores y Técnicos autorizados.
+    TK095, TK183 & TK184: Endpoint GET /api/ordenes/<uuid:id>/
+    Retorna el detalle consolidado de una Orden de Trabajo.
+    Conforme a AUT-BE-02, no admite eliminación destructiva directa sobre esta URL (retorna 405).
     """
     serializer_class = DetalleOrdenTrabajoSerializer
     lookup_field = 'id'
     lookup_url_kwarg = 'id'
 
     def get_permissions(self):
-        if self.request.method == 'DELETE':
-            return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
         return [IsAuthenticated(), (EsAdministrador | EsTecnico | EsCliente)()]
 
     def get_queryset(self):
@@ -177,6 +198,23 @@ class DetalleOrdenTrabajoView(generics.RetrieveDestroyAPIView):
             return
         else:
             raise PermissionDenied("No tiene permisos para realizar esta acción.")
+
+
+class EliminarOrdenTrabajoView(generics.DestroyAPIView):
+    """
+    Endpoint DELETE /api/ordenes/<uuid:id>/eliminar/
+    Permite la eliminación definitiva de una orden con auditoría NoSQL en MongoDB.
+    Restringe la eliminación a Administradores y Técnicos autorizados.
+    """
+    serializer_class = DetalleOrdenTrabajoSerializer
+    lookup_field = 'id'
+    lookup_url_kwarg = 'id'
+
+    def get_permissions(self):
+        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+
+    def get_queryset(self):
+        return OrdenTrabajo.objects.all()
 
     def perform_destroy(self, instance):
         orden_id = str(instance.id)
