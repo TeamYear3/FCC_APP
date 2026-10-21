@@ -1227,7 +1227,7 @@
 
   <!-- Modal para Aprobar Presupuesto y Convertir en OT con Selección de Canal (TK091) -->
   @if (mostrarModalAprobarPresupuesto() && ordenActiva()) {
-    <div role="dialog" aria-modal="true" data-testid="modal-aprobar-presupuesto" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn select-none">
+    <div role="dialog" aria-modal="true" data-testid="modal-aprobar-presupuesto" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-fadeIn select-none">
       <div class="bg-[#1E1E1E] border border-color-primary-accent/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
         <div class="flex items-center justify-between border-b border-white/10 pb-3">
           <h3 class="text-base font-bold text-white uppercase tracking-tight flex items-center gap-2">
@@ -1343,7 +1343,7 @@
 
   <!-- Modal de Confirmación de Eliminación Definitiva -->
   @if (mostrarModalEliminar() && ordenAEliminar()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" (click)="cerrarModalEliminar()">
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn" (click)="cerrarModalEliminar()">
       <div
         class="bg-color-surface-container border border-red-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 text-white"
         (click)="$event.stopPropagation()"
@@ -1408,96 +1408,111 @@
 
   <!-- Modal de Vista Rápida / Preview (Clic en Fila) -->
   @if (mostrarModalPreview() && ordenPreview()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn" (click)="cerrarModalPreview()">
+    <div
+      role="dialog"
+      aria-modal="true"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn overflow-y-auto"
+      (click)="cerrarModalPreview()"
+    >
       <div
-        class="bg-color-surface-container border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-white"
+        class="bg-color-surface-container border border-white/10 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 text-white my-auto max-h-[88vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"
         (click)="$event.stopPropagation()"
       >
-        <!-- Cabecera del Preview -->
-        <div class="flex items-start justify-between border-b border-white/10 pb-4">
-          <div>
-            <div class="flex items-center gap-2.5">
-              <span class="font-mono text-2xl font-black text-color-primary-accent">
-                #{{ ordenPreview()?.numero_ot || (ordenPreview()?.id ? 'OT-' + ordenPreview()?.id?.slice(0, 8) : 'S/N') }}
-              </span>
-              <span
-                class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide"
-                [ngClass]="getEstadoBadgeClass(ordenPreview()!.estado)"
-              >
-                {{ ordenPreview()?.estado?.replace('_', ' ') }}
-              </span>
-            </div>
-            <p class="text-xs text-zinc-400 mt-1">Vista previa rápida del expediente</p>
+        <!-- Cabecera Compacta del Preview -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <span class="font-mono text-xl sm:text-2xl font-black text-color-primary-accent tracking-tight">
+              #{{ ordenPreview()?.numero_ot || (ordenPreview()?.id ? 'OT-' + ordenPreview()?.id?.slice(0, 8) : 'S/N') }}
+            </span>
+            <span
+              class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide"
+              [ngClass]="getEstadoBadgeClass(ordenPreview()!.estado)"
+            >
+              {{ ordenPreview()?.estado?.replace('_', ' ') }}
+            </span>
+            <span
+              class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+              [ngClass]="getComplejidadBadgeClass(ordenPreview()?.complejidad)"
+            >
+              Complejidad {{ ordenPreview()?.complejidad || 'Media' }}
+            </span>
           </div>
           <button
             type="button"
             (click)="cerrarModalPreview()"
-            class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-sm"
+            class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-xs"
+            title="Cerrar vista previa"
           >
             ✕
           </button>
         </div>
 
-        <!-- Datos del Vehículo y Cliente -->
-        <div class="grid grid-cols-2 gap-3 text-xs bg-black/30 border border-white/5 rounded-xl p-3.5">
-          <div>
-            <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Vehículo</span>
-            <span class="font-bold text-white">{{ ordenPreview()?.vehiculo_marca_modelo || 'Vehículo Registrado' }}</span>
-            <span class="block font-mono text-color-primary-accent font-bold mt-0.5">{{ ordenPreview()?.vehiculo_patente || 'S/D' }}</span>
-          </div>
-          <div>
-            <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Titular / Cliente</span>
-            <span class="font-bold text-white">{{ ordenPreview()?.cliente_nombre || 'Cliente General' }}</span>
-            <span class="block text-zinc-400 text-[11px] mt-0.5">Tel: {{ ordenPreview()?.cliente_telefono || 'No registrado' }}</span>
-          </div>
-        </div>
+        <!-- Cuerpo en 2 Columnas Equilibradas (Menor Altura Total) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+          <!-- Columna 1: Vehículo, Cliente y Diagnóstico -->
+          <div class="space-y-3">
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 space-y-2">
+              <div>
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Vehículo</span>
+                <span class="font-bold text-white text-sm block">{{ ordenPreview()?.vehiculo_marca_modelo || 'Vehículo Registrado' }}</span>
+                <span class="font-mono text-color-primary-accent font-bold text-xs mt-0.5 inline-block bg-color-primary-accent/10 px-1.5 py-0.5 rounded border border-color-primary-accent/30">
+                  {{ ordenPreview()?.vehiculo_patente || 'S/D' }}
+                </span>
+              </div>
+              <div class="pt-1.5 border-t border-white/5">
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Titular / Cliente</span>
+                <span class="font-bold text-white block">{{ ordenPreview()?.cliente_nombre || 'Cliente General' }}</span>
+                <span class="text-zinc-400 text-[11px] block mt-0.5">Tel: {{ ordenPreview()?.cliente_telefono || 'No registrado' }}</span>
+              </div>
+            </div>
 
-        <!-- Diagnóstico y Fechas -->
-        <div class="space-y-2 text-xs">
-          <div>
-            <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Diagnóstico / Falla</span>
-            <p class="text-zinc-200 mt-0.5 bg-black/20 p-2.5 rounded-lg border border-white/5 italic">
-              "{{ ordenPreview()?.descripcion_problema || 'Inspección técnica general' }}"
+            <div>
+              <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold mb-1">Diagnóstico / Falla</span>
+              <p class="text-zinc-200 bg-black/25 p-2.5 rounded-xl border border-white/5 italic text-xs leading-relaxed m-0 line-clamp-3" [title]="ordenPreview()?.descripcion_problema || ''">
+                "{{ ordenPreview()?.descripcion_problema || 'Inspección técnica general' }}"
+              </p>
+            </div>
+          </div>
+
+          <!-- Columna 2: Fechas, Presupuesto y Cobro -->
+          <div class="space-y-3 flex flex-col justify-between">
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 grid grid-cols-2 gap-2">
+              <div>
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Fecha Ingreso</span>
+                <span class="font-medium text-white block mt-0.5">{{ ordenPreview()?.fecha_ingreso | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div>
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Técnico / Asignado</span>
+                <span class="font-medium text-white block mt-0.5">{{ ordenPreview()?.tecnico || 'Taller Central' }}</span>
+              </div>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-color-primary-accent/10 border border-color-primary-accent/30 space-y-2">
+              <span class="text-[10px] text-zinc-400 block uppercase font-semibold">Presupuesto Estimado</span>
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="font-mono text-xl font-black text-color-primary-accent">
+                  $ {{ (ordenPreview()?.monto_total || 0) | number:'1.2-2' }}
+                </span>
+                <span
+                  class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider"
+                  [ngClass]="{
+                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenPreview()?.estado_cobro === 'cobrado',
+                    'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenPreview()?.estado_cobro !== 'cobrado'
+                  }"
+                >
+                  {{ ordenPreview()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}
+                </span>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-zinc-400 m-0 leading-tight">
+              💡 Para registrar cobro, cargar repuestos o cambiar estado, abre el expediente completo.
             </p>
           </div>
-          <div class="grid grid-cols-2 gap-3 pt-2">
-            <div>
-              <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Ingreso</span>
-              <span class="font-medium text-white">{{ ordenPreview()?.fecha_ingreso | date:'dd MMM yyyy' }}</span>
-            </div>
-            <div>
-              <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Complejidad</span>
-              <span
-                class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-0.5"
-                [ngClass]="getComplejidadBadgeClass(ordenPreview()?.complejidad)"
-              >
-                Complejidad {{ ordenPreview()?.complejidad || 'Media' }}
-              </span>
-            </div>
-          </div>
         </div>
 
-        <!-- Presupuesto y Cobro -->
-        <div class="p-3.5 rounded-xl bg-color-primary-accent/10 border border-color-primary-accent/30 flex items-center justify-between">
-          <div>
-            <span class="text-[10px] text-zinc-400 block uppercase font-semibold">Presupuesto Estimado</span>
-            <span class="font-mono text-lg font-black text-color-primary-accent">
-              $ {{ (ordenPreview()?.monto_total || 0) | number:'1.2-2' }}
-            </span>
-          </div>
-          <span
-            class="px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider"
-            [ngClass]="{
-              'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenPreview()?.estado_cobro === 'cobrado',
-              'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenPreview()?.estado_cobro !== 'cobrado'
-            }"
-          >
-            {{ ordenPreview()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}
-          </span>
-        </div>
-
-        <!-- Footer: Acciones -->
-        <div class="flex items-center justify-between gap-3 pt-2 border-t border-white/10">
+        <!-- Footer: Acciones en Una Sola Fila -->
+        <div class="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
           <button
             type="button"
             (click)="cerrarModalPreview(); abrirModalEliminar(ordenPreview()!)"
