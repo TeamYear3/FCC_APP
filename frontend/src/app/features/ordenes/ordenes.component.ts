@@ -595,13 +595,26 @@ export class OrdenesComponent implements OnInit {
   }
 
   onBusquedaChange(): void {
-    if (this.busqueda().trim()) {
+    const busq = this.busqueda().trim();
+    if (busq) {
+      // Si el usuario busca por término libre y venía del filtro fijo de 'hoy',
+      // limpiamos las fechas para que la búsqueda sea global sobre todo el taller
+      if (this.criterioVista() === 'hoy') {
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+      }
       this.criterioVista.set('personalizado');
     }
     this.cargarOrdenes(1);
   }
 
+  limpiarBusqueda(): void {
+    this.busqueda.set('');
+    this.aplicarCriterio('hoy');
+  }
+
   limpiarFiltros(): void {
+    this.busqueda.set('');
     this.aplicarCriterio('hoy');
   }
 

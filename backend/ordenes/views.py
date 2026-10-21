@@ -7,6 +7,7 @@ from rest_framework import status, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, Prefetch, Count, Sum, Avg, Case, When, Value, IntegerField
+from django.db.models.functions import Concat
 from datetime import timedelta, date
 from decimal import Decimal
 from rest_framework.exceptions import PermissionDenied
@@ -56,7 +57,11 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
         return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
 
     def get_queryset(self):
-        queryset = OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario', 'tecnico').all().order_by('-fecha_ingreso', '-creado_en')
+        queryset = OrdenTrabajo.objects.select_related('vehiculo__cliente__usuario', 'tecnico').annotate(
+            nombre_completo=Concat('vehiculo__cliente__nombre', Value(' '), 'vehiculo__cliente__apellido'),
+            nombre_completo_rev=Concat('vehiculo__cliente__apellido', Value(' '), 'vehiculo__cliente__nombre'),
+            vehiculo_desc=Concat('vehiculo__marca', Value(' '), 'vehiculo__modelo')
+        ).all().order_by('-fecha_ingreso', '-creado_en')
         
         user = self.request.user
         if getattr(user, 'rol', None) == 'cliente':
@@ -67,7 +72,12 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
 
         numero_ot = self.request.query_params.get('numero_ot')
         if numero_ot:
-            queryset = queryset.filter(numero_ot__icontains=numero_ot.strip())
+            ot_str = numero_ot.strip()
+            ot_clean = ot_str.lower().replace('#', '').replace('ot-', '').replace('ot', '').strip()
+            q_num = Q(numero_ot__icontains=ot_str)
+            if ot_clean.isdigit():
+                q_num |= Q(numero_ot__iexact=f"OT-{int(ot_clean):04d}")
+            queryset = queryset.filter(q_num)
 
         orden_id = self.request.query_params.get('id')
         if orden_id:
@@ -80,8 +90,13 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
             term = patente.strip()
             queryset = queryset.filter(
                 Q(vehiculo__patente__icontains=term) |
+                Q(vehiculo__marca__icontains=term) |
+                Q(vehiculo__modelo__icontains=term) |
+                Q(vehiculo_desc__icontains=term) |
                 Q(vehiculo__cliente__nombre__icontains=term) |
                 Q(vehiculo__cliente__apellido__icontains=term) |
+                Q(nombre_completo__icontains=term) |
+                Q(nombre_completo_rev__icontains=term) |
                 Q(vehiculo__cliente__dni_cuit__icontains=term) |
                 Q(numero_ot__icontains=term) |
                 Q(descripcion_problema__icontains=term)
@@ -97,18 +112,78 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
                 queryset = queryset.filter(
                     Q(vehiculo__cliente__nombre__icontains=cliente_term) |
                     Q(vehiculo__cliente__apellido__icontains=cliente_term) |
+                    Q(nombre_completo__icontains=cliente_term) |
+                    Q(nombre_completo_rev__icontains=cliente_term) |
                     Q(vehiculo__cliente__dni_cuit__icontains=cliente_term)
                 )
 
+        relevancia_anotada = False
         if search:
             search_term = search.strip()
-            queryset = queryset.filter(
-                Q(vehiculo__patente__icontains=search_term) |
+            search_clean = search_term.lower().replace('#', '').replace('ot-', '').replace('ot', '').strip()
+
+            q_ot = Q(numero_ot__icontains=search_term)
+            if search_clean.isdigit():
+                q_ot |= Q(numero_ot__iexact=f"OT-{int(search_clean):04d}")
+                q_ot |= Q(numero_ot__icontains=f"OT-{int(search_clean)}")
+
+            # DNI: Si son pocos dígitos numéricos (<= 2) solo buscar al inicio, sino icontains
+            if search_term.isdigit() and len(search_term) <= 2:
+                q_dni = Q(vehiculo__cliente__dni_cuit__startswith=search_term)
+            else:
+                q_dni = Q(vehiculo__cliente__dni_cuit__icontains=search_term)
+
+            q_cliente = (
                 Q(vehiculo__cliente__nombre__icontains=search_term) |
                 Q(vehiculo__cliente__apellido__icontains=search_term) |
-                Q(vehiculo__cliente__dni_cuit__icontains=search_term) |
-                Q(numero_ot__icontains=search_term)
+                Q(nombre_completo__icontains=search_term) |
+                Q(nombre_completo_rev__icontains=search_term) |
+                q_dni
             )
+
+            # Si el término tiene varias palabras (ej. "Carlos Gómez" o "Fiat Cronos")
+            palabras = [p for p in search_term.split() if len(p) >= 2]
+            if len(palabras) > 1:
+                q_palabras_cliente = Q()
+                q_palabras_vehiculo = Q()
+                for w in palabras:
+                    q_palabras_cliente &= (Q(vehiculo__cliente__nombre__icontains=w) | Q(vehiculo__cliente__apellido__icontains=w))
+                    q_palabras_vehiculo &= (Q(vehiculo__marca__icontains=w) | Q(vehiculo__modelo__icontains=w))
+                q_cliente |= q_palabras_cliente
+
+            q_vehiculo = (
+                Q(vehiculo__patente__icontains=search_term) |
+                Q(vehiculo__marca__icontains=search_term) |
+                Q(vehiculo__modelo__icontains=search_term) |
+                Q(vehiculo_desc__icontains=search_term)
+            )
+            if len(palabras) > 1:
+                q_vehiculo |= q_palabras_vehiculo
+
+            q_problema = Q(descripcion_problema__icontains=search_term)
+            q_tecnico = (
+                Q(tecnico__nombre__icontains=search_term) |
+                Q(tecnico__apellido__icontains=search_term)
+            )
+
+            queryset = queryset.filter(q_ot | q_cliente | q_vehiculo | q_problema | q_tecnico)
+
+            # Priorización de Relevancia
+            prioridad_cases = []
+            if search_clean.isdigit():
+                prioridad_cases.append(When(numero_ot__iexact=f"OT-{int(search_clean):04d}", then=Value(1)))
+            prioridad_cases.append(When(numero_ot__iexact=search_term, then=Value(1)))
+            prioridad_cases.append(When(numero_ot__icontains=search_term, then=Value(2)))
+            prioridad_cases.append(When(vehiculo__patente__iexact=search_term, then=Value(3)))
+            prioridad_cases.append(When(vehiculo__patente__icontains=search_term, then=Value(4)))
+            prioridad_cases.append(When(nombre_completo__iexact=search_term, then=Value(5)))
+            prioridad_cases.append(When(nombre_completo__icontains=search_term, then=Value(6)))
+            prioridad_cases.append(When(vehiculo_desc__icontains=search_term, then=Value(7)))
+
+            queryset = queryset.annotate(
+                relevancia=Case(*prioridad_cases, default=Value(20), output_field=IntegerField())
+            )
+            relevancia_anotada = True
 
         estado = self.request.query_params.get('estado')
         if estado and estado.lower() != 'todos':
@@ -142,7 +217,9 @@ class ListarCrearOrdenTrabajoView(generics.ListCreateAPIView):
             queryset = queryset.filter(complejidad__iexact=complejidad.strip())
 
         ordering = self.request.query_params.get('ordering')
-        if ordering == 'complejidad':
+        if relevancia_anotada and (not ordering or ordering in ['fecha_desc', 'complejidad']):
+            queryset = queryset.order_by('relevancia', '-fecha_ingreso', '-creado_en')
+        elif ordering == 'complejidad':
             queryset = queryset.annotate(
                 complejidad_peso=Case(
                     When(complejidad='alta', then=Value(1)),

@@ -66,4 +66,16 @@ input:-webkit-autofill:active {
   outline-offset: 2px !important;
 }
 
+/* Prevenir doble borde en inputs contenidos dentro de wrappers interactivos */
+.search-input,
+.search-input:focus,
+.search-input:focus-visible,
+.search-input-wrapper input,
+.search-input-wrapper input:focus,
+.search-input-wrapper input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
 
