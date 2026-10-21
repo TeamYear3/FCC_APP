@@ -122,63 +122,54 @@ export class OrdenesComponent implements OnInit {
   /**
    * Metadatos descriptivos del criterio activo para la barra superior
    */
-  readonly criterioInfo = computed<{ titulo: string; descripcion: string; icono: string }>(() => {
+  readonly criterioInfo = computed<{ titulo: string; descripcion: string }>(() => {
     if (this.busqueda().trim()) {
       return {
         titulo: 'Resultados de Búsqueda',
-        descripcion: `Filtrando órdenes por término "${this.busqueda().trim()}".`,
-        icono: '🔍'
+        descripcion: `Filtrando órdenes por término "${this.busqueda().trim()}".`
       };
     }
     switch (this.criterioVista()) {
       case 'hoy':
         return {
           titulo: 'Órdenes de Hoy (por Complejidad)',
-          descripcion: `Mostrando órdenes del día de hoy (${this.obtenerFechaHoy()}) ordenadas por complejidad (Alta → Media → Baja).`,
-          icono: '📅'
+          descripcion: `Mostrando órdenes del día de hoy (${this.obtenerFechaHoy()}) ordenadas por complejidad (Alta → Media → Baja).`
         };
       case 'todas':
         return {
           titulo: 'Todas las Órdenes (Histórico)',
-          descripcion: 'Mostrando órdenes de todas las fechas sin restricción temporal (días anteriores y actuales).',
-          icono: '🌐'
+          descripcion: 'Mostrando órdenes de todas las fechas sin restricción temporal (días anteriores y actuales).'
         };
       case 'prioritarias':
         return {
           titulo: 'Órdenes Prioritarias y Urgentes',
-          descripcion: 'Priorizando trabajos en pausa técnica, alta complejidad y vehículos en proceso de reparación.',
-          icono: '⚡'
+          descripcion: 'Priorizando trabajos en pausa técnica, alta complejidad y vehículos en proceso de reparación.'
         };
       case 'semana':
         return {
           titulo: 'Últimos 7 Días',
-          descripcion: 'Órdenes ingresadas durante la última semana de actividad en el taller.',
-          icono: '📆'
+          descripcion: 'Órdenes ingresadas durante la última semana de actividad en el taller.'
         };
       case 'alta_complejidad':
         return {
           titulo: 'Alta Complejidad Técnica',
-          descripcion: 'Filtrando reparaciones complejas de motor, transmisión y diagnóstico electrónico.',
-          icono: '🔴'
+          descripcion: 'Filtrando reparaciones complejas de motor, transmisión y diagnóstico electrónico.'
         };
       case 'activas':
         return {
           titulo: 'Vehículos Activos en Taller',
-          descripcion: 'Mostrando órdenes en proceso, en pausa técnica o aprobadas para inicio.',
-          icono: '🔧'
+          descripcion: 'Mostrando órdenes en proceso, en pausa técnica o aprobadas para inicio.'
         };
       case 'cobro_pendiente':
         return {
           titulo: 'Pendientes de Cobro',
-          descripcion: 'Órdenes de trabajo entregadas o finalizadas con saldo o cobro pendiente.',
-          icono: '💳'
+          descripcion: 'Órdenes de trabajo entregadas o finalizadas con saldo o cobro pendiente.'
         };
       case 'personalizado':
       default:
         return {
           titulo: 'Filtro Personalizado',
-          descripcion: 'Mostrando órdenes según los parámetros manuales seleccionados.',
-          icono: '⚙️'
+          descripcion: 'Mostrando órdenes según los parámetros manuales seleccionados.'
         };
     }
   });
