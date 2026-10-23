@@ -193,4 +193,19 @@ describe('ClientesComponent', () => {
       expect(typeof component.routeQueryParams()).toBe('object');
     });
   });
+
+  describe('TK243 - Renderizado Fluido en Grilla sin Scroll Anidado (TEST-CRUD-014)', () => {
+    it('debe renderizar la totalidad de las tarjetas de clientes en el DOM sin contenedor virtual rígido', () => {
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector('[data-testid="clientes-tabla"]');
+      expect(grid).toBeTruthy();
+
+      const cards = fixture.nativeElement.querySelectorAll('[data-testid="cliente-row"]');
+      expect(cards.length).toBe(component.clientesFiltrados().length);
+
+      const virtualViewport = fixture.nativeElement.querySelector('cdk-virtual-scroll-viewport');
+      expect(virtualViewport).toBeNull();
+    });
+  });
 });
+
