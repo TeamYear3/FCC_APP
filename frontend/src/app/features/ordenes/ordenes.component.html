@@ -9,23 +9,6 @@
       categoria="Órdenes de Trabajo (OT)"
       [userRole]="userRole()"
     >
-      <!-- Botón Nueva Orden (Pill Action Button) -->
-      <a
-        actions
-        [routerLink]="nuevaOrdenUrl()"
-        class="min-h-[48px] px-md py-2.5 rounded-pill bg-color-primary-accent text-black font-bold typography-body-highlight transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] flex items-center gap-2 cursor-pointer decoration-none shadow-md"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-5 h-5 stroke-[2.5dp]"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-        <span>Nueva Orden</span>
-      </a>
     </app-page-component>
 
     <!-- Banner de éxito de OT creada -->
@@ -76,161 +59,365 @@
       </div>
     }
 
-    <!-- Panel de Búsqueda y Filtros Avanzados (TK056) -->
-    <div
-      class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4"
-    >
-      <div class="flex items-center justify-between border-b border-white/5 pb-3">
-        <div class="flex items-center gap-2">
+    @if (!modoDetalle()) {
+      <!-- Barra de Búsqueda y Acciones Rápidas Unificadas -->
+      <div class="bg-color-surface-container border border-white/5 rounded-2xl p-3 sm:p-4 mb-lg shadow-xl space-y-3">
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <!-- Input de Búsqueda que ocupa todo el ancho principal -->
+        <div class="search-input-wrapper flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 focus-within:border-color-primary-accent focus-within:ring-1 focus-within:ring-color-primary-accent transition-all">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-color-primary-accent"
+            class="h-5 w-5 text-color-primary-accent shrink-0"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             stroke-width="2"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <h2 class="text-sm font-bold text-white uppercase tracking-wider">
-            Búsqueda y Filtros Avanzados
-          </h2>
+          <input
+            type="text"
+            [ngModel]="busqueda()"
+            (ngModelChange)="busqueda.set($event); onBusquedaChange()"
+            placeholder="Buscar órdenes de trabajo por OT, patente, cliente, vehículo o falla..."
+            class="search-input bg-transparent text-white placeholder-zinc-400 w-full focus:outline-none text-xs sm:text-sm font-medium border-0"
+          />
+          @if (busqueda()) {
+            <button
+              type="button"
+              (click)="limpiarBusqueda()"
+              class="text-zinc-400 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-0.5"
+              title="Borrar búsqueda y volver a hoy"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          }
         </div>
-        <button
-          type="button"
-          (click)="limpiarFiltros()"
-          class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1 bg-transparent border-0 cursor-pointer"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-3.5 w-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
+
+        <!-- Botones de Acción en la misma fila -->
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Botón Filtros Avanzados -->
+          <button
+            type="button"
+            (click)="toggleFiltrosAvanzados()"
+            class="min-h-[44px] px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+            [ngClass]="{
+              'bg-color-primary-accent/15 border-color-primary-accent text-color-primary-accent': filtrosAvanzadosAbiertos() || totalFiltrosActivos() > 0,
+              'bg-white/5 border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white': !filtrosAvanzadosAbiertos() && totalFiltrosActivos() === 0
+            }"
+            title="Desplegar u ocultar filtros avanzados"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-            />
-          </svg>
-          Limpiar filtros
-        </button>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <span>Filtros</span>
+            @if (totalFiltrosActivos() > 0) {
+              <span class="w-4 h-4 rounded-full bg-color-primary-accent text-black text-[10px] font-extrabold flex items-center justify-center">
+                {{ totalFiltrosActivos() }}
+              </span>
+            }
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-3.5 w-3.5 transition-transform duration-200"
+              [ngClass]="{ 'rotate-180': filtrosAvanzadosAbiertos() }"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <!-- Botón Nueva Orden al lado de la barra de búsqueda -->
+          <a
+            [routerLink]="nuevaOrdenUrl()"
+            class="min-h-[44px] px-4 py-2 rounded-xl bg-color-primary-accent text-black font-bold text-xs sm:text-sm transition-all duration-200 hover:bg-color-primary-accent/90 active:scale-[0.98] flex items-center gap-1.5 cursor-pointer decoration-none shadow-md whitespace-nowrap"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="w-4 h-4 stroke-[2.5]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Nueva Orden</span>
+          </a>
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-        <!-- Búsqueda Patente / Cliente -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Patente / Cliente</label>
-          <div
-            class="bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 flex items-center gap-2 focus-within:border-color-primary-accent transition-colors"
-          >
-            <input
-              type="text"
-              [ngModel]="busqueda()"
-              (ngModelChange)="busqueda.set($event); onFiltroChange()"
-              placeholder="Ej: ABC123 o Pérez..."
-              class="bg-transparent text-white placeholder-zinc-400 w-full focus:outline-none text-xs font-medium"
-            />
+      <!-- Panel Desplegable de Filtros Secundarios -->
+      @if (filtrosAvanzadosAbiertos()) {
+        <div class="pt-3 border-t border-white/5 space-y-3 animate-fadeIn">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <!-- Selector de Estado -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Estado de la Orden</label>
+              <select
+                [ngModel]="estadoFiltro()"
+                (ngModelChange)="estadoFiltro.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              >
+                <option value="todos">Todos los Estados</option>
+                <option value="ingresado">Ingresado</option>
+                <option value="en_presupuesto">En Presupuesto</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="en_proceso">En Proceso</option>
+                <option value="en_pausa">En Pausa</option>
+                <option value="finalizado">Finalizado</option>
+                <option value="entregado">Entregado</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+
+            <!-- Selector de Complejidad -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Nivel Complejidad</label>
+              <select
+                [ngModel]="complejidadFiltro()"
+                (ngModelChange)="complejidadFiltro.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              >
+                <option value="todas">Todas las Complejidades</option>
+                <option value="baja">🟢 Baja (Service Rápido)</option>
+                <option value="media">🟡 Media (Frenos / Tren Del.)</option>
+                <option value="alta">🔴 Alta (Motor / Transmisión)</option>
+              </select>
+            </div>
+
+            <!-- Fecha Desde -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Fecha Desde</label>
+              <input
+                type="date"
+                [ngModel]="fechaDesde()"
+                (ngModelChange)="fechaDesde.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              />
+            </div>
+
+            <!-- Fecha Hasta -->
+            <div class="space-y-1">
+              <label class="text-zinc-400 font-medium block">Fecha Hasta</label>
+              <input
+                type="date"
+                [ngModel]="fechaHasta()"
+                (ngModelChange)="fechaHasta.set($event); onFiltroChange()"
+                class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-1">
+            <button
+              type="button"
+              (click)="limpiarFiltros()"
+              class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1.5 bg-transparent border-0 cursor-pointer py-1 px-2 rounded-lg hover:bg-white/5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Restablecer y limpiar filtros</span>
+            </button>
           </div>
         </div>
-
-        <!-- Selector de Estado -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Estado de la Orden</label>
-          <select
-            [ngModel]="estadoFiltro()"
-            (ngModelChange)="estadoFiltro.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          >
-            <option value="todos">Todos los Estados</option>
-            <option value="ingresado">Ingresado</option>
-            <option value="en_presupuesto">En Presupuesto</option>
-            <option value="aprobado">Aprobado</option>
-            <option value="en_proceso">En Proceso</option>
-            <option value="en_pausa">En Pausa</option>
-            <option value="finalizado">Finalizado</option>
-            <option value="entregado">Entregado</option>
-            <option value="cancelado">Cancelado</option>
-          </select>
-        </div>
-
-        <!-- Selector de Complejidad Operativa (TK101) -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Nivel Complejidad</label>
-          <select
-            [ngModel]="complejidadFiltro()"
-            (ngModelChange)="complejidadFiltro.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          >
-            <option value="todas">Todas las Complejidades</option>
-            <option value="baja">🟢 Baja (Service Rápido)</option>
-            <option value="media">🟡 Media (Frenos / Tren Del.)</option>
-            <option value="alta">🔴 Alta (Motor / Transmisión)</option>
-          </select>
-        </div>
-
-        <!-- Fecha Desde -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Fecha Desde</label>
-          <input
-            type="date"
-            [ngModel]="fechaDesde()"
-            (ngModelChange)="fechaDesde.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          />
-        </div>
-
-        <!-- Fecha Hasta -->
-        <div class="space-y-1">
-          <label class="text-zinc-400 font-medium block">Fecha Hasta</label>
-          <input
-            type="date"
-            [ngModel]="fechaHasta()"
-            (ngModelChange)="fechaHasta.set($event); onFiltroChange()"
-            class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-color-primary-accent text-xs font-medium cursor-pointer"
-          />
-        </div>
-      </div>
+      }
     </div>
 
     <!-- Grilla / Listado Dinámico de Órdenes de Trabajo (TK120) -->
     <div
       class="bg-color-surface-container border border-white/5 rounded-2xl p-4 sm:p-5 mb-lg shadow-xl space-y-4"
     >
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
-        <div class="flex items-center gap-2">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 text-color-primary-accent"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            />
-          </svg>
-          <h2 class="text-sm font-bold text-white uppercase tracking-wider">
-            Listado de Órdenes de Trabajo
-          </h2>
-          <span
-            class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
-          >
-            {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
-          </span>
+      <!-- Cabecera Superior: Título, Conteo y Selector de Ordenación -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/5 pb-3.5">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <div class="w-8 h-8 rounded-lg bg-color-primary-accent/10 border border-color-primary-accent/30 flex items-center justify-center text-color-primary-accent">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4.5 w-4.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+              />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider">
+                {{ criterioInfo().titulo }}
+              </h2>
+              <span
+                class="px-2 py-0.5 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-semibold"
+              >
+                {{ totalItems() }} {{ totalItems() === 1 ? 'orden' : 'órdenes' }}
+              </span>
+            </div>
+          </div>
         </div>
-        <p class="text-xs text-zinc-400">
-          💡 <span class="text-zinc-300">Tip:</span> Haz clic para seleccionar o <strong class="text-color-primary-accent">doble clic</strong> para enfocar el expediente.
+
+        <!-- Selector de Ordenación -->
+        <div class="flex items-center gap-2 self-start md:self-auto">
+          <label class="text-xs text-zinc-400 font-medium whitespace-nowrap flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+            </svg>
+            <span>Ordenar por:</span>
+          </label>
+          <select
+            [ngModel]="ordenacion()"
+            (ngModelChange)="cambiarOrdenacion($event)"
+            class="bg-black/50 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-color-primary-accent font-medium cursor-pointer"
+          >
+            <option value="complejidad">Complejidad (Alta → Baja)</option>
+            <option value="criticidad">Prioridad Operativa</option>
+            <option value="fecha_desc">Fecha más reciente</option>
+            <option value="fecha_asc">Fecha más antigua</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Barra de Criterios Rápidos (Pills / Chips con Scroll Horizontal Suave) -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <!-- 1. De Hoy (Default) -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('hoy')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'hoy' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'hoy' || !!busqueda().trim()
+          }"
+          title="Ver únicamente las órdenes ingresadas hoy, ordenadas por nivel de complejidad"
+        >
+          <span>De Hoy</span>
+          <span
+            class="text-[10px] px-1 py-0.2 rounded font-mono"
+            [ngClass]="criterioVista() === 'hoy' && !busqueda().trim() ? 'bg-black/30 text-black font-bold' : 'bg-white/10 text-zinc-400'"
+          >
+            Complejidad
+          </span>
+        </button>
+
+        <!-- 2. Ver Todas -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('todas')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'todas' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'todas' || !!busqueda().trim()
+          }"
+          title="Ver todas las órdenes sin restricción de fechas (incluye días anteriores e histórico)"
+        >
+          <span>Ver Todas (Histórico)</span>
+        </button>
+
+        <!-- 3. Prioritarias -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('prioritarias')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'prioritarias' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'prioritarias' || !!busqueda().trim()
+          }"
+          title="Priorizar órdenes críticas en pausa, alta complejidad y en proceso"
+        >
+          <span>Prioritarias</span>
+        </button>
+
+        <!-- 4. Últimos 7 Días -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('semana')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'semana' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'semana' || !!busqueda().trim()
+          }"
+          title="Órdenes ingresadas durante los últimos 7 días"
+        >
+          <span>Últimos 7 Días</span>
+        </button>
+
+        <!-- 5. Alta Complejidad -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('alta_complejidad')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'alta_complejidad' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'alta_complejidad' || !!busqueda().trim()
+          }"
+          title="Ver exclusivamente reparaciones de alta complejidad"
+        >
+          <span>Alta Complejidad</span>
+        </button>
+
+        <!-- 6. Activas en Taller -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('activas')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'activas' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'activas' || !!busqueda().trim()
+          }"
+          title="Órdenes en proceso, en pausa o aprobadas"
+        >
+          <span>Activas en Taller</span>
+        </button>
+
+        <!-- 7. Pendientes de Cobro -->
+        <button
+          type="button"
+          (click)="aplicarCriterio('cobro_pendiente')"
+          class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer border"
+          [ngClass]="{
+            'bg-color-primary-accent text-black border-color-primary-accent shadow-md shadow-color-primary-accent/20': criterioVista() === 'cobro_pendiente' && !busqueda().trim(),
+            'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10 hover:text-white': criterioVista() !== 'cobro_pendiente' || !!busqueda().trim()
+          }"
+          title="Órdenes con cobro pendiente de registro"
+        >
+          <span>Cobro Pendiente</span>
+        </button>
+      </div>
+
+      <!-- Banner Informativo del Criterio Activo -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-white/[0.03] border-l-2 border-color-primary-accent text-xs">
+        <p class="text-zinc-300 flex items-center gap-1.5 m-0">
+          <span class="text-zinc-400 font-medium">Criterio:</span>
+          <span class="text-white">{{ criterioInfo().descripcion }}</span>
         </p>
+
+        @if (criterioVista() === 'hoy' && !busqueda().trim()) {
+          <button
+            type="button"
+            (click)="aplicarCriterio('todas')"
+            class="text-xs text-color-primary-accent hover:underline flex items-center gap-1 self-start sm:self-auto bg-transparent border-0 cursor-pointer p-0 font-medium whitespace-nowrap"
+          >
+            <span>Ver todas las anteriores</span>
+            <span>→</span>
+          </button>
+        } @else if (criterioVista() !== 'hoy' || busqueda().trim()) {
+          <button
+            type="button"
+            (click)="aplicarCriterio('hoy')"
+            class="text-xs text-zinc-400 hover:text-color-primary-accent transition-colors flex items-center gap-1 self-start sm:self-auto bg-transparent border-0 cursor-pointer p-0 font-medium whitespace-nowrap"
+          >
+            <span>Volver a hoy (por complejidad)</span>
+          </button>
+        }
       </div>
 
       <!-- Estado Cargando -->
@@ -258,45 +445,63 @@
           </svg>
           <span class="text-xs uppercase tracking-wider font-semibold">Cargando órdenes del taller...</span>
         </div>
-      } @else if (listaOrdenes().length === 0) {
-        <!-- Estado Vacío -->
+      } @else if (ordenesMostradas().length === 0) {
+        <!-- Estado Vacío Inteligente según Criterio -->
         <div class="py-12 text-center space-y-3">
           <div class="w-12 h-12 rounded-full bg-white/5 mx-auto flex items-center justify-center text-zinc-500">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <p class="text-sm font-semibold text-white">No se encontraron órdenes registradas</p>
-          <p class="text-xs text-zinc-400 max-w-sm mx-auto">
-            No existen órdenes que coincidan con los filtros aplicados o aún no se ha generado ninguna orden de trabajo.
-          </p>
-          <div class="pt-2 flex justify-center gap-2">
-            <button
-              type="button"
-              (click)="limpiarFiltros()"
-              class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer"
-            >
-              Restablecer Filtros
-            </button>
-            <a
-              [routerLink]="nuevaOrdenUrl()"
-              class="px-3 py-1.5 rounded-lg bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer decoration-none inline-flex items-center gap-1"
-            >
-              + Nueva Orden
-            </a>
-          </div>
+          @if (criterioVista() === 'hoy' && !busqueda().trim()) {
+            <p class="text-sm font-semibold text-white">No hay órdenes registradas en el día de hoy</p>
+            <p class="text-xs text-zinc-400 max-w-sm mx-auto">
+              Hoy todavía no ingresaron nuevos vehículos. Puedes explorar las órdenes de días anteriores e histórico completo del taller.
+            </p>
+            <div class="pt-2 flex justify-center gap-2">
+              <button
+                type="button"
+                (click)="aplicarCriterio('todas')"
+                class="px-4 py-2 rounded-xl bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer border-0 flex items-center gap-1.5 shadow-md"
+              >
+                <span>Ver todas las órdenes anteriores</span>
+              </button>
+            </div>
+          } @else {
+            <p class="text-sm font-semibold text-white">No se encontraron órdenes registradas</p>
+            <p class="text-xs text-zinc-400 max-w-sm mx-auto">
+              No existen órdenes que coincidan con el criterio o los filtros aplicados.
+            </p>
+            <div class="pt-2 flex justify-center gap-2">
+              <button
+                type="button"
+                (click)="aplicarCriterio('hoy')"
+                class="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors cursor-pointer border-0"
+              >
+                <span>Volver a Hoy</span>
+              </button>
+              <button
+                type="button"
+                (click)="aplicarCriterio('todas')"
+                class="px-3.5 py-1.5 rounded-lg bg-color-primary-accent text-black text-xs font-bold transition-all hover:bg-color-primary-accent/90 cursor-pointer border-0"
+              >
+                <span>Ver Todas</span>
+              </button>
+            </div>
+          }
         </div>
       } @else {
-        <!-- Vista Móvil de Tarjetas Táctiles (< 640px) (TK105) -->
+        <!-- Vista Móvil de Tarjetas Táctiles (< 640px) -->
         <div class="block sm:hidden space-y-3">
-          @for (orden of listaOrdenes(); track orden.id) {
+          @for (orden of ordenesMostradas(); track orden.id) {
             <div
-              (click)="seleccionarOrden(orden, true)"
+              (click)="abrirModalPreview(orden)"
               class="p-4 rounded-2xl border transition-all cursor-pointer space-y-3"
               [ngClass]="{
                 'bg-color-primary-accent/15 border-color-primary-accent shadow-lg': orden.id === ordenActiva()?.id,
                 'bg-black/40 border-white/10 hover:border-white/20': orden.id !== ordenActiva()?.id
               }"
+              title="Haz clic para ver resumen rápido de la orden"
             >
               <!-- Cabecera de la Tarjeta Móvil -->
               <div class="flex items-start justify-between gap-2">
@@ -344,52 +549,31 @@
                 </div>
               </div>
 
-              <!-- Botones de Acción Táctiles (Mínimo 44px de alto) (TK105) -->
-              <div class="pt-2 border-t border-white/5 grid grid-cols-4 gap-2" (click)="$event.stopPropagation()">
+              <!-- Botones de Acción Táctil (Ver Orden y Eliminar) -->
+              <div class="pt-2 border-t border-white/5 flex items-center gap-2" (click)="$event.stopPropagation()">
                 <button
                   type="button"
-                  (click)="seleccionarOrden(orden, true)"
-                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-color-primary-accent hover:text-black text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
-                  title="Ver Expediente"
+                  (click)="verOrden(orden)"
+                  class="flex-1 min-h-[42px] px-4 rounded-xl bg-color-primary-accent text-black font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer border-0 hover:bg-color-primary-accent/90 active:scale-[0.98]"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
+                  <span>Ver Orden</span>
                 </button>
-
-                <button
-                  type="button"
-                  (click)="abrirModalEstado(orden)"
-                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
-                  title="Cambiar Estado"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  (click)="abrirModalCobro(orden)"
-                  class="min-h-[44px] rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-black text-emerald-400 font-bold text-xs flex items-center justify-center gap-1 transition-all border border-emerald-500/30 cursor-pointer"
-                  title="Registrar Cobro"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </button>
-
-                <button
-                  type="button"
-                  (click)="imprimirOT(orden)"
-                  class="min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center justify-center gap-1 transition-all border-0 cursor-pointer"
-                  title="Descargar PDF"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                </button>
+                @if (userRole() === 'admin' && orden.estado_cobro !== 'cobrado') {
+                  <button
+                    type="button"
+                    (click)="abrirModalEliminar(orden)"
+                    title="Eliminar orden de trabajo"
+                    class="min-h-[42px] px-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-[0.98]"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                }
               </div>
             </div>
           }
@@ -401,25 +585,22 @@
             <thead>
               <tr class="border-b border-white/10 text-zinc-400 font-semibold uppercase tracking-wider text-[11px]">
                 <th class="py-3 px-3">OT #</th>
-                <th class="py-3 px-3">Vehículo / Patente</th>
-                <th class="py-3 px-3">Titular / Cliente</th>
-                <th class="py-3 px-3">Fecha Ingreso</th>
+                <th class="py-3 px-3">Vehículo</th>
+                <th class="py-3 px-3">Fecha</th>
                 <th class="py-3 px-3">Complejidad</th>
                 <th class="py-3 px-3">Estado</th>
-                <th class="py-3 px-3 text-right">Presupuesto</th>
-                <th class="py-3 px-3 text-center">Acciones</th>
+                <th class="py-3 px-3 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5">
-              @for (orden of listaOrdenes(); track orden.id) {
+              @for (orden of ordenesMostradas(); track orden.id) {
                 <tr
-                  (click)="seleccionarOrden(orden)"
-                  (dblclick)="seleccionarOrden(orden, true)"
-                  class="transition-colors cursor-pointer group"
+                  (click)="abrirModalPreview(orden)"
+                  class="transition-colors cursor-pointer group hover:bg-white/5"
                   [ngClass]="{
-                    'bg-color-primary-accent/10 border-l-4 border-color-primary-accent font-medium': orden.id === ordenActiva()?.id,
-                    'hover:bg-white/5': orden.id !== ordenActiva()?.id
+                    'bg-color-primary-accent/10 border-l-4 border-color-primary-accent font-medium': orden.id === ordenActiva()?.id
                   }"
+                  title="Haz clic para ver resumen rápido de la orden"
                 >
                   <!-- Columna N° OT -->
                   <td class="py-3 px-3 whitespace-nowrap">
@@ -434,7 +615,7 @@
                     </span>
                   </td>
 
-                  <!-- Columna Vehículo / Patente -->
+                  <!-- Columna Vehículo -->
                   <td class="py-3 px-3">
                     <div class="font-bold text-white text-xs">
                       {{ orden.vehiculo_marca_modelo || 'Vehículo ' + (orden.vehiculo_patente || '') }}
@@ -444,12 +625,6 @@
                         {{ orden.vehiculo_patente || 'S/D' }}
                       </span>
                     </div>
-                  </td>
-
-                  <!-- Columna Titular / Cliente -->
-                  <td class="py-3 px-3 whitespace-nowrap">
-                    <div class="text-white font-medium">{{ orden.cliente_nombre || 'Cliente General' }}</div>
-                    <div class="text-zinc-400 text-[11px]">{{ orden.cliente_telefono || 'Sin teléfono' }}</div>
                   </td>
 
                   <!-- Columna Fecha Ingreso -->
@@ -488,78 +663,33 @@
                     </div>
                   </td>
 
-                  <!-- Columna Presupuesto -->
-                  <td class="py-3 px-3 text-right whitespace-nowrap font-mono font-bold text-white">
-                    $ {{ (orden.monto_total || 0) | number:'1.2-2' }}
-                  </td>
-
-                  <!-- Columna Acciones Rápidas -->
-                  <td class="py-3 px-3 text-center whitespace-nowrap">
-                    <div class="inline-flex items-center gap-1.5" (click)="$event.stopPropagation()">
-                      <!-- Botón Ver Expediente -->
+                  <!-- Columna Acciones: Ver Orden y Eliminar -->
+                  <td class="py-3 px-3 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center gap-1.5 justify-end" (click)="$event.stopPropagation()">
+                      <!-- Botón Ver Orden Principal -->
                       <button
                         type="button"
-                        (click)="seleccionarOrden(orden, true)"
-                        title="Ver Expediente"
-                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-color-primary-accent hover:text-black text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
+                        (click)="verOrden(orden)"
+                        title="Ver detalle completo de la orden"
+                        class="min-h-[34px] px-3.5 py-1.5 rounded-xl bg-color-primary-accent hover:bg-color-primary-accent/90 text-black font-bold text-xs transition-all border-0 cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
+                        <span>Ver Orden</span>
                       </button>
 
-                      <!-- Botón Cambiar Estado -->
-                      <button
-                        type="button"
-                        (click)="abrirModalEstado(orden)"
-                        title="Cambiar Estado de la Orden"
-                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                      </button>
-
-                      <!-- Botón Registrar Cobro (TK103) -->
-                      <button
-                        type="button"
-                        (click)="abrirModalCobro(orden)"
-                        title="Registrar Cobro"
-                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500 hover:text-black text-emerald-400 transition-colors border border-emerald-500/30 cursor-pointer flex items-center justify-center"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                      </button>
-
-                      <!-- Botón Imprimir PDF -->
-                      <button
-                        type="button"
-                        (click)="imprimirOT(orden)"
-                        title="Descargar Comprobante PDF"
-                        class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-white/20 text-zinc-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                        </svg>
-                      </button>
-
-                      <!-- Botón Pausa / Reanudar -->
-                      @if (orden.estado === 'en_proceso' || orden.estado === 'en_pausa') {
+                      <!-- Botón Eliminar Orden -->
+                      @if (userRole() === 'admin' && orden.estado_cobro !== 'cobrado') {
                         <button
                           type="button"
-                          (click)="pausarOReanudarOrden(orden)"
-                          [title]="orden.estado === 'en_proceso' ? 'Pausar Orden' : 'Reanudar Orden'"
-                          class="min-w-[36px] min-h-[36px] p-2 rounded-xl bg-white/5 hover:bg-amber-500/20 text-amber-300 transition-colors border-0 cursor-pointer flex items-center justify-center"
+                          (click)="abrirModalEliminar(orden)"
+                          title="Eliminar orden de trabajo"
+                          class="min-h-[34px] px-2.5 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500 border border-red-500/30 text-red-400 hover:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1 shadow-sm active:scale-[0.98]"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            @if (orden.estado === 'en_proceso') {
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            } @else {
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            }
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
                       }
@@ -600,53 +730,95 @@
         </div>
       }
     </div>
+  } @else {
+    <!-- Vista Completa Dedicada del Expediente de la Orden de Trabajo (TK120) -->
+    <div id="expediente-activo" class="scroll-mt-6 animate-fadeIn">
+      <!-- Barra Superior de Navegación del Expediente y Acciones de la Orden -->
+      <div class="bg-color-surface-container border border-white/10 rounded-2xl p-4 mb-lg shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <!-- Botón Volver y Número de Orden de Trabajo en Grande -->
+        <div class="flex items-center gap-4">
+          <button
+            type="button"
+            (click)="volverAlListado()"
+            class="min-h-[42px] px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Volver al listado</span>
+          </button>
+          <span class="font-mono text-2xl sm:text-3xl font-black text-color-primary-accent tracking-tight">
+            #{{ ordenActiva()?.numero_ot || (ordenActiva()?.id ? 'OT-' + ordenActiva()?.id?.slice(0, 8) : 'S/N') }}
+          </span>
+        </div>
 
-    <!-- Expediente de la Orden de Trabajo Activa (TK120) -->
-    <div id="expediente-activo" class="scroll-mt-6">
+        <!-- Acciones Principales: Imprimir OT, Registrar Cobro, Cambiar Estado -->
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Imprimir OT -->
+          <button
+            type="button"
+            (click)="imprimirOT()"
+            class="min-h-[42px] px-4 py-2 rounded-xl bg-black/60 border border-white/10 hover:border-color-primary-accent text-zinc-200 hover:text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-color-primary-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>Imprimir OT</span>
+          </button>
+
+          <!-- Registrar Cobro -->
+          <button
+            type="button"
+            (click)="abrirModalCobro(ordenActiva()!)"
+            class="min-h-[42px] px-4 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Registrar Cobro</span>
+          </button>
+
+          <!-- Cambiar Estado -->
+          <button
+            type="button"
+            (click)="abrirModalEstado(ordenActiva()!)"
+            class="min-h-[42px] px-4 py-2 rounded-xl bg-color-primary-accent text-black font-bold text-xs flex items-center gap-2 transition-all hover:bg-color-primary-accent/90 cursor-pointer shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>Cambiar Estado</span>
+          </button>
+
+          <!-- Eliminar OT -->
+          @if (userRole() === 'admin' && ordenActiva()?.estado_cobro !== 'cobrado') {
+            <button
+              type="button"
+              (click)="abrirModalEliminar(ordenActiva()!)"
+              class="min-h-[42px] px-3.5 py-2 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 hover:bg-red-500 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+              title="Eliminar orden de trabajo permanentemente"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Eliminar</span>
+            </button>
+          }
+        </div>
+      </div>
+
       @if (ordenActiva()) {
         <!-- Tarjeta Principal de Resumen de Orden Activa Dinámica -->
         <div
           class="bg-color-surface-container border border-color-primary-accent/40 rounded-card p-md sm:p-lg mb-lg shadow-2xl transition-all"
         >
-          <!-- Extremo Superior Izquierdo: Número de orden e información del vehículo / Extremo Superior Derecho: Badge Semántico -->
-          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-md">
+          <!-- Encabezado de la Tarjeta: Datos del Vehículo a la Izquierda / Informe del Estado a la Derecha -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-md">
             <div>
-              <div class="flex flex-wrap items-center gap-3">
-                <span class="typography-h1-display text-color-primary-accent tracking-tight font-mono">
-                  #{{ ordenActiva()?.numero_ot || (ordenActiva()?.id ? 'OT-' + ordenActiva()?.id?.slice(0, 8) : 'Borrador') }}
-                </span>
-                <!-- Badge Semántico Dinámico -->
-                <span
-                  class="px-3 py-1 rounded-badge text-black typography-caption font-extrabold uppercase tracking-wide shadow"
-                  [ngClass]="getEstadoBadgeClass(ordenActiva()!.estado)"
-                >
-                  {{ ordenActiva()?.estado?.replace('_', ' ') }}
-                </span>
-                <!-- Badge Complejidad -->
-                <span
-                  class="px-2.5 py-0.5 rounded-badge text-[11px] font-bold uppercase tracking-wider"
-                  [ngClass]="getComplejidadBadgeClass(ordenActiva()?.complejidad)"
-                >
-                  Complejidad {{ ordenActiva()?.complejidad || 'Media' }}
-                </span>
-                <!-- Badge Cobro (TK103) -->
-                <span
-                  class="px-2.5 py-0.5 rounded-badge text-[11px] font-bold uppercase tracking-wider flex items-center gap-1"
-                  [ngClass]="{
-                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenActiva()?.estado_cobro === 'cobrado',
-                    'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenActiva()?.estado_cobro !== 'cobrado'
-                  }"
-                >
-                  <span>{{ ordenActiva()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}</span>
-                  @if (ordenActiva()?.estado_cobro === 'cobrado' && ordenActiva()?.metodo_pago) {
-                    <span class="text-[10px] opacity-80 uppercase font-mono">({{ ordenActiva()?.metodo_pago }})</span>
-                  }
-                </span>
-              </div>
-              <h2 class="typography-h2-section text-white mt-1">
+              <h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">
                 {{ ordenActiva()?.vehiculo_marca_modelo || 'Vehículo ' + (ordenActiva()?.vehiculo_patente || 'Registrado') }}
               </h2>
-              <p class="typography-body-main text-color-text-secondary mt-0.5 flex items-center gap-2">
+              <p class="typography-body-main text-color-text-secondary mt-1 flex items-center gap-2">
                 Patente:
                 <strong class="text-white font-mono px-2 py-0.5 rounded bg-black/60 border border-white/15">
                   {{ ordenActiva()?.vehiculo_patente || 'S/D' }}
@@ -657,68 +829,37 @@
               </p>
             </div>
 
-            <!-- Acciones Rápidas del Mecánico -->
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                (click)="imprimirOT()"
-                class="px-3 py-2 rounded-card bg-black/60 border border-white/10 hover:border-color-primary-accent text-color-text-secondary hover:text-white typography-caption flex items-center gap-1.5 transition-all cursor-pointer"
+            <!-- Informe del Estado (Estado, Complejidad y Estado del Cobro) -->
+            <div class="flex flex-wrap items-center gap-2.5 sm:justify-end">
+              <!-- Estado -->
+              <span
+                class="px-3 py-1 rounded-badge text-black typography-caption font-extrabold uppercase tracking-wide shadow"
+                [ngClass]="getEstadoBadgeClass(ordenActiva()!.estado)"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="w-4 h-4 text-color-primary-accent"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                  />
-                </svg>
-                <span>Imprimir OT</span>
-              </button>
+                {{ ordenActiva()?.estado?.replace('_', ' ') }}
+              </span>
 
-              <button
-                type="button"
-                (click)="abrirModalCobro(ordenActiva()!)"
-                class="px-3 py-2 rounded-card bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500 hover:text-black typography-caption font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              <!-- Complejidad -->
+              <span
+                class="px-2.5 py-1 rounded-badge text-[11px] font-bold uppercase tracking-wider"
+                [ngClass]="getComplejidadBadgeClass(ordenActiva()?.complejidad)"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-                <span>Registrar Cobro</span>
-              </button>
+                Complejidad {{ ordenActiva()?.complejidad || 'Media' }}
+              </span>
 
-              <button
-                type="button"
-                (click)="abrirModalEstado(ordenActiva()!)"
-                class="px-3 py-2 rounded-card bg-color-primary-accent/15 border border-color-primary-accent/40 text-color-primary-accent hover:bg-color-primary-accent hover:text-black typography-caption font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              <!-- Estado del Cobro -->
+              <span
+                class="px-2.5 py-1 rounded-badge text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+                [ngClass]="{
+                  'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenActiva()?.estado_cobro === 'cobrado',
+                  'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenActiva()?.estado_cobro !== 'cobrado'
+                }"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                <span>Cambiar Estado</span>
-              </button>
+                <span>{{ ordenActiva()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}</span>
+                @if (ordenActiva()?.estado_cobro === 'cobrado' && ordenActiva()?.metodo_pago) {
+                  <span class="text-[10px] opacity-80 uppercase font-mono">({{ ordenActiva()?.metodo_pago }})</span>
+                }
+              </span>
             </div>
           </div>
 
@@ -762,7 +903,6 @@
           <p class="text-zinc-400 text-sm font-medium">Seleccione una orden del listado superior para consultar su expediente técnico.</p>
         </div>
       }
-    </div>
 
 
     <!-- Estructura de Navegación por Pestañas Internas (3 Pestañas Definitivas) -->
@@ -785,7 +925,7 @@
               {{ porcentajeProgreso() }}%
             </span>
           }
-          @if (tab === 'Carga de Mano de Obra y Repuestos') {
+          @if (tab === 'Carga de Repuestos y Mano de Obra') {
             <span
               class="px-2 py-0.5 rounded-badge bg-white/10 text-zinc-300 text-[10px] font-mono"
             >
@@ -875,7 +1015,7 @@
             </div>
             <button
               type="button"
-              (click)="setTab('Carga de Mano de Obra y Repuestos')"
+              (click)="setTab('Carga de Repuestos y Mano de Obra')"
               class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <span class="material-symbols-outlined text-sm text-color-primary-accent">add</span>
@@ -893,11 +1033,11 @@
               <span class="material-symbols-outlined text-3xl text-zinc-600">build_circle</span>
               <p class="text-sm font-semibold text-white">No hay servicios de mano de obra registrados</p>
               <p class="text-xs text-zinc-400 max-w-sm mx-auto">
-                Dirígete a la pestaña "Carga de Mano de Obra y Repuestos" para agregar las tareas mecánicas correspondientes.
+                Dirígete a la pestaña "Carga de Repuestos y Mano de Obra" para agregar las tareas mecánicas correspondientes.
               </p>
               <button
                 type="button"
-                (click)="setTab('Carga de Mano de Obra y Repuestos')"
+                (click)="setTab('Carga de Repuestos y Mano de Obra')"
                 class="mt-2 px-4 py-2 rounded-xl bg-color-primary-accent text-black text-xs font-bold hover:bg-color-primary-accent/90 transition-all cursor-pointer"
               >
                 + Cargar Mano de Obra
@@ -957,7 +1097,7 @@
 
                   <button
                     type="button"
-                    (click)="$event.stopPropagation(); setTab('Imágenes')"
+                    (click)="$event.stopPropagation(); setTab('Cargar Multimedia')"
                     class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white text-xs flex items-center gap-1 transition-colors"
                     title="Ver evidencias fotográficas"
                   >
@@ -984,7 +1124,7 @@
             </div>
             <button
               type="button"
-              (click)="setTab('Carga de Mano de Obra y Repuestos')"
+              (click)="setTab('Carga de Repuestos y Mano de Obra')"
               class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <span class="material-symbols-outlined text-sm text-color-primary-accent">add</span>
@@ -1024,8 +1164,8 @@
       </div>
     }
 
-    <!-- PESTAÑA 2: CARGA DE MANO DE OBRA Y REPUESTOS (TK175) -->
-    @if (activeTab() === 'Carga de Mano de Obra y Repuestos') {
+    <!-- PESTAÑA 2: CARGA DE REPUESTOS Y MANO DE OBRA (TK175) -->
+    @if (activeTab() === 'Carga de Repuestos y Mano de Obra') {
       <div class="mb-lg">
         @defer (on viewport) {
           <app-presupuesto-form
@@ -1041,8 +1181,8 @@
       </div>
     }
 
-    <!-- PESTAÑA 3: IMÁGENES Y EVIDENCIAS (TK175) -->
-    @if (activeTab() === 'Imágenes') {
+    <!-- PESTAÑA 3: CARGAR MULTIMEDIA (TK175) -->
+    @if (activeTab() === 'Cargar Multimedia') {
       <div class="mb-lg">
         @defer (on viewport) {
           <app-diagnostico-fotos
@@ -1069,6 +1209,7 @@
       </button>
     </div>
   </div>
+}
 
   <!-- Modal de Actualización de Estado y Registro de Cobro (TK036 / TK103 & TK171) -->
   @defer (when mostrarModalEstado()) {
@@ -1083,7 +1224,7 @@
 
   <!-- Modal para Aprobar Presupuesto y Convertir en OT con Selección de Canal (TK091) -->
   @if (mostrarModalAprobarPresupuesto() && ordenActiva()) {
-    <div role="dialog" aria-modal="true" data-testid="modal-aprobar-presupuesto" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn select-none">
+    <div role="dialog" aria-modal="true" data-testid="modal-aprobar-presupuesto" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-fadeIn select-none">
       <div class="bg-[#1E1E1E] border border-color-primary-accent/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
         <div class="flex items-center justify-between border-b border-white/10 pb-3">
           <h3 class="text-base font-bold text-white uppercase tracking-tight flex items-center gap-2">
@@ -1191,6 +1332,206 @@
               <span class="material-symbols-outlined text-sm">bolt</span>
               <span>Confirmar y Pasar a EN PROCESO</span>
             }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de Confirmación de Eliminación Definitiva -->
+  @if (mostrarModalEliminar() && ordenAEliminar()) {
+    <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn" (click)="cerrarModalEliminar()">
+      <div
+        class="bg-color-surface-container border border-red-500/40 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 text-white"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Icono y Título -->
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0 text-red-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white">¿Eliminar Orden de Trabajo?</h3>
+            <p class="text-xs text-zinc-400 mt-1">
+              Orden <span class="font-mono font-bold text-color-primary-accent">#{{ ordenAEliminar()?.numero_ot || (ordenAEliminar()?.id ? ordenAEliminar()?.id?.slice(0, 8) : 'S/N') }}</span>
+              · {{ ordenAEliminar()?.vehiculo_marca_modelo }} ({{ ordenAEliminar()?.vehiculo_patente }})
+            </p>
+          </div>
+        </div>
+
+        <!-- Alerta Irreversible -->
+        <div class="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-200 leading-relaxed">
+          <strong>⚠️ Advertencia:</strong> Si eliminas esta orden de trabajo <strong>no se va a poder recuperar</strong>. Se eliminarán de forma permanente todos los ítems presupuestados, mano de obra, repuestos y evidencias registradas.
+        </div>
+
+        @if (errorEliminacion()) {
+          <div class="p-3 rounded-lg bg-red-900/40 border border-red-700 text-xs text-red-200">
+            {{ errorEliminacion() }}
+          </div>
+        }
+
+        <!-- Botones de Acción -->
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="cerrarModalEliminar()"
+            [disabled]="eliminandoOrden()"
+            class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white font-bold text-xs transition-all cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="confirmarEliminacion()"
+            [disabled]="eliminandoOrden()"
+            class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-[0.98] disabled:opacity-50"
+          >
+            @if (eliminandoOrden()) {
+              <div class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Eliminando...</span>
+            } @else {
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Sí, eliminar definitivamente</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de Vista Rápida / Preview (Clic en Fila) -->
+  @if (mostrarModalPreview() && ordenPreview()) {
+    <div
+      role="dialog"
+      aria-modal="true"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn overflow-y-auto"
+      (click)="cerrarModalPreview()"
+    >
+      <div
+        class="bg-color-surface-container border border-white/10 rounded-2xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 text-white my-auto max-h-[88vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10"
+        (click)="$event.stopPropagation()"
+      >
+        <!-- Cabecera Compacta del Preview -->
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <span class="font-mono text-xl sm:text-2xl font-black text-color-primary-accent tracking-tight">
+              #{{ ordenPreview()?.numero_ot || (ordenPreview()?.id ? 'OT-' + ordenPreview()?.id?.slice(0, 8) : 'S/N') }}
+            </span>
+            <span
+              class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide"
+              [ngClass]="getEstadoBadgeClass(ordenPreview()!.estado)"
+            >
+              {{ ordenPreview()?.estado?.replace('_', ' ') }}
+            </span>
+            <span
+              class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+              [ngClass]="getComplejidadBadgeClass(ordenPreview()?.complejidad)"
+            >
+              Complejidad {{ ordenPreview()?.complejidad || 'Media' }}
+            </span>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarModalPreview()"
+            class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer text-xs"
+            title="Cerrar vista previa"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Cuerpo en 2 Columnas Equilibradas (Menor Altura Total) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+          <!-- Columna 1: Vehículo, Cliente y Diagnóstico -->
+          <div class="space-y-3">
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 space-y-2">
+              <div>
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Vehículo</span>
+                <span class="font-bold text-white text-sm block">{{ ordenPreview()?.vehiculo_marca_modelo || 'Vehículo Registrado' }}</span>
+                <span class="font-mono text-color-primary-accent font-bold text-xs mt-0.5 inline-block bg-color-primary-accent/10 px-1.5 py-0.5 rounded border border-color-primary-accent/30">
+                  {{ ordenPreview()?.vehiculo_patente || 'S/D' }}
+                </span>
+              </div>
+              <div class="pt-1.5 border-t border-white/5">
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Titular / Cliente</span>
+                <span class="font-bold text-white block">{{ ordenPreview()?.cliente_nombre || 'Cliente General' }}</span>
+                <span class="text-zinc-400 text-[11px] block mt-0.5">Tel: {{ ordenPreview()?.cliente_telefono || 'No registrado' }}</span>
+              </div>
+            </div>
+
+            <div>
+              <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold mb-1">Diagnóstico / Falla</span>
+              <p class="text-zinc-200 bg-black/25 p-2.5 rounded-xl border border-white/5 italic text-xs leading-relaxed m-0 line-clamp-3" [title]="ordenPreview()?.descripcion_problema || ''">
+                "{{ ordenPreview()?.descripcion_problema || 'Inspección técnica general' }}"
+              </p>
+            </div>
+          </div>
+
+          <!-- Columna 2: Fechas, Presupuesto y Cobro -->
+          <div class="space-y-3 flex flex-col justify-between">
+            <div class="bg-black/30 border border-white/5 rounded-xl p-3 grid grid-cols-2 gap-2">
+              <div>
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Fecha Ingreso</span>
+                <span class="font-medium text-white block mt-0.5">{{ ordenPreview()?.fecha_ingreso | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div>
+                <span class="text-zinc-500 uppercase tracking-wider text-[10px] block font-semibold">Técnico / Asignado</span>
+                <span class="font-medium text-white block mt-0.5">{{ ordenPreview()?.tecnico || 'Taller Central' }}</span>
+              </div>
+            </div>
+
+            <div class="p-3.5 rounded-xl bg-color-primary-accent/10 border border-color-primary-accent/30 space-y-2">
+              <span class="text-[10px] text-zinc-400 block uppercase font-semibold">Presupuesto Estimado</span>
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <span class="font-mono text-xl font-black text-color-primary-accent">
+                  $ {{ (ordenPreview()?.monto_total || 0) | number:'1.2-2' }}
+                </span>
+                <span
+                  class="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider"
+                  [ngClass]="{
+                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40': ordenPreview()?.estado_cobro === 'cobrado',
+                    'bg-amber-500/20 text-amber-300 border border-amber-500/40': ordenPreview()?.estado_cobro !== 'cobrado'
+                  }"
+                >
+                  {{ ordenPreview()?.estado_cobro === 'cobrado' ? '💳 Cobrado' : '⏳ Cobro Pendiente' }}
+                </span>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-zinc-400 m-0 leading-tight">
+              💡 Para registrar cobro, cargar repuestos o cambiar estado, abre el expediente completo.
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer: Acciones (Eliminar a la izquierda y Ver Expediente Completo a la derecha) -->
+        <div class="flex items-center justify-between gap-3 pt-3 border-t border-white/10">
+          @if (userRole() === 'admin' && ordenPreview()?.estado_cobro !== 'cobrado') {
+            <button
+              type="button"
+              (click)="cerrarModalPreview(); abrirModalEliminar(ordenPreview()!)"
+              class="px-3.5 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-red-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              <span>Eliminar</span>
+            </button>
+          } @else {
+            <div></div>
+          }
+
+          <button
+            type="button"
+            (click)="irAExpedienteDesdePreview()"
+            class="px-5 py-2.5 rounded-xl bg-color-primary-accent hover:bg-color-primary-accent/90 text-black font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-[0.98]"
+          >
+            <span>Ver Expediente Completo</span>
+            <span class="text-sm font-black">→</span>
           </button>
         </div>
       </div>

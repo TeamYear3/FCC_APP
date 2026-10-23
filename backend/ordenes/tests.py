@@ -11,7 +11,10 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from clientes.models import Cliente
 from vehiculos.models import Vehiculo
-from .models import OrdenTrabajo, EstadoOrden, ItemPresupuesto, TipoItem, HistorialEstadoOrden, AdjuntoDiagnostico
+from .models import (
+    OrdenTrabajo, EstadoOrden, EstadoCobro, ItemPresupuesto,
+    TipoItem, HistorialEstadoOrden, AdjuntoDiagnostico
+)
 from .services import notificar_presupuesto_websocket
 from .signals import enviar_email_orden_background
 
@@ -2377,6 +2380,164 @@ class ReporteRentabilidadAPITests(APITestCase):
         self.assertEqual(response.data["kpis"]["cantidad_ordenes"], 0)
         self.assertEqual(response.data["kpis"]["total_facturado"], 0.0)
         self.assertEqual(response.data["top_servicios"], [])
+
+
+class EliminarOrdenTrabajoAPITest(APITestCase):
+    """
+    TK056 / AUT-BE: Pruebas unitarias e integración para el endpoint DELETE /api/ordenes/<id>/eliminar/
+    Garantiza la protección fiscal de facturas y cobros, la restricción de permisos a administradores
+    y el registro de auditoría NoSQL en MongoDB.
+    """
+
+    def setUp(self):
+        # Arrange - Usuarios por rol
+        self.admin = User.objects.create_user(
+            email="admin_del@example.com",
+            nombre="Admin",
+            apellido="Del",
+            rol="admin",
+            password="password123"
+        )
+        self.tecnico = User.objects.create_user(
+            email="tecnico_del@example.com",
+            nombre="Tecnico",
+            apellido="Del",
+            rol="tecnico",
+            password="password123"
+        )
+        self.cliente_user = User.objects.create_user(
+            email="cliente_del@example.com",
+            nombre="Cliente",
+            apellido="Del",
+            rol="cliente",
+            password="password123"
+        )
+
+        # Arrange - Cliente y Vehículo
+        self.cliente = Cliente.objects.create(
+            nombre="Carlos",
+            apellido="Gomez",
+            tipo_documento="DNI",
+            dni_cuit="20345678",
+            condicion_iva="CF"
+        )
+        self.vehiculo = Vehiculo.objects.create(
+            cliente=self.cliente,
+            patente="AA999ZZ",
+            marca="Ford",
+            modelo="Focus",
+            anio=2021
+        )
+
+    def _crear_orden(self, estado=EstadoOrden.INGRESADO, estado_cobro=EstadoCobro.PENDIENTE):
+        return OrdenTrabajo.objects.create(
+            vehiculo=self.vehiculo,
+            descripcion_problema="Revisión de frenos delanteros",
+            estado=estado,
+            estado_cobro=estado_cobro
+        )
+
+    @patch('core.mongo.registrar_auditoria_ot')
+    def test_admin_puede_eliminar_orden_sin_factura_ni_cobro(self, mock_auditoria):
+        """AUT-BE: Administrador elimina una orden válida no cobrada ni facturada (204 No Content)."""
+        # Arrange
+        orden = self._crear_orden()
+        url = reverse('eliminar-orden-trabajo', kwargs={'id': orden.id})
+        self.client.force_authenticate(user=self.admin)
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(OrdenTrabajo.objects.filter(id=orden.id).exists())
+        mock_auditoria.assert_called_once()
+        args, kwargs = mock_auditoria.call_args
+        self.assertEqual(kwargs['orden_id'], str(orden.id))
+        self.assertEqual(kwargs['estado_nuevo'], 'ELIMINADO')
+        self.assertEqual(kwargs['usuario'], self.admin)
+
+    def test_bloqueo_eliminacion_orden_con_factura_asociada(self):
+        """AUT-BE: Bloquea con 400 la eliminación si la orden posee factura legal emitida (integridad fiscal)."""
+        # Arrange
+        from facturacion.models import Factura
+        from django.utils import timezone
+        orden = self._crear_orden()
+        Factura.objects.create(
+            orden_trabajo=orden,
+            numero_factura=5001,
+            cae="12345678901234",
+            fecha_vencimiento_cae=timezone.now().date()
+        )
+        url = reverse('eliminar-orden-trabajo', kwargs={'id': orden.id})
+        self.client.force_authenticate(user=self.admin)
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(OrdenTrabajo.objects.filter(id=orden.id).exists())
+        error_msg = str(response.data)
+        self.assertIn("No es posible eliminar una orden de trabajo que ya posee facturación o cobro registrado.", error_msg)
+
+    def test_bloqueo_eliminacion_orden_con_estado_cobrado(self):
+        """AUT-BE: Bloquea con 400 la eliminación si la orden tiene estado de cobro 'cobrado'."""
+        # Arrange
+        orden = self._crear_orden(estado_cobro=EstadoCobro.COBRADO)
+        url = reverse('eliminar-orden-trabajo', kwargs={'id': orden.id})
+        self.client.force_authenticate(user=self.admin)
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(OrdenTrabajo.objects.filter(id=orden.id).exists())
+        error_msg = str(response.data)
+        self.assertIn("No es posible eliminar una orden de trabajo que ya posee facturación o cobro registrado.", error_msg)
+
+    def test_tecnico_no_puede_eliminar_orden_trabajo(self):
+        """AUT-BE: Perfil técnico no tiene permiso para eliminar órdenes de trabajo (403 Forbidden)."""
+        # Arrange
+        orden = self._crear_orden()
+        url = reverse('eliminar-orden-trabajo', kwargs={'id': orden.id})
+        self.client.force_authenticate(user=self.tecnico)
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(OrdenTrabajo.objects.filter(id=orden.id).exists())
+
+    def test_cliente_no_puede_eliminar_orden_trabajo(self):
+        """AUT-BE: Perfil cliente no tiene permiso para eliminar órdenes de trabajo (403 Forbidden)."""
+        # Arrange
+        orden = self._crear_orden()
+        url = reverse('eliminar-orden-trabajo', kwargs={'id': orden.id})
+        self.client.force_authenticate(user=self.cliente_user)
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(OrdenTrabajo.objects.filter(id=orden.id).exists())
+
+    def test_usuario_anonimo_no_puede_eliminar_orden_trabajo(self):
+        """AUT-BE: Solicitud no autenticada es rechazada con 401 Unauthorized."""
+        # Arrange
+        orden = self._crear_orden()
+        url = reverse('eliminar-orden-trabajo', kwargs={'id': orden.id})
+
+        # Act
+        response = self.client.delete(url)
+
+        # Assert
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(OrdenTrabajo.objects.filter(id=orden.id).exists())
+
 
 
 

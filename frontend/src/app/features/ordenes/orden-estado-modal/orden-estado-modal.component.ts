@@ -16,7 +16,7 @@ import {
   template: `
     @if (mostrar) {
       <div
-        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fadeIn"
       >
         <div
           class="bg-[#1E1E1E] border border-[#FFCC00]/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5"

@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     CrearOrdenTrabajoView,
     DetalleOrdenTrabajoView,
+    EliminarOrdenTrabajoView,
     AgregarManoDeObraView,
     AgregarRepuestoView,
     ConsultarHistorialOrdenView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path('reportes/rentabilidad/', ReporteRentabilidadView.as_view(), name='reporte-rentabilidad'),
     path('ordenes/', CrearOrdenTrabajoView.as_view(), name='crear-orden-trabajo'),
     path('ordenes/<uuid:id>/', DetalleOrdenTrabajoView.as_view(), name='detalle-orden-trabajo'),
+    path('ordenes/<uuid:id>/eliminar/', EliminarOrdenTrabajoView.as_view(), name='eliminar-orden-trabajo'),
     path('ordenes/<uuid:id>/registrar-pago/', RegistrarPagoOrdenView.as_view(), name='orden-registrar-pago'),
     path('ordenes/<uuid:pk>/pdf/', ExportarOrdenPDFView.as_view(), name='exportar-orden-pdf'),
     path('ordenes/<uuid:orden_id>/items/', ListarItemsPresupuestoView.as_view(), name='listar-items-presupuesto'),
