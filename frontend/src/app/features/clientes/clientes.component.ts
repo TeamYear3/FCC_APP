@@ -1,7 +1,6 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, ActivatedRoute, RouterLink, Params } from '@angular/router';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../core/auth/auth.service';
@@ -29,7 +28,7 @@ export interface ClienteDisplayItem {
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent, ScrollingModule],
+  imports: [RouterLink, PageComponent, ExpedienteClienteModalComponent],
   templateUrl: './clientes.component.html',
   styleUrl: './clientes.component.css',
 })
