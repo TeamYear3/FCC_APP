@@ -377,6 +377,14 @@ export class OrdenesComponent implements OnInit {
   }
 
   abrirModalEliminar(orden: OrdenResponse): void {
+    if (this.userRole() !== 'admin') {
+      alert('Solo los administradores tienen permiso para eliminar órdenes de trabajo.');
+      return;
+    }
+    if (orden.estado_cobro === 'cobrado') {
+      alert('No es posible eliminar una orden de trabajo que ya posee facturación o cobro registrado.');
+      return;
+    }
     this.ordenAEliminar.set(orden);
     this.errorEliminacion.set(null);
     this.mostrarModalEliminar.set(true);
