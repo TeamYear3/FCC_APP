@@ -11,7 +11,9 @@ import { DiagnosticoFotosComponent } from './diagnostico-fotos/diagnostico-fotos
 import { PresupuestoFormComponent } from './presupuesto-form/presupuesto-form.component';
 import { PageComponent } from '../../shared/components/page-component/page-component';
 
-export type OrderTab = 'Resumen' | 'Carga de Mano de Obra y Repuestos' | 'Imágenes';
+export type OrderTab = 'Resumen' | 'Carga de Repuestos y Mano de Obra' | 'Cargar Multimedia';
+export type CriterioVista = 'hoy' | 'todas' | 'prioritarias' | 'semana' | 'alta_complejidad' | 'activas' | 'cobro_pendiente' | 'personalizado';
+export type TipoOrdenacion = 'complejidad' | 'criticidad' | 'fecha_desc' | 'fecha_asc';
 
 @Component({
   selector: 'app-ordenes',
@@ -47,6 +49,24 @@ export class OrdenesComponent implements OnInit {
   readonly ordenSeleccionadaEstado = signal<OrdenResponse | null>(null);
   readonly modoModalEstado = signal<'estado' | 'cobro'>('estado');
 
+  // Control de modal de confirmación de eliminación
+  readonly mostrarModalEliminar = signal<boolean>(false);
+  readonly ordenAEliminar = signal<OrdenResponse | null>(null);
+  readonly eliminandoOrden = signal<boolean>(false);
+  readonly errorEliminacion = signal<string | null>(null);
+
+  // Control de modal de vista rápida / preview
+  readonly mostrarModalPreview = signal<boolean>(false);
+  readonly ordenPreview = signal<OrdenResponse | null>(null);
+
+  // Filtros Avanzados y UI State
+  readonly filtrosAvanzadosAbiertos = signal<boolean>(false);
+  readonly modoDetalle = signal<boolean>(false);
+
+  // Criterio de visualización superior y ordenamiento (por defecto: hoy por complejidad)
+  readonly criterioVista = signal<CriterioVista>('hoy');
+  readonly ordenacion = signal<TipoOrdenacion>('complejidad');
+
   // Filtros Avanzados (TK056 / TK119)
   readonly busqueda = signal<string>('');
   readonly estadoFiltro = signal<string>('todos');
@@ -54,15 +74,184 @@ export class OrdenesComponent implements OnInit {
   readonly fechaDesde = signal<string>('');
   readonly fechaHasta = signal<string>('');
 
+  /**
+   * Obtiene la fecha actual en formato local YYYY-MM-DD
+   */
+  obtenerFechaHoy(): string {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Obtiene la fecha de hace 7 días en formato YYYY-MM-DD
+   */
+  obtenerFechaSemanaAtras(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  readonly hayFiltrosActivos = computed<boolean>(() => {
+    return (
+      !!this.busqueda().trim() ||
+      (this.criterioVista() === 'personalizado' && (
+        this.estadoFiltro() !== 'todos' ||
+        this.complejidadFiltro() !== 'todas' ||
+        !!this.fechaDesde() ||
+        !!this.fechaHasta()
+      ))
+    );
+  });
+
+  readonly totalFiltrosActivos = computed<number>(() => {
+    let count = 0;
+    if (this.busqueda().trim()) count++;
+    if (this.estadoFiltro() !== 'todos') count++;
+    if (this.complejidadFiltro() !== 'todas') count++;
+    if (this.fechaDesde()) count++;
+    if (this.fechaHasta()) count++;
+    return count;
+  });
+
+  /**
+   * Metadatos descriptivos del criterio activo para la barra superior
+   */
+  readonly criterioInfo = computed<{ titulo: string; descripcion: string }>(() => {
+    if (this.busqueda().trim()) {
+      return {
+        titulo: 'Resultados de Búsqueda',
+        descripcion: `Filtrando órdenes por término "${this.busqueda().trim()}".`
+      };
+    }
+    switch (this.criterioVista()) {
+      case 'hoy':
+        return {
+          titulo: 'Órdenes de Hoy (por Complejidad)',
+          descripcion: `Mostrando órdenes del día de hoy (${this.obtenerFechaHoy()}) ordenadas por complejidad (Alta → Media → Baja).`
+        };
+      case 'todas':
+        return {
+          titulo: 'Todas las Órdenes (Histórico)',
+          descripcion: 'Mostrando órdenes de todas las fechas sin restricción temporal (días anteriores y actuales).'
+        };
+      case 'prioritarias':
+        return {
+          titulo: 'Órdenes Prioritarias y Urgentes',
+          descripcion: 'Priorizando trabajos en pausa técnica, alta complejidad y vehículos en proceso de reparación.'
+        };
+      case 'semana':
+        return {
+          titulo: 'Últimos 7 Días',
+          descripcion: 'Órdenes ingresadas durante la última semana de actividad en el taller.'
+        };
+      case 'alta_complejidad':
+        return {
+          titulo: 'Alta Complejidad Técnica',
+          descripcion: 'Filtrando reparaciones complejas de motor, transmisión y diagnóstico electrónico.'
+        };
+      case 'activas':
+        return {
+          titulo: 'Vehículos Activos en Taller',
+          descripcion: 'Mostrando órdenes en proceso, en pausa técnica o aprobadas para inicio.'
+        };
+      case 'cobro_pendiente':
+        return {
+          titulo: 'Pendientes de Cobro',
+          descripcion: 'Órdenes de trabajo entregadas o finalizadas con saldo o cobro pendiente.'
+        };
+      case 'personalizado':
+      default:
+        return {
+          titulo: 'Filtro Personalizado',
+          descripcion: 'Mostrando órdenes según los parámetros manuales seleccionados.'
+        };
+    }
+  });
+
   // Estado de lista paginada y orden activa (TK120)
   readonly listaOrdenes = signal<OrdenResponse[]>([]);
   readonly ordenSeleccionada = signal<OrdenResponse | null>(null);
   readonly otQueryParam = signal<string | null>(null);
 
+  /**
+   * Ponderación numérica de complejidad técnica: Alta (1) > Media (2) > Baja (3)
+   */
+  pesoComplejidad(complejidad?: string): number {
+    switch (complejidad?.toLowerCase()) {
+      case 'alta': return 1;
+      case 'media': return 2;
+      case 'baja': return 3;
+      default: return 4;
+    }
+  }
+
+  // Priorización de órdenes por importancia cuando no hay búsqueda activa
+  private calcularPuntajeImportancia(orden: OrdenResponse): number {
+    const estado = (orden.estado || '').toLowerCase();
+    const complejidad = (orden.complejidad || '').toLowerCase();
+
+    // Nivel 1: Alta complejidad en pausa o en proceso (máxima criticidad)
+    if (complejidad === 'alta' && (estado === 'en_pausa' || estado === 'en_proceso')) return 1;
+    // Nivel 2: Cualquier orden en pausa (bloqueo técnico)
+    if (estado === 'en_pausa') return 2;
+    // Nivel 3: En proceso operativo
+    if (estado === 'en_proceso') return 3;
+    // Nivel 4: Alta complejidad en cualquier otro estado
+    if (complejidad === 'alta') return 4;
+    // Nivel 5: En presupuesto o ingresado
+    if (estado === 'en_presupuesto' || estado === 'ingresado') return 5;
+    // Nivel 6: Aprobado listo para iniciar
+    if (estado === 'aprobado') return 6;
+    // Nivel 7: Finalizado / Entregado / Cancelado
+    return 7;
+  }
+
+  readonly ordenesMostradas = computed<OrdenResponse[]>(() => {
+    let lista = [...this.listaOrdenes()];
+    if (this.criterioVista() === 'cobro_pendiente') {
+      lista = lista.filter(o => o.estado_cobro !== 'cobrado');
+    }
+
+    const sort = this.ordenacion();
+    return lista.sort((a, b) => {
+      if (sort === 'complejidad') {
+        const pA = this.pesoComplejidad(a.complejidad);
+        const pB = this.pesoComplejidad(b.complejidad);
+        if (pA !== pB) return pA - pB; // 1 (alta), 2 (media), 3 (baja)
+        const fA = new Date(a.fecha_ingreso || a.creado_en || 0).getTime();
+        const fB = new Date(b.fecha_ingreso || b.creado_en || 0).getTime();
+        return fB - fA;
+      }
+      if (sort === 'criticidad') {
+        const pA = this.calcularPuntajeImportancia(a);
+        const pB = this.calcularPuntajeImportancia(b);
+        if (pA !== pB) return pA - pB;
+        const fA = new Date(a.fecha_ingreso || a.creado_en || 0).getTime();
+        const fB = new Date(b.fecha_ingreso || b.creado_en || 0).getTime();
+        return fB - fA;
+      }
+      if (sort === 'fecha_asc') {
+        const fA = new Date(a.fecha_ingreso || a.creado_en || 0).getTime();
+        const fB = new Date(b.fecha_ingreso || b.creado_en || 0).getTime();
+        return fA - fB;
+      }
+      // Por defecto: fecha_desc (más recientes primero)
+      const fA = new Date(a.fecha_ingreso || a.creado_en || 0).getTime();
+      const fB = new Date(b.fecha_ingreso || b.creado_en || 0).getTime();
+      return fB - fA;
+    });
+  });
+
   readonly ordenActiva = computed<OrdenResponse | null>(() => {
     const sel = this.ordenSeleccionada();
     if (sel) return sel;
-    const lista = this.listaOrdenes();
+    const lista = this.ordenesMostradas();
     return lista.length > 0 ? lista[0] : null;
   });
 
@@ -93,8 +282,12 @@ export class OrdenesComponent implements OnInit {
     const targetBusqueda = params['busqueda'];
     if (targetBusqueda) {
       this.busqueda.set(targetBusqueda);
+      this.criterioVista.set('personalizado');
+      this.cargarOrdenes(1, targetOt, targetBusqueda);
+    } else {
+      // Por defecto: mostrar las del día de hoy por complejidad
+      this.aplicarCriterio('hoy', targetOt);
     }
-    this.cargarOrdenes(1, targetOt, targetBusqueda);
   }
 
   cargarOrdenes(page: number = 1, targetId?: string, targetBusqueda?: string): void {
@@ -105,8 +298,12 @@ export class OrdenesComponent implements OnInit {
       estado: this.estadoFiltro(),
       complejidad: this.complejidadFiltro(),
       fecha_desde: this.fechaDesde(),
-      fecha_hasta: this.fechaHasta()
+      fecha_hasta: this.fechaHasta(),
+      ordering: this.ordenacion() === 'complejidad' ? 'complejidad' : (this.ordenacion() === 'fecha_asc' ? 'fecha_asc' : 'fecha_desc')
     };
+    if (this.criterioVista() === 'cobro_pendiente') {
+      filtros.estado_cobro = 'pendiente';
+    }
 
     this.ordenService.obtenerOrdenes(filtros, page, 10).subscribe({
       next: (res) => {
@@ -164,6 +361,91 @@ export class OrdenesComponent implements OnInit {
         elem.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }
+  }
+
+  verOrden(orden: OrdenResponse): void {
+    this.ordenSeleccionada.set(orden);
+    this.cargarItemsDeOrden(orden.id);
+    this.modoDetalle.set(true);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  volverAlListado(): void {
+    this.modoDetalle.set(false);
+  }
+
+  abrirModalEliminar(orden: OrdenResponse): void {
+    if (this.userRole() !== 'admin') {
+      alert('Solo los administradores tienen permiso para eliminar órdenes de trabajo.');
+      return;
+    }
+    if (orden.estado_cobro === 'cobrado') {
+      alert('No es posible eliminar una orden de trabajo que ya posee facturación o cobro registrado.');
+      return;
+    }
+    this.ordenAEliminar.set(orden);
+    this.errorEliminacion.set(null);
+    this.mostrarModalEliminar.set(true);
+  }
+
+  cerrarModalEliminar(): void {
+    this.mostrarModalEliminar.set(false);
+    this.ordenAEliminar.set(null);
+    this.errorEliminacion.set(null);
+  }
+
+  confirmarEliminacion(): void {
+    const orden = this.ordenAEliminar();
+    if (!orden) return;
+
+    this.eliminandoOrden.set(true);
+    this.errorEliminacion.set(null);
+
+    this.ordenService.eliminarOrden(orden.id).subscribe({
+      next: () => {
+        this.eliminandoOrden.set(false);
+        this.successOT.set(`Orden #${orden.numero_ot || orden.id.slice(0, 8)} eliminada permanentemente.`);
+        this.cerrarModalEliminar();
+
+        // Si se estaba visualizando el expediente de la orden eliminada, volver al listado
+        if (this.modoDetalle() && this.ordenActiva()?.id === orden.id) {
+          this.volverAlListado();
+        }
+
+        // Recargar listado
+        this.cargarOrdenes(this.paginaActual());
+      },
+      error: (err) => {
+        this.eliminandoOrden.set(false);
+        console.error('Error al eliminar orden de trabajo:', err);
+        const msg = err.error?.detail || err.error?.message || 'Error al eliminar la orden de trabajo. Verifique permisos.';
+        this.errorEliminacion.set(msg);
+      }
+    });
+  }
+
+  abrirModalPreview(orden: OrdenResponse): void {
+    this.ordenPreview.set(orden);
+    this.mostrarModalPreview.set(true);
+  }
+
+  cerrarModalPreview(): void {
+    this.mostrarModalPreview.set(false);
+    this.ordenPreview.set(null);
+  }
+
+  irAExpedienteDesdePreview(): void {
+    const orden = this.ordenPreview();
+    this.cerrarModalPreview();
+    if (orden) {
+      this.verOrden(orden);
+    }
+  }
+
+  toggleFiltrosAvanzados(): void {
+    this.filtrosAvanzadosAbiertos.update(v => !v);
   }
 
   imprimirOT(orden?: OrdenResponse | null): void {
@@ -242,17 +524,106 @@ export class OrdenesComponent implements OnInit {
     }
   }
 
-  onFiltroChange(): void {
+  /**
+   * Aplica un criterio de visualización rápida (hoy, todas, prioritarias, etc.)
+   */
+  aplicarCriterio(criterio: CriterioVista, targetId?: string): void {
+    this.criterioVista.set(criterio);
+    this.busqueda.set('');
+    const hoy = this.obtenerFechaHoy();
+
+    switch (criterio) {
+      case 'hoy':
+        this.fechaDesde.set(hoy);
+        this.fechaHasta.set(hoy);
+        this.estadoFiltro.set('todos');
+        this.complejidadFiltro.set('todas');
+        this.ordenacion.set('complejidad');
+        break;
+      case 'todas':
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+        this.estadoFiltro.set('todos');
+        this.complejidadFiltro.set('todas');
+        this.ordenacion.set('fecha_desc');
+        break;
+      case 'prioritarias':
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+        this.estadoFiltro.set('todos');
+        this.complejidadFiltro.set('todas');
+        this.ordenacion.set('criticidad');
+        break;
+      case 'semana':
+        this.fechaDesde.set(this.obtenerFechaSemanaAtras());
+        this.fechaHasta.set(hoy);
+        this.estadoFiltro.set('todos');
+        this.complejidadFiltro.set('todas');
+        this.ordenacion.set('complejidad');
+        break;
+      case 'alta_complejidad':
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+        this.estadoFiltro.set('todos');
+        this.complejidadFiltro.set('alta');
+        this.ordenacion.set('criticidad');
+        break;
+      case 'activas':
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+        this.estadoFiltro.set('en_proceso,en_pausa,aprobado');
+        this.complejidadFiltro.set('todas');
+        this.ordenacion.set('criticidad');
+        break;
+      case 'cobro_pendiente':
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+        this.estadoFiltro.set('todos');
+        this.complejidadFiltro.set('todas');
+        this.ordenacion.set('fecha_desc');
+        break;
+      case 'personalizado':
+        break;
+    }
+
+    this.cargarOrdenes(1, targetId);
+  }
+
+  /**
+   * Cambia el criterio de ordenamiento y recarga el listado
+   */
+  cambiarOrdenacion(sort: TipoOrdenacion): void {
+    this.ordenacion.set(sort);
     this.cargarOrdenes(1);
+  }
+
+  onFiltroChange(): void {
+    this.criterioVista.set('personalizado');
+    this.cargarOrdenes(1);
+  }
+
+  onBusquedaChange(): void {
+    const busq = this.busqueda().trim();
+    if (busq) {
+      // Si el usuario busca por término libre y venía del filtro fijo de 'hoy',
+      // limpiamos las fechas para que la búsqueda sea global sobre todo el taller
+      if (this.criterioVista() === 'hoy') {
+        this.fechaDesde.set('');
+        this.fechaHasta.set('');
+      }
+      this.criterioVista.set('personalizado');
+    }
+    this.cargarOrdenes(1);
+  }
+
+  limpiarBusqueda(): void {
+    this.busqueda.set('');
+    this.aplicarCriterio('hoy');
   }
 
   limpiarFiltros(): void {
     this.busqueda.set('');
-    this.estadoFiltro.set('todos');
-    this.complejidadFiltro.set('todas');
-    this.fechaDesde.set('');
-    this.fechaHasta.set('');
-    this.cargarOrdenes(1);
+    this.aplicarCriterio('hoy');
   }
 
   cambiarPagina(nuevaPagina: number): void {
@@ -315,7 +686,7 @@ export class OrdenesComponent implements OnInit {
   }
 
   readonly activeTab = signal<OrderTab>('Resumen');
-  readonly tabs: OrderTab[] = ['Resumen', 'Carga de Mano de Obra y Repuestos', 'Imágenes'];
+  readonly tabs: OrderTab[] = ['Resumen', 'Carga de Repuestos y Mano de Obra', 'Cargar Multimedia'];
 
   // Ítems reales del presupuesto (servicios y repuestos)
   readonly itemsPresupuesto = signal<ItemPresupuesto[]>([]);
@@ -441,7 +812,7 @@ export class OrdenesComponent implements OnInit {
     const orden = this.ordenActiva();
     const estado = (orden?.estado || '').toLowerCase();
 
-    if (tab === 'Carga de Mano de Obra y Repuestos') {
+    if (tab === 'Carga de Repuestos y Mano de Obra') {
       if (estado === 'en_presupuesto' || estado === 'ingresado' || estado === 'en presupuesto') {
         return {
           texto: 'Aprobar Presupuesto y Convertir en OT',
@@ -458,7 +829,7 @@ export class OrdenesComponent implements OnInit {
       };
     }
 
-    if (tab === 'Imágenes') {
+    if (tab === 'Cargar Multimedia') {
       return {
         texto: 'Revisar / Adjuntar Evidencias Fotográficas',
         icono: 'photo_camera',
