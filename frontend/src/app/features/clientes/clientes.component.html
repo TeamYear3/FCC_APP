@@ -160,12 +160,12 @@
       </div>
     }
 
-    <!-- Directorio en Tarjetas con Virtual Scrolling (TK179 - @angular/cdk/scrolling) -->
+    <!-- Directorio en Tarjetas (TK243 - Control Flow Angular 21) -->
     @if (!cargando()) {
       @if (clientesFiltrados().length > 0) {
-        <cdk-virtual-scroll-viewport itemSize="260" class="clientes-virtual-viewport" data-testid="clientes-tabla">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md p-1">
-            <div *cdkVirtualFor="let cli of clientesFiltrados(); trackBy: trackByClienteId" class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1" data-testid="cliente-row">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-md p-1" data-testid="clientes-tabla">
+          @for (cli of clientesFiltrados(); track cli.id) {
+            <div class="bg-color-surface-container border border-white/10 rounded-card p-md flex flex-col justify-between shadow-xl transition-all duration-200 hover:border-color-primary-accent/60 hover:-translate-y-1" data-testid="cliente-row">
               
               <!-- Extremo superior: ID/Documento Cliente y Nombre + Badge de Estado Semántico -->
               <div class="flex items-start justify-between gap-2 mb-sm">
@@ -258,8 +258,8 @@
                 }
               </div>
             </div>
-          </div>
-        </cdk-virtual-scroll-viewport>
+          }
+        </div>
       } @else {
         <div class="p-12 text-center bg-color-surface-container border border-white/5 rounded-card shadow-lg">
           <svg class="w-12 h-12 text-zinc-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
