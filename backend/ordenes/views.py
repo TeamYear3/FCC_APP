@@ -1,5 +1,4 @@
 from django.shortcuts import get_object_or_404
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,7 +9,7 @@ from django.db.models import Q, Prefetch, Count, Sum, Avg, Case, When, Value, In
 from django.db.models.functions import Concat
 from datetime import timedelta, date
 from decimal import Decimal
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from core.permissions import EsAdministrador, EsTecnico, EsCliente
 from .models import (
     OrdenTrabajo, HistorialEstadoOrden, AdjuntoDiagnostico,
@@ -281,19 +280,23 @@ class EliminarOrdenTrabajoView(generics.DestroyAPIView):
     """
     Endpoint DELETE /api/ordenes/<uuid:id>/eliminar/
     Permite la eliminación definitiva de una orden con auditoría NoSQL en MongoDB.
-    Restringe la eliminación a Administradores y Técnicos autorizados.
+    Restringe la eliminación exclusivamente a Administradores autorizados.
+    Protege órdenes con factura fiscal emitida o cobro registrado para garantizar la integridad contable.
     """
     serializer_class = DetalleOrdenTrabajoSerializer
     lookup_field = 'id'
     lookup_url_kwarg = 'id'
 
     def get_permissions(self):
-        return [IsAuthenticated(), (EsAdministrador | EsTecnico)()]
+        return [IsAuthenticated(), EsAdministrador()]
 
     def get_queryset(self):
         return OrdenTrabajo.objects.all()
 
     def perform_destroy(self, instance):
+        if hasattr(instance, 'factura') or instance.estado_cobro == EstadoCobro.COBRADO:
+            raise ValidationError("No es posible eliminar una orden de trabajo que ya posee facturación o cobro registrado.")
+
         orden_id = str(instance.id)
         numero_ot = instance.numero_ot
         estado_previo = instance.estado
