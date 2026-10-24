@@ -146,5 +146,14 @@ describe('OrdenEstadoModalComponent', () => {
       entregar_orden: false
     });
   });
+
+  it('debe renderizar el título de la pestaña de cobro sin código de ticket residual (TK103)', () => {
+    const botonesTabs: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('button[type="button"]');
+    const botonCobro = Array.from(botonesTabs).find((b) => b.textContent?.includes('Registrar Cobro'));
+
+    expect(botonCobro).toBeTruthy();
+    expect(botonCobro?.textContent).not.toContain('(TK103)');
+    expect(botonCobro?.textContent).toContain('Registrar Cobro');
+  });
 });
 
