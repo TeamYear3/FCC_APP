@@ -62,6 +62,8 @@ backend/logs/
 # Reportes de pruebas generados dinámicamente
 tests/api/reports/*.html
 tests/api/reports/*.xml
+!tests/api/reports/report_newman.html
+!tests/api/reports/report_newman.xml
 frontend/playwright-report/
 frontend/test-results/
 .coverage
