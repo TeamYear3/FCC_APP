@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Full Check Car - API Test Suite" tests="13" time="0.530">
+  <testsuite name="00_Auth / Login - Obtener Token JWT" id="8f789b9e-f4d8-4a32-9bda-427860e44174" timestamp="2026-10-11T20:38:57.248Z" tests="3" failures="0" errors="0" time="0.180">
+    <testcase name="Status code es 200 OK" time="0.180" classname="00AuthLoginObtenerTokenJwt"/>
+    <testcase name="Respuesta es un JSON válido" time="0.180" classname="00AuthLoginObtenerTokenJwt"/>
+    <testcase name="Respuesta contiene token access JWT" time="0.180" classname="00AuthLoginObtenerTokenJwt"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 01 - Listar Clientes" id="ffede31b-7b8e-415d-93a5-5700278673a4" timestamp="2026-10-11T20:38:57.248Z" tests="3" failures="0" errors="0" time="0.032">
+    <testcase name="Status code es 200 OK" time="0.032" classname="01Clientes01ListarClientes"/>
+    <testcase name="Respuesta es JSON" time="0.032" classname="01Clientes01ListarClientes"/>
+    <testcase name="Retorna una lista o respuesta paginada de clientes" time="0.032" classname="01Clientes01ListarClientes"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 02 - POST Crear Cliente (Captura ID)" id="9e93bdc4-5904-4415-81f2-3da5f5385fd4" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.045">
+    <testcase name="Status code es 201 Created" time="0.045" classname="01Clientes02PostCrearClienteCapturaId"/>
+    <testcase name="Cliente creado contiene ID UUID y nombre esperado" time="0.045" classname="01Clientes02PostCrearClienteCapturaId"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 03 - GET Consultar Cliente por ID Dinámico" id="5aeb15c2-a2af-4587-a4c0-13602816713c" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.023">
+    <testcase name="Status code es 200 OK" time="0.023" classname="01Clientes03GetConsultarClientePorIdDinamico"/>
+    <testcase name="El registro coincide con el clienteId creado" time="0.023" classname="01Clientes03GetConsultarClientePorIdDinamico"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 04 - PATCH Modificar Cliente Creado" id="ebe5578f-4eb0-4907-876a-9eb3f12ac079" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.040">
+    <testcase name="Status code es 200 OK" time="0.040" classname="01Clientes04PatchModificarClienteCreado"/>
+    <testcase name="Campos actualizados correctamente" time="0.040" classname="01Clientes04PatchModificarClienteCreado"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 05 - DELETE Eliminar Cliente (Teardown Hermético)" id="7e3604d2-633c-48d3-b7f8-4f42090ba889" timestamp="2026-10-11T20:38:57.248Z" tests="1" failures="0" errors="0" time="0.035">
+    <testcase name="Status code es 204 No Content (eliminación exitosa)" time="0.035" classname="01Clientes05DeleteEliminarClienteTeardownHermetico"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 06 - GET Verificar Eliminación (404 Not Found)" id="a04988c1-84d9-4e3d-adfc-e13e120b8aa0" timestamp="2026-10-11T20:38:57.248Z" tests="1" failures="0" errors="0" time="0.023">
+    <testcase name="Status code es 404 Not Found tras eliminación" time="0.023" classname="01Clientes06GetVerificarEliminacion404NotFound"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 07 - Negativa: GET Clientes sin Token (401 Unauthorized)" id="09f65440-0339-4725-a87b-3ad99233d569" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.018">
+    <testcase name="Status code es 401 Unauthorized ante petición anónima" time="0.018" classname="01Clientes07NegativaGetClientesSinToken401Unauthorized"/>
+    <testcase name="Respuesta contiene mensaje de error de autenticación" time="0.018" classname="01Clientes07NegativaGetClientesSinToken401Unauthorized"/>
+  </testsuite>
+  <testsuite name="01_Clientes / 08 - Negativa: POST Crear Cliente con Payload Inválido (400 Bad Request)" id="3f4f09e2-d62c-470a-a6c8-91e1180f9e08" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.025">
+    <testcase name="Status code es 400 Bad Request ante payload inválido" time="0.025" classname="01Clientes08NegativaPostCrearClienteConPayloadInvalido400BadRequest"/>
+    <testcase name="Respuesta contiene estructura de errores de validación" time="0.025" classname="01Clientes08NegativaPostCrearClienteConPayloadInvalido400BadRequest"/>
+  </testsuite>
+  <testsuite name="02_Ordenes / 01 - Listar Órdenes de Trabajo" id="2601f567-3605-4505-8956-201a17a62f21" timestamp="2026-10-11T20:38:57.248Z" tests="3" failures="0" errors="0" time="0.035">
+    <testcase name="Status code es 200 OK" time="0.035" classname="02Ordenes01ListarOrdenesDeTrabajo"/>
+    <testcase name="Respuesta es JSON" time="0.035" classname="02Ordenes01ListarOrdenesDeTrabajo"/>
+    <testcase name="Retorna una colección de órdenes de trabajo" time="0.035" classname="02Ordenes01ListarOrdenesDeTrabajo"/>
+  </testsuite>
+  <testsuite name="02_Ordenes / 02 - Obtener Detalle de Orden de Trabajo" id="169756e9-5668-408f-8bf9-d9590c9aee92" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.029">
+    <testcase name="Status code es 200 OK" time="0.029" classname="02Ordenes02ObtenerDetalleDeOrdenDeTrabajo"/>
+    <testcase name="Detalle de la orden contiene estructura completa" time="0.029" classname="02Ordenes02ObtenerDetalleDeOrdenDeTrabajo"/>
+  </testsuite>
+  <testsuite name="02_Ordenes / 03 - Negativa: GET Órdenes sin Token (401 Unauthorized)" id="c3240643-152b-4e51-817e-d2e130d57db4" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.020">
+    <testcase name="Status code es 401 Unauthorized al listar órdenes sin token" time="0.020" classname="02Ordenes03NegativaGetOrdenesSinToken401Unauthorized"/>
+    <testcase name="Respuesta contiene detalle de autenticación requerida" time="0.020" classname="02Ordenes03NegativaGetOrdenesSinToken401Unauthorized"/>
+  </testsuite>
+  <testsuite name="02_Ordenes / 04 - Negativa: POST Crear Orden con Payload Inválido (400 Bad Request)" id="faf6c131-88fd-4935-b6b3-732a8c0bc0dd" timestamp="2026-10-11T20:38:57.248Z" tests="2" failures="0" errors="0" time="0.025">
+    <testcase name="Status code es 400 Bad Request ante payload inválido en orden" time="0.025" classname="02Ordenes04NegativaPostCrearOrdenConPayloadInvalido400BadRequest"/>
+    <testcase name="Respuesta contiene errores de validación estructurados" time="0.025" classname="02Ordenes04NegativaPostCrearOrdenConPayloadInvalido400BadRequest"/>
+  </testsuite>
+</testsuites>
