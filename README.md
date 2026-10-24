@@ -88,12 +88,11 @@ docker compose up --build -d
 docker compose logs -f backend frontend
 ```
 
-Para aplicar migraciones y cargar datos de prueba dentro del contenedor:
-```bash
-# Aplicar migraciones
-docker compose exec backend python manage.py migrate
+> [!NOTE]
+> El contenedor de backend espera automáticamente a que PostgreSQL esté en estado saludable (`healthy`) y aplica de forma autónoma todas las migraciones pendientes antes de iniciar el servidor.
 
-# Detener el entorno liberando recursos
+Para detener el entorno liberando recursos:
+```bash
 docker compose down
 ```
 
