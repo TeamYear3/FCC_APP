@@ -94,7 +94,7 @@ import {
                 'text-gray-400 hover:text-white': seccionActiva() !== 'cobro'
               }"
             >
-              💳 Registrar Cobro (TK103)
+              💳 Registrar Cobro
               @if (orden?.estado_cobro === 'cobrado') {
                 <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Cobrado</span>
               }
