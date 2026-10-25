@@ -25,6 +25,42 @@
       "value": "admin123",
       "type": "secret",
       "enabled": true
+    },
+    {
+      "key": "clientUserEmail",
+      "value": "cliente@fcc.com",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "clientUserPassword",
+      "value": "cliente123",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "clientAuthToken",
+      "value": "",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "ordenId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "vehiculoId",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "fechaHoy",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",
