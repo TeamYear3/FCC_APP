@@ -11,7 +11,7 @@
       "description": "Módulo de autenticación y generación de credenciales JWT.",
       "item": [
         {
-          "name": "Login - Obtener Token JWT",
+          "name": "01 - Login Admin - Obtener Token JWT",
           "event": [
             {
               "listen": "test",
@@ -19,6 +19,14 @@
                 "exec": [
                   "pm.test(\"Status code es 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});",
                   "",
                   "pm.test(\"Respuesta es un JSON válido\", function () {",
@@ -60,7 +68,69 @@
                 ""
               ]
             },
-            "description": "Autenticación de usuario para obtención e inyección dinámica del token JWT en {{authToken}}."
+            "description": "Autenticación de usuario administrador para obtención e inyección dinámica del token JWT en {{authToken}}."
+          },
+          "response": []
+        },
+        {
+          "name": "02 - Login Cliente - Obtener Token JWT",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta es un JSON válido\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene token access JWT de cliente\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"access\");",
+                  "    pm.expect(jsonData.access).to.be.a(\"string\");",
+                  "    pm.environment.set(\"clientAuthToken\", jsonData.access);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{clientUserEmail}}\",\n  \"password\": \"{{clientUserPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                ""
+              ]
+            },
+            "description": "Autenticación de usuario con rol cliente para obtención e inyección dinámica del token JWT en {{clientAuthToken}} para pruebas RBAC."
           },
           "response": []
         }
@@ -683,6 +753,22 @@
     },
     {
       "key": "ordenExistenteId",
+      "value": ""
+    },
+    {
+      "key": "clientAuthToken",
+      "value": ""
+    },
+    {
+      "key": "ordenId",
+      "value": ""
+    },
+    {
+      "key": "vehiculoId",
+      "value": ""
+    },
+    {
+      "key": "fechaHoy",
       "value": ""
     }
   ]
