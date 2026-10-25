@@ -151,8 +151,12 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test(\"Respuesta es JSON\", function () {",
-                  "    pm.response.to.be.json;",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});",
                   "",
                   "pm.test(\"Retorna una lista o respuesta paginada de clientes\", function () {",
@@ -213,11 +217,20 @@
                   "    pm.response.to.have.status(201);",
                   "});",
                   "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
                   "pm.test(\"Cliente creado contiene ID UUID y nombre esperado\", function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property(\"id\");",
                   "    pm.expect(jsonData.nombre).to.eql(\"Cliente CRUD Temporal\");",
                   "    pm.collectionVariables.set(\"clienteId\", jsonData.id);",
+                  "    pm.environment.set(\"clienteId\", jsonData.id);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -266,9 +279,17 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
                   "pm.test(\"El registro coincide con el clienteId creado\", function () {",
                   "    var jsonData = pm.response.json();",
-                  "    var idEsperado = pm.collectionVariables.get(\"clienteId\");",
+                  "    var idEsperado = pm.environment.get(\"clienteId\") || pm.collectionVariables.get(\"clienteId\");",
                   "    pm.expect(jsonData.id).to.eql(idEsperado);",
                   "    pm.expect(jsonData.nombre).to.eql(\"Cliente CRUD Temporal\");",
                   "});"
@@ -314,6 +335,14 @@
                 "exec": [
                   "pm.test(\"Status code es 200 OK\", function () {",
                   "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});",
                   "",
                   "pm.test(\"Campos actualizados correctamente\", function () {",
@@ -367,6 +396,10 @@
                 "exec": [
                   "pm.test(\"Status code es 204 No Content (eliminación exitosa)\", function () {",
                   "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -406,6 +439,14 @@
                 "exec": [
                   "pm.test(\"Status code es 404 Not Found tras eliminación\", function () {",
                   "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});"
                 ],
                 "type": "text/javascript"
@@ -451,6 +492,14 @@
                   "    pm.response.to.have.status(401);",
                   "});",
                   "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
                   "pm.test(\"Respuesta contiene mensaje de error de autenticación\", function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property(\"detail\");",
@@ -492,6 +541,14 @@
                 "exec": [
                   "pm.test(\"Status code es 400 Bad Request ante payload inválido\", function () {",
                   "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
                   "});",
                   "",
                   "pm.test(\"Respuesta contiene estructura de errores de validación\", function () {",
@@ -1000,6 +1057,127 @@
               ]
             },
             "description": "Prueba negativa: Validación de rechazo HTTP 400 al enviar datos malformados o IDs inexistentes en órdenes de trabajo."
+          },
+          "response": []
+        },
+        {
+          "name": "09 - Negativa: POST Crear Orden con Rol Cliente (403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 403 Forbidden ante rol no autorizado\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene mensaje de permiso denegado\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"detail\");",
+                  "    pm.expect(jsonData.status_code).to.eql(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clientAuthToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculo_id\": \"{{vehiculoId}}\",\n  \"descripcion_problema\": \"Intento no autorizado de creación por rol cliente\",\n  \"fecha_ingreso\": \"{{fechaHoy}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes",
+                ""
+              ]
+            },
+            "description": "Prueba negativa RBAC: Validación de rechazo HTTP 403 Forbidden cuando un usuario con rol cliente intenta crear una orden de trabajo."
+          },
+          "response": []
+        },
+        {
+          "name": "10 - Negativa: GET Consultar Orden Inexistente (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code es 404 Not Found ante UUID inexistente\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Cabecera Content-Type es application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+                  "});",
+                  "",
+                  "pm.test(\"Tiempo de respuesta es menor a 1000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});",
+                  "",
+                  "pm.test(\"Respuesta contiene mensaje de recurso no encontrado\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"detail\");",
+                  "    pm.expect(jsonData.status_code).to.eql(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ordenes/00000000-0000-0000-0000-000000000000/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ordenes",
+                "00000000-0000-0000-0000-000000000000",
+                ""
+              ]
+            },
+            "description": "Prueba negativa: Validación de respuesta HTTP 404 Not Found estructurada en JSON al consultar un UUID inexistente."
           },
           "response": []
         }
