@@ -37,8 +37,8 @@ export class PortalClientePage extends BasePage {
     this.logoutButton = page.getByRole('button', { name: /Cerrar Sesión/i });
     this.orderCards = page.getByTestId('orden-card').or(page.getByRole('article')).or(page.locator('[data-testid="orden-card"]'));
     this.badgesEstado = page.getByTestId('badge-estado-orden').or(page.getByText(/ingresado|en presupuesto|aprobado|en proceso|finalizado/i));
-    this.tabOrdenesBtn = page.getByRole('button', { name: /órdenes de trabajo|ordenes de trabajo/i });
-    this.tabVehiculosBtn = page.getByRole('button', { name: /mis vehículos|mis vehiculos/i });
+    this.tabOrdenesBtn = page.getByTestId('portal-tab-ordenes').or(page.getByRole('button', { name: /órdenes de trabajo|ordenes de trabajo/i }));
+    this.tabVehiculosBtn = page.getByTestId('portal-tab-vehiculos').or(page.getByRole('button', { name: /mis vehículos|mis vehiculos/i }));
 
     // Modal de Historial y trazabilidad
     this.modalHistorial = page.getByTestId('modal-historial').or(page.getByRole('dialog', { name: /historial de estados/i })).or(page.locator('[data-testid="modal-historial"]'));
