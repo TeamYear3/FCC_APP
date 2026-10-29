@@ -79,6 +79,22 @@ test.describe('AUT-E2E-05: Flujo Crítico 3 - Ciclo Operativo de Taller', () => 
       });
     });
 
+    await page.route('**/api/turnos/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
+    });
+
+    await page.route('**/api/usuarios/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([])
+      });
+    });
+
     await page.route('**/api/ordenes/fcc-ot-001/', async (route) => {
       await route.fulfill({
         status: 200,
