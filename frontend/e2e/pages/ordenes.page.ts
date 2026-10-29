@@ -50,7 +50,7 @@ export class OrdenesPage extends BasePage {
     super(page);
     this.searchInput = page.getByTestId('input-buscar-orden').or(page.getByPlaceholder(/buscar/i)).or(page.locator('input[type="text"]'));
     this.nuevaOrdenButton = page.getByTestId('btn-nueva-orden').or(page.getByRole('button', { name: /nueva orden/i }));
-    this.kanbanBoard = page.getByTestId('ordenes-kanban').or(page.locator('[data-testid="ordenes-kanban"]'));
+    this.kanbanBoard = page.getByTestId('ordenes-kanban').or(page.locator('[data-testid="ordenes-kanban"]')).or(page.getByRole('table')).or(page.getByRole('heading', { name: /Expediente Operativo de Taller/i }));
     this.tablaOrdenes = page.getByTestId('tabla-ordenes').or(page.getByRole('table'));
     this.filasOrdenes = page.getByTestId('orden-fila').or(page.getByRole('row')).or(page.locator('tbody tr'));
     this.expedienteActivo = page.getByTestId('expediente-activo').or(page.locator('#expediente-activo'));
@@ -60,8 +60,8 @@ export class OrdenesPage extends BasePage {
 
     // Pestañas semánticas
     this.tabResumen = page.getByRole('tab', { name: /resumen/i }).or(page.getByRole('button', { name: /resumen/i }));
-    this.tabPresupuesto = page.getByRole('tab', { name: /carga de mano de obra y repuestos/i }).or(page.getByRole('button', { name: /carga de mano de obra y repuestos/i }));
-    this.tabImagenes = page.getByRole('tab', { name: /imágenes|imagenes/i }).or(page.getByRole('button', { name: /imágenes|imagenes/i }));
+    this.tabPresupuesto = page.getByRole('tab', { name: /repuestos y mano de obra|mano de obra y repuestos/i }).or(page.getByRole('button', { name: /repuestos y mano de obra|mano de obra y repuestos/i }));
+    this.tabImagenes = page.getByRole('tab', { name: /imágenes|imagenes|multimedia/i }).or(page.getByRole('button', { name: /imágenes|imagenes|multimedia/i }));
 
     // Formulario de presupuesto sin clases CSS de presentación
     this.tipoItemRepuestoBtn = page.getByTestId('tipo-item-repuesto-btn');
@@ -98,8 +98,12 @@ export class OrdenesPage extends BasePage {
   }
 
   async seleccionarOrden(index: number = 0): Promise<void> {
-    const fila = this.filasOrdenes.nth(index);
-    if (await fila.isVisible()) {
+    const verOrdenBtn = this.page.getByRole('button', { name: /ver orden/i }).nth(index);
+    try {
+      await verOrdenBtn.waitFor({ state: 'visible', timeout: 6000 });
+      await verOrdenBtn.click();
+    } catch {
+      const fila = this.page.locator('tbody tr').nth(index);
       await fila.click();
     }
   }
