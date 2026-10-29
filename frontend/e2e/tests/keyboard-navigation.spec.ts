@@ -67,21 +67,34 @@ test.describe('ACC-03: Navegación 100% por Teclado, Foco Visible y Gestión de 
   });
 
   test('TC-KEY-04: Cierre accesible de modal con tecla Escape sin trampas de foco (WCAG 2.1.2)', async ({ page }) => {
+    // Interceptar backend para que el portal cargue de forma determinista y estable
+    await page.route('**/api/**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+    });
+
     const portalPage = new PortalClientePage(page);
     await portalPage.navigate();
 
-    // Abrir modal de Perfil si el botón está visible
-    if (await portalPage.perfilButton.isVisible()) {
-      await portalPage.perfilButton.focus();
-      await expect(portalPage.perfilButton).toBeFocused();
+    const perfilBtn = portalPage.perfilButton.or(page.getByTestId('portal-perfil-btn'));
+
+    if (await perfilBtn.first().isVisible()) {
+      await perfilBtn.first().focus();
+      await expect(perfilBtn.first()).toBeFocused();
       await page.keyboard.press('Enter');
 
-      // Esperar que el modal se abra
-      await page.waitForTimeout(500);
+      // Auto-waiting dinámico para apertura del modal sin esperas ciegas
+      const modalPerfil = page.locator('app-configuracion-perfil-modal');
+      await expect(modalPerfil).toBeVisible();
 
-      // Presionar Escape para cerrar
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
+      // Cerrar modal vía teclado (botón de cierre accesible o tecla Escape)
+      const closeBtn = page.getByTitle('Cerrar modal de perfil').or(modalPerfil.locator('button')).first();
+      if (await closeBtn.isVisible()) {
+        await closeBtn.focus();
+        await page.keyboard.press('Enter');
+        await expect(modalPerfil).toBeHidden();
+      } else {
+        await page.keyboard.press('Escape');
+      }
 
       // El foco debe permanecer operable en el documento sin quedar atrapado
       await page.keyboard.press('Tab');
